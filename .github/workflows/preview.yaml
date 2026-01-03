@@ -27,4 +27,15 @@ jobs:
       - name: Build Project Artifacts
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
       - name: Deploy Project Artifacts to Vercel
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+        id: deploy
+        run: |
+          deployment_url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "deployment_url=$deployment_url" >> $GITHUB_OUTPUT
+          echo "Deployed to: $deployment_url"
+      - name: Add Custom Domain (if not exists)
+        run: |
+          vercel domains add dev.yourdomain.com --token=${{ secrets.VERCEL_TOKEN }} --scope=${{ secrets.VERCEL_ORG_ID }} || true
+      - name: Assign Deployment Alias
+        run: |
+          vercel alias set ${{ steps.deploy.outputs.deployment_url }} dev.athletyq.com --token=${{ secrets.VERCEL_TOKEN }} --scope=${{ secrets.VERCEL_ORG_ID }}
+          echo "Preview environment deployed to: https://dev.athletyq.com"
