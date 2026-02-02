@@ -1,19 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { signUp } from "@/services/auth/auth.service";
+import { signUp, UserRole } from "@/services/auth/auth.service";
 
 export async function POST(request: NextRequest) {
-    console.log("Signup API called");
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { email, password, fullName, role } = body;
 
     // Validate input
-    if (!email || !password) {
+    if (!email || !password || !fullName || !role) {
       return NextResponse.json(
         {
           ok: false,
           error: {
-            message: "Email and password are required",
+            message: "Email, password, fullName, and role are required",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate role
+    const validRoles: UserRole[] = ["athlete", "coach", "organization"];
+    if (!validRoles.includes(role as UserRole)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            message: `Invalid role. Must be one of: ${validRoles.join(", ")}`,
           },
         },
         { status: 400 }
@@ -47,8 +60,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Build the email confirmation redirect URL (client-side page)
+    // Route groups like (auth) are not part of the URL path
+    const origin = request.headers.get("origin") || request.nextUrl.origin;
+    const emailRedirectTo = `${origin}/confirm?redirect_to=/`;
+
     // Call the signup service
-    const result = await signUp({ email, password });
+    const result = await signUp({ 
+      email, 
+      password, 
+      fullName, 
+      role: role as UserRole,
+      emailRedirectTo,
+    });
 
     if (!result.ok) {
       return NextResponse.json(
@@ -73,14 +97,11 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    // Handle JSON parsing errors or other unexpected errors
     if (error instanceof SyntaxError) {
       return NextResponse.json(
         {
           ok: false,
-          error: {
-            message: "Invalid JSON in request body",
-          },
+          error: { message: "Invalid JSON in request body" },
         },
         { status: 400 }
       );
@@ -89,12 +110,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
-        error: {
-          message: "Internal server error",
-        },
+        error: { message: "Internal server error" },
       },
       { status: 500 }
     );
   }
 }
-
