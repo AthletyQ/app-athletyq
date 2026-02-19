@@ -1,13 +1,11 @@
-import React from "react";
-
-type AuthLayoutProps = {
+export default function SignupLayout({
+  children,
+}: {
   children: React.ReactNode;
-};
-
-export default function AuthLayout({ children }: AuthLayoutProps) {
+}) {
   return (
-    <div>
-        {children}
+    <div className="antialiased">
+      {children}
     </div>
   );
 }
