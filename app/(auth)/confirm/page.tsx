@@ -31,35 +31,24 @@ function ConfirmPageContent() {
             refresh_token: refreshToken,
           });
 
-          if (sessionError) {
-            throw sessionError;
-          }
+          if (sessionError) throw sessionError;
+          if (!sessionData.user) throw new Error("User not found after setting session");
 
-          if (!sessionData.user) {
-            throw new Error("User not found after setting session");
-          }
-
-          // Call API to create profile (idempotent - won't create if exists)
+          // Call API to create profile + actor record (idempotent)
+          // All role-specific data is stored in user_metadata
           const response = await fetch("/api/auth/create-profile", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${sessionData.session?.access_token}`,
             },
-            body: JSON.stringify({
-              userId: sessionData.user.id,
-              fullName: sessionData.user.user_metadata?.fullName,
-              role: sessionData.user.user_metadata?.role,
-              email: sessionData.user.email,
-            }),
+            body: JSON.stringify({}), // All data comes from user_metadata on the server
           });
-
-          console.log("create profile response: ", response);
 
           if (!response.ok) {
             const errorData = await response.text();
             console.error("Profile creation error:", errorData);
-            // Still redirect even if profile creation fails (it might already exist)
+            // Still mark as success — profile can be retried later
           }
 
           setStatus("success");
@@ -78,18 +67,19 @@ function ConfirmPageContent() {
             if (error) throw error;
             if (!data.user) throw new Error("User not found after confirmation");
 
-            // Create profile
+            // Get current session for auth header
+            const { data: sessionData } = await supabase.auth.getSession();
+
+            // Create profile + actor record
             const response = await fetch("/api/auth/create-profile", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
+                ...(sessionData.session?.access_token
+                  ? { Authorization: `Bearer ${sessionData.session.access_token}` }
+                  : {}),
               },
-              body: JSON.stringify({
-                userId: data.user.id,
-                fullName: data.user.user_metadata?.fullName,
-                role: data.user.user_metadata?.role,
-                email: data.user.email,
-              }),
+              body: JSON.stringify({}),
             });
 
             if (!response.ok) {
@@ -163,7 +153,7 @@ function ConfirmPageContent() {
             Confirming your email
           </h1>
           <p className="mt-2 text-slate-600">
-            Hang tight — we’re verifying your magic link and setting up your account.
+            Hang tight — we&apos;re verifying your magic link and setting up your account.
           </p>
         </div>
         <div className="mt-8 h-2 w-full overflow-hidden rounded-full bg-slate-100">
@@ -171,15 +161,9 @@ function ConfirmPageContent() {
         </div>
         <style jsx>{`
           @keyframes progress {
-            0% {
-              transform: translateX(-70%);
-            }
-            50% {
-              transform: translateX(100%);
-            }
-            100% {
-              transform: translateX(220%);
-            }
+            0% { transform: translateX(-70%); }
+            50% { transform: translateX(100%); }
+            100% { transform: translateX(220%); }
           }
         `}</style>
       </CardShell>
@@ -193,11 +177,7 @@ function ConfirmPageContent() {
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
               d="M12 9v4m0 4h.01M10.29 3.86l-7.4 12.82A2 2 0 0 0 4.62 20h14.76a2 2 0 0 0 1.73-3.32l-7.4-12.82a2 2 0 0 0-3.46 0Z"
-              stroke="#0F172A"
-              strokeOpacity="0.85"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              stroke="#0F172A" strokeOpacity="0.85" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
             />
           </svg>
         </IconCircle>
@@ -205,20 +185,15 @@ function ConfirmPageContent() {
           <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-950">
             Confirmation failed
           </h1>
-          <p className="mt-2 text-slate-600">{errorMessage || "We couldn’t confirm your email link."}</p>
+          <p className="mt-2 text-slate-600">{errorMessage || "We couldn't confirm your email link."}</p>
         </div>
-
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <button
-            onClick={() => router.replace(REDIRECT_TO)}
-            className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600/30"
-          >
+          <button onClick={() => router.replace(REDIRECT_TO)}
+            className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600/30">
             Go to login
           </button>
-          <button
-            onClick={() => window.location.reload()}
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-          >
+          <button onClick={() => window.location.reload()}
+            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600/20">
             Try again
           </button>
         </div>
@@ -230,37 +205,26 @@ function ConfirmPageContent() {
     <CardShell>
       <IconCircle>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M20 6L9 17l-5-5"
-            stroke="#2563EB"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <path d="M20 6L9 17l-5-5" stroke="#2563EB" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </IconCircle>
-
       <div className="text-center">
         <h1 className="text-2xl sm:text-[30px] font-semibold tracking-tight text-slate-950">
           Your account is created
         </h1>
         <p className="mt-2 text-slate-600">
-          Welcome to <span className="font-medium text-slate-900">AthletyQ</span>. You’re all set to get started.
+          Welcome to <span className="font-medium text-slate-900">AthletyQ</span>. You&apos;re all set to get started.
         </p>
       </div>
-
       <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
         <p className="text-sm text-slate-700">
           Redirecting you to login in{" "}
           <span className="font-semibold text-slate-950">{redirectIn}</span>s…
         </p>
       </div>
-
       <div className="mt-6 flex justify-center">
-        <button
-          onClick={() => router.replace(REDIRECT_TO)}
-          className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600/30"
-        >
+        <button onClick={() => router.replace(REDIRECT_TO)}
+          className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600/30">
           Continue to login
         </button>
       </div>
