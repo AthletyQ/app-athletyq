@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * API route to create a user profile after email confirmation.
- * This is called from the client-side confirmation page.
+ * POST /api/auth/create-profile
+ *
+ * Called from the client-side /confirm page after the magic-link is verified.
+ * Inserts into `profiles` table + the actor-specific table
+ * (`athletes`, `coaches`, or `consultants`).
  */
 export async function POST(request: NextRequest) {
   try {
@@ -13,54 +16,24 @@ export async function POST(request: NextRequest) {
     if (!token) {
       return NextResponse.json(
         { ok: false, error: { message: "Missing auth token" } },
-        { status: 401 }
-      );
-    }
-
-    const body = await request.json();
-    const { userId, fullName, role, email } = body;
-
-    if (!userId || !fullName || !role || !email) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: { message: "userId, fullName, role, and email are required" },
-        },
-        { status: 400 }
+        { status: 401 },
       );
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("Missing Supabase configuration:", {
-        hasUrl: !!supabaseUrl,
-        hasServiceKey: !!supabaseServiceKey,
-      });
+    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
+      console.error("Missing Supabase configuration");
       return NextResponse.json(
-        {
-          ok: false,
-          error: { message: "Server configuration error" },
-        },
-        { status: 500 }
+        { ok: false, error: { message: "Server configuration error" } },
+        { status: 500 },
       );
     }
 
-    // Create a Supabase client with SERVICE ROLE key for admin operations
-    // This bypasses RLS and allows us to insert into the profiles table
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    // Verify the user token is valid
-    const supabaseClient = createClient(
-      supabaseUrl,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-    );
+    // ── Verify the caller's token ──
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
     const {
       data: { user },
       error: authError,
@@ -70,78 +43,85 @@ export async function POST(request: NextRequest) {
       console.error("Authentication error:", authError);
       return NextResponse.json(
         { ok: false, error: { message: "Invalid authentication token" } },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
-    // Ensure the userId matches the authenticated user
-    if (user.id !== userId) {
-      return NextResponse.json(
-        { ok: false, error: { message: "User ID mismatch" } },
-        { status: 403 }
-      );
-    }
+    // ── Extract metadata stored during signup ──
+    const meta = user.user_metadata ?? {};
+    const role = meta.role as string | undefined;
+    const firstName = meta.firstName as string | undefined;
+    const lastName = meta.lastName as string | undefined;
+    const phone = meta.phone as string | undefined;
+    const email = user.email;
 
-    // Check if profile already exists (idempotency)
-    // NOTE: Using 'user_id' to match your table structure
-    const { data: existingProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("user_id")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (existingProfile) {
-      console.log("Profile already exists for user:", userId);
-      return NextResponse.json(
-        {
-          ok: true,
-          data: { user_id: userId, message: "Profile already exists" },
-        },
-        { status: 200 }
-      );
-    }
-
-    // Validate role
-    const validRoles = ["athlete", "coach", "organization"];
-    if (!validRoles.includes(role)) {
+    if (!role || !firstName || !lastName || !email) {
       return NextResponse.json(
         {
           ok: false,
-          error: { message: `Invalid role: ${role}` },
+          error: {
+            message:
+              "Missing required profile data in user metadata (firstName, lastName, role, or email).",
+          },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    console.log("Creating profile for user:", { userId, email, role });
+    const validRoles = ["athlete", "coach", "wellness_professional"];
+    if (!validRoles.includes(role)) {
+      return NextResponse.json(
+        { ok: false, error: { message: `Invalid role: ${role}` } },
+        { status: 400 },
+      );
+    }
 
-    // Create the profile using service role (bypasses RLS)
-    // NOTE: Matching your table structure: user_id, fullName (camelCase), email, role
-    const { data, error: profileError } = await supabaseAdmin
+    // ── Service-role client to bypass RLS ──
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // ── Idempotency: skip if profile already exists ──
+    const { data: existingProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (existingProfile) {
+      return NextResponse.json(
+        {
+          ok: true,
+          data: { id: user.id, message: "Profile already exists" },
+        },
+        { status: 200 },
+      );
+    }
+
+    // ── Insert into `profiles` ──
+    const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .insert({
-        user_id: userId,     // Changed from 'id' to 'user_id'
-        fullName: fullName,  // Keeping camelCase to match your table
-        role: role,
-        email: email,
-      })
-      .select()
-      .single();
+        id: user.id,
+        email,
+        role,
+        first_name: firstName,
+        last_name: lastName,
+        phone_number: phone || null,
+      });
 
     if (profileError) {
-      console.error("Profile creation error:", profileError);
-
-      // Check if it's a duplicate key error (profile already exists)
+      // Duplicate-key → profile already exists (race-condition safe)
       if (profileError.code === "23505") {
         return NextResponse.json(
           {
             ok: true,
-            data: { user_id: userId, message: "Profile already exists" },
+            data: { id: user.id, message: "Profile already exists" },
           },
-          { status: 200 }
+          { status: 200 },
         );
       }
-
+      console.error("Profile creation error:", profileError);
       return NextResponse.json(
         {
           ok: false,
@@ -151,18 +131,57 @@ export async function POST(request: NextRequest) {
             details: profileError.message,
           },
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    console.log("Profile created successfully:", data);
+    // ── Insert into actor-specific table ──
+    let actorError: any = null;
+
+    if (role === "athlete") {
+      const { error } = await supabaseAdmin.from("athletes").insert({
+        user_id: user.id,
+        age: meta.age ? Number(meta.age) : null,
+        height_cm: meta.heightCm ? Number(meta.heightCm) : null,
+        weight_kg: meta.weightKg ? Number(meta.weightKg) : null,
+        preferred_sport_id: meta.preferredSportId
+          ? Number(meta.preferredSportId)
+          : null,
+      });
+      actorError = error;
+    } else if (role === "coach") {
+      const { error } = await supabaseAdmin.from("coaches").insert({
+        user_id: user.id,
+        coaching_sport_id: meta.coachingSportId
+          ? Number(meta.coachingSportId)
+          : null,
+        specialization: meta.specialization || null,
+        years_of_experience: meta.yearsOfExperience
+          ? Number(meta.yearsOfExperience)
+          : null,
+        certifications: meta.coachCertifications ?? [],
+      });
+      actorError = error;
+    } else if (role === "wellness_professional") {
+      const { error } = await supabaseAdmin.from("consultants").insert({
+        user_id: user.id,
+        specialty: meta.consultantSpecialty || null,
+        certifications: meta.consultantCertifications ?? [],
+      });
+      actorError = error;
+    }
+
+    if (actorError) {
+      console.error(`Actor table insert error (${role}):`, actorError);
+      // Profile was created successfully — log the actor error but don't fail
+      // the whole request. The actor record can be populated later.
+    }
+
+    console.log("Profile + actor record created for:", user.id);
 
     return NextResponse.json(
-      {
-        ok: true,
-        data: { user_id: data.user_id },
-      },
-      { status: 201 }
+      { ok: true, data: { id: user.id } },
+      { status: 201 },
     );
   } catch (error: any) {
     console.error("Create profile error:", error);
@@ -171,7 +190,7 @@ export async function POST(request: NextRequest) {
         ok: false,
         error: { message: "Internal server error", details: error.message },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

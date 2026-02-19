@@ -60,6 +60,7 @@ export default function LoginPage() {
   };
 
   return (
+    
     <div className="min-h-screen relative overflow-hidden bg-white flex items-center justify-center p-4">
       <div className="relative w-full max-w-md z-10">
         <div className="text-center mb-8">

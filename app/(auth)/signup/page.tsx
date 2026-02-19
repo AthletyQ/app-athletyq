@@ -2,44 +2,42 @@
 
 import { useState, useRef, useEffect } from "react";
 import type { KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
 import {
   User, Users, HeartPulse, ChevronRight, ChevronLeft,
   Check, Plus, Trash2, Upload, FileText, X,
-  Mail, Phone, RefreshCw, ShieldCheck, Zap,
+  Mail, Zap, Eye, EyeOff, Loader2,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase/client";
 
 /* ══════════════════════════════════════════════════════════════
    TYPES
 ══════════════════════════════════════════════════════════════ */
-type Role = "athlete" | "coach" | "wellness" | null;
-type VerifyMethod = "email" | "phone" | null;
-type OtpStep = "choose" | "enter" | "success";
+type Role = "athlete" | "coach" | "wellness_professional" | null;
 type WellnessType = "sport_doctor" | "physiotherapist" | "nutritionist" | "";
 
 interface Qualification { title: string; institution: string; year: string; file: File | null; }
+interface Sport { id: number; name: string; }
 
 interface AthleteForm {
   firstName: string; lastName: string; email: string; phone: string;
-  address: string; age: string; weight: string; height: string; sports: string[];
+  password: string; confirmPassword: string;
+  age: string; weight: string; height: string; preferredSportId: number | null;
 }
 interface CoachForm {
   firstName: string; lastName: string; email: string; phone: string;
-  address: string; sports: string[]; qualifications: Qualification[];
+  password: string; confirmPassword: string;
+  coachingSportId: number | null; qualifications: Qualification[];
 }
 interface WellnessForm {
   firstName: string; lastName: string; email: string; phone: string;
-  address: string; wellnessType: WellnessType; qualifications: Qualification[];
+  password: string; confirmPassword: string;
+  wellnessType: WellnessType; qualifications: Qualification[];
 }
 
 /* ══════════════════════════════════════════════════════════════
    CONSTANTS
 ══════════════════════════════════════════════════════════════ */
-const SPORTS = [
-  "Football", "Basketball", "Tennis", "Swimming", "Athletics",
-  "Cycling", "Rugby", "Cricket", "Boxing", "Gymnastics",
-  "Volleyball", "Baseball", "Golf", "MMA", "CrossFit", "Other",
-];
-
 const WELLNESS_TYPES = [
   { id: "sport_doctor", label: "Sport Doctor", icon: "🩺", desc: "Clinical care & injury mgmt" },
   { id: "physiotherapist", label: "Physiotherapist", icon: "🦴", desc: "Rehab & movement therapy" },
@@ -64,9 +62,9 @@ const ROLES = [
     icon: Users,
   },
   {
-    id: "wellness" as Role,
+    id: "wellness_professional" as Role,
     eyebrow: "SUPPORTING PERFORMANCE",
-    title: "Wellness Professional",
+    title: "Consultant",
     desc: "You support athletes as a sport doctor, physiotherapist, or nutritionist.",
     features: ["Wellness specialty & certifications", "Client engagement structure", "Key reporting & referral needs"],
     icon: HeartPulse,
@@ -77,28 +75,126 @@ const ROLES = [
    ROOT
 ══════════════════════════════════════════════════════════════ */
 export default function SignupPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [selectedRole, setSelectedRole] = useState<Role>(null);
+  const [sports, setSports] = useState<Sport[]>([]);
+  const [sportsLoading, setSportsLoading] = useState(true);
+
+  // Submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   const [athleteForm, setAthleteForm] = useState<AthleteForm>({
-    firstName: "", lastName: "", email: "", phone: "", address: "", age: "", weight: "", height: "", sports: [],
+    firstName: "", lastName: "", email: "", phone: "",
+    password: "", confirmPassword: "",
+    age: "", weight: "", height: "", preferredSportId: null,
   });
   const [coachForm, setCoachForm] = useState<CoachForm>({
-    firstName: "", lastName: "", email: "", phone: "", address: "", sports: [],
+    firstName: "", lastName: "", email: "", phone: "",
+    password: "", confirmPassword: "",
+    coachingSportId: null,
     qualifications: [{ title: "", institution: "", year: "", file: null }],
   });
   const [wellnessForm, setWellnessForm] = useState<WellnessForm>({
-    firstName: "", lastName: "", email: "", phone: "", address: "", wellnessType: "",
+    firstName: "", lastName: "", email: "", phone: "",
+    password: "", confirmPassword: "",
+    wellnessType: "",
     qualifications: [{ title: "", institution: "", year: "", file: null }],
   });
 
-  const currentEmail =
-    selectedRole === "athlete" ? athleteForm.email :
-      selectedRole === "coach" ? coachForm.email : wellnessForm.email;
+  // Fetch sports on mount
+  useEffect(() => {
+    async function fetchSports() {
+      setSportsLoading(true);
+      const { data, error } = await supabase
+        .from("sports")
+        .select("id, name")
+        .order("name");
+      if (!error && data) {
+        setSports(data as Sport[]);
+      }
+      console.log(data);
+      setSportsLoading(false);
+    }
+    fetchSports();
+  }, []);
 
-  const currentPhone =
-    selectedRole === "athlete" ? athleteForm.phone :
-      selectedRole === "coach" ? coachForm.phone : wellnessForm.phone;
+  /* ── Get current form's email for the confirmation screen ── */
+  const currentForm =
+    selectedRole === "athlete" ? athleteForm :
+      selectedRole === "coach" ? coachForm : wellnessForm;
+
+  /* ── Build payload based on role ── */
+  const buildPayload = () => {
+    const form = currentForm;
+    const common = {
+      email: form.email,
+      password: form.password,
+      firstName: form.firstName,
+      lastName: form.lastName,
+      phone: form.phone,
+      role: selectedRole,
+    };
+
+    if (selectedRole === "athlete") {
+      const f = form as AthleteForm;
+      return {
+        ...common,
+        age: f.age ? Number(f.age) : undefined,
+        heightCm: f.height ? Number(f.height) : undefined,
+        weightKg: f.weight ? Number(f.weight) : undefined,
+        preferredSportId: f.preferredSportId ?? undefined,
+      };
+    }
+
+    if (selectedRole === "coach") {
+      const f = form as CoachForm;
+      return {
+        ...common,
+        coachingSportId: f.coachingSportId ?? undefined,
+        coachCertifications: f.qualifications
+          .filter(q => q.title)
+          .map(q => `${q.title}${q.institution ? " – " + q.institution : ""}${q.year ? " (" + q.year + ")" : ""}`),
+      };
+    }
+
+    // wellness_professional
+    const f = form as WellnessForm;
+    return {
+      ...common,
+      consultantSpecialty: f.wellnessType || undefined,
+      consultantCertifications: f.qualifications
+        .filter(q => q.title)
+        .map(q => `${q.title}${q.institution ? " – " + q.institution : ""}${q.year ? " (" + q.year + ")" : ""}`),
+    };
+  };
+
+  /* ── Submit signup ── */
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setSubmitError("");
+    try {
+      const payload = buildPayload();
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+
+      if (!res.ok || !json.ok) {
+        setSubmitError(json?.error?.message || "Something went wrong. Please try again.");
+        return;
+      }
+      setSubmitted(true);
+    } catch (err: any) {
+      setSubmitError(err?.message || "Network error. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F4F6F9] flex flex-col">
@@ -108,7 +204,7 @@ export default function SignupPage() {
           <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-200">
             <Zap size={18} className="text-white" strokeWidth={2.5} />
           </div>
-          <span className="text-gray-900 font-bold text-xl tracking-tight">AthleteQ</span>
+          <span className="text-gray-900 font-bold text-xl tracking-tight">AthletyQ</span>
         </div>
       </header>
 
@@ -125,6 +221,8 @@ export default function SignupPage() {
           <AthleteStep2
             form={athleteForm}
             onChange={setAthleteForm}
+            sports={sports}
+            sportsLoading={sportsLoading}
             onBack={() => setStep(1)}
             onContinue={() => setStep(3)}
           />
@@ -133,11 +231,13 @@ export default function SignupPage() {
           <CoachStep2
             form={coachForm}
             onChange={setCoachForm}
+            sports={sports}
+            sportsLoading={sportsLoading}
             onBack={() => setStep(1)}
             onContinue={() => setStep(3)}
           />
         )}
-        {step === 2 && selectedRole === "wellness" && (
+        {step === 2 && selectedRole === "wellness_professional" && (
           <WellnessStep2
             form={wellnessForm}
             onChange={setWellnessForm}
@@ -145,12 +245,19 @@ export default function SignupPage() {
             onContinue={() => setStep(3)}
           />
         )}
-        {step === 3 && (
-          <VerifyStep
-            email={currentEmail}
-            phone={currentPhone}
+        {step === 3 && !submitted && (
+          <ReviewStep
+            role={selectedRole!}
+            form={currentForm}
+            sports={sports}
+            isSubmitting={isSubmitting}
+            error={submitError}
             onBack={() => setStep(2)}
+            onSubmit={handleSubmit}
           />
+        )}
+        {step === 3 && submitted && (
+          <SuccessStep email={currentForm.email} onGoToLogin={() => router.push("/login")} />
         )}
       </main>
     </div>
@@ -220,15 +327,22 @@ function Step1({ selectedRole, onSelect, onContinue }: {
 /* ══════════════════════════════════════════════════════════════
    STEP 2A — ATHLETE
 ══════════════════════════════════════════════════════════════ */
-function AthleteStep2({ form, onChange, onBack, onContinue }: {
-  form: AthleteForm; onChange: (f: AthleteForm) => void; onBack: () => void; onContinue: () => void;
+function AthleteStep2({ form, onChange, sports, sportsLoading, onBack, onContinue }: {
+  form: AthleteForm; onChange: (f: AthleteForm) => void;
+  sports: Sport[]; sportsLoading: boolean;
+  onBack: () => void; onContinue: () => void;
 }) {
-  const set = (k: keyof AthleteForm, v: string) => onChange({ ...form, [k]: v });
-  const toggleSport = (s: string) => {
-    const next = form.sports.includes(s) ? form.sports.filter(x => x !== s) : [...form.sports, s];
-    onChange({ ...form, sports: next });
-  };
-  const valid = !!(form.firstName && form.lastName && form.email && form.phone && form.age && form.sports.length);
+  const set = (k: keyof AthleteForm, v: string | number | null) => onChange({ ...form, [k]: v });
+  const [showPw, setShowPw] = useState(false);
+  const [showCpw, setShowCpw] = useState(false);
+
+  const passwordsMatch = form.password === form.confirmPassword;
+  const passwordLong = form.password.length >= 6;
+  const valid = !!(
+    form.firstName && form.lastName && form.email && form.phone &&
+    form.password && form.confirmPassword && passwordsMatch && passwordLong &&
+    form.age && form.preferredSportId
+  );
 
   return (
     <FormShell step={2} title="Athlete Profile" subtitle="Tell us about yourself so we can personalise your experience."
@@ -241,9 +355,20 @@ function AthleteStep2({ form, onChange, onBack, onContinue }: {
         <Field label="Last Name" value={form.lastName} onChange={v => set("lastName", v)} required placeholder="Doe" />
         <Field label="Email Address" type="email" value={form.email} onChange={v => set("email", v)} required placeholder="john@example.com" />
         <Field label="Contact Number" type="tel" value={form.phone} onChange={v => set("phone", v)} required placeholder="+1 234 567 8900" />
-        <Field label="Address" value={form.address} onChange={v => set("address", v)} placeholder="Street, City, Country" className="sm:col-span-2" />
         <Field label="Age" type="number" value={form.age} onChange={v => set("age", v)} required placeholder="e.g. 24" />
       </div>
+
+      <SectionLabel className="mt-6">Account Security</SectionLabel>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <PasswordField label="Password" value={form.password} onChange={v => set("password", v)} show={showPw} onToggle={() => setShowPw(!showPw)} />
+        <PasswordField label="Confirm Password" value={form.confirmPassword} onChange={v => set("confirmPassword", v)} show={showCpw} onToggle={() => setShowCpw(!showCpw)} />
+      </div>
+      {form.password && form.confirmPassword && !passwordsMatch && (
+        <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+      )}
+      {form.password && !passwordLong && (
+        <p className="text-xs text-red-500 mt-1">Password must be at least 6 characters</p>
+      )}
 
       <SectionLabel className="mt-6">Physical Stats</SectionLabel>
       <div className="grid grid-cols-2 gap-4">
@@ -251,20 +376,25 @@ function AthleteStep2({ form, onChange, onBack, onContinue }: {
         <UnitField label="Weight" value={form.weight} onChange={v => set("weight", v)} unit="kg" placeholder="72" />
       </div>
 
-      <SectionLabel className="mt-6">Preferred Sport(s) <span className="text-blue-500">*</span></SectionLabel>
-      <p className="text-xs text-gray-400 mb-3 -mt-1">Select all that apply</p>
-      <div className="flex flex-wrap gap-2">
-        {SPORTS.map(s => {
-          const on = form.sports.includes(s);
-          return (
-            <button key={s} type="button" onClick={() => toggleSport(s)}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all
-                ${on ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600"}`}>
-              {s}
-            </button>
-          );
-        })}
-      </div>
+      <SectionLabel className="mt-6">Preferred Sport <span className="text-blue-500">*</span></SectionLabel>
+      <p className="text-xs text-gray-400 mb-3 -mt-1">Select your primary sport</p>
+      {sportsLoading ? (
+        <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 size={16} className="animate-spin" /> Loading sports…</div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {sports.map(s => {
+            const on = form.preferredSportId === s.id;
+            return (
+              <button key={s.id} type="button"
+                onClick={() => set("preferredSportId", on ? null : s.id)}
+                className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all
+                  ${on ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600"}`}>
+                {s.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </FormShell>
   );
 }
@@ -272,20 +402,28 @@ function AthleteStep2({ form, onChange, onBack, onContinue }: {
 /* ══════════════════════════════════════════════════════════════
    STEP 2B — COACH
 ══════════════════════════════════════════════════════════════ */
-function CoachStep2({ form, onChange, onBack, onContinue }: {
-  form: CoachForm; onChange: (f: CoachForm) => void; onBack: () => void; onContinue: () => void;
+function CoachStep2({ form, onChange, sports, sportsLoading, onBack, onContinue }: {
+  form: CoachForm; onChange: (f: CoachForm) => void;
+  sports: Sport[]; sportsLoading: boolean;
+  onBack: () => void; onContinue: () => void;
 }) {
-  const set = (k: keyof Omit<CoachForm, "sports" | "qualifications">, v: string) => onChange({ ...form, [k]: v });
-  const toggleSport = (s: string) => {
-    const next = form.sports.includes(s) ? form.sports.filter(x => x !== s) : [...form.sports, s];
-    onChange({ ...form, sports: next });
-  };
+  const set = (k: keyof Omit<CoachForm, "qualifications" | "coachingSportId">, v: string) => onChange({ ...form, [k]: v });
+  const [showPw, setShowPw] = useState(false);
+  const [showCpw, setShowCpw] = useState(false);
+
   const updQ = (i: number, k: keyof Qualification, v: string | File | null) => {
     onChange({ ...form, qualifications: form.qualifications.map((q, idx) => idx === i ? { ...q, [k]: v } : q) });
   };
   const addQ = () => onChange({ ...form, qualifications: [...form.qualifications, { title: "", institution: "", year: "", file: null }] });
   const removeQ = (i: number) => onChange({ ...form, qualifications: form.qualifications.filter((_, idx) => idx !== i) });
-  const valid = !!(form.firstName && form.lastName && form.email && form.phone && form.sports.length);
+
+  const passwordsMatch = form.password === form.confirmPassword;
+  const passwordLong = form.password.length >= 6;
+  const valid = !!(
+    form.firstName && form.lastName && form.email && form.phone &&
+    form.password && form.confirmPassword && passwordsMatch && passwordLong &&
+    form.coachingSportId
+  );
 
   return (
     <FormShell step={2} title="Coach Profile" subtitle="Set up your coaching profile to manage clients and programmes."
@@ -298,25 +436,41 @@ function CoachStep2({ form, onChange, onBack, onContinue }: {
         <Field label="Last Name" value={form.lastName} onChange={v => set("lastName", v)} required placeholder="Smith" />
         <Field label="Email Address" type="email" value={form.email} onChange={v => set("email", v)} required placeholder="jane@example.com" />
         <Field label="Contact Number" type="tel" value={form.phone} onChange={v => set("phone", v)} required placeholder="+1 234 567 8900" />
-        <Field label="Address" value={form.address} onChange={v => set("address", v)} placeholder="Street, City, Country" className="sm:col-span-2" />
       </div>
 
-      <SectionLabel className="mt-6">Sports Coached <span className="text-blue-500">*</span></SectionLabel>
-      <p className="text-xs text-gray-400 mb-3 -mt-1">Select all that apply</p>
-      <div className="flex flex-wrap gap-2">
-        {SPORTS.map(s => {
-          const on = form.sports.includes(s);
-          return (
-            <button key={s} type="button" onClick={() => toggleSport(s)}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all
-                ${on ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-gray-600 border-gray-200 hover:border-emerald-400 hover:text-emerald-600"}`}>
-              {s}
-            </button>
-          );
-        })}
+      <SectionLabel className="mt-6">Account Security</SectionLabel>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <PasswordField label="Password" value={form.password} onChange={v => set("password", v)} show={showPw} onToggle={() => setShowPw(!showPw)} />
+        <PasswordField label="Confirm Password" value={form.confirmPassword} onChange={v => set("confirmPassword", v)} show={showCpw} onToggle={() => setShowCpw(!showCpw)} />
       </div>
+      {form.password && form.confirmPassword && !passwordsMatch && (
+        <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+      )}
+      {form.password && !passwordLong && (
+        <p className="text-xs text-red-500 mt-1">Password must be at least 6 characters</p>
+      )}
 
-      <SectionLabel className="mt-6">Qualifications & Certifications</SectionLabel>
+      <SectionLabel className="mt-6">Coaching Sport <span className="text-blue-500">*</span></SectionLabel>
+      <p className="text-xs text-gray-400 mb-3 -mt-1">Select the sport you coach</p>
+      {sportsLoading ? (
+        <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 size={16} className="animate-spin" /> Loading sports…</div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {sports.map(s => {
+            const on = form.coachingSportId === s.id;
+            return (
+              <button key={s.id} type="button"
+                onClick={() => onChange({ ...form, coachingSportId: on ? null : s.id })}
+                className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all
+                  ${on ? "bg-emerald-600 text-white border-emerald-600" : "bg-white text-gray-600 border-gray-200 hover:border-emerald-400 hover:text-emerald-600"}`}>
+                {s.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* <SectionLabel className="mt-6">Qualifications & Certifications</SectionLabel>
       <div className="space-y-4">
         {form.qualifications.map((q, i) => (
           <QualCard key={i} index={i} qual={q} accentClass="text-emerald-600"
@@ -329,28 +483,38 @@ function CoachStep2({ form, onChange, onBack, onContinue }: {
           className="flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors mt-1">
           <Plus size={15} /> Add another qualification
         </button>
-      </div>
+      </div> */}
     </FormShell>
   );
 }
 
 /* ══════════════════════════════════════════════════════════════
-   STEP 2C — WELLNESS
+   STEP 2C — CONSULTANT (WELLNESS PROFESSIONAL)
 ══════════════════════════════════════════════════════════════ */
 function WellnessStep2({ form, onChange, onBack, onContinue }: {
   form: WellnessForm; onChange: (f: WellnessForm) => void; onBack: () => void; onContinue: () => void;
 }) {
   const set = (k: keyof Omit<WellnessForm, "qualifications" | "wellnessType">, v: string) => onChange({ ...form, [k]: v });
+  const [showPw, setShowPw] = useState(false);
+  const [showCpw, setShowCpw] = useState(false);
+
   const updQ = (i: number, k: keyof Qualification, v: string | File | null) => {
     onChange({ ...form, qualifications: form.qualifications.map((q, idx) => idx === i ? { ...q, [k]: v } : q) });
   };
   const addQ = () => onChange({ ...form, qualifications: [...form.qualifications, { title: "", institution: "", year: "", file: null }] });
   const removeQ = (i: number) => onChange({ ...form, qualifications: form.qualifications.filter((_, idx) => idx !== i) });
-  const valid = !!(form.firstName && form.lastName && form.email && form.phone && form.wellnessType);
+
+  const passwordsMatch = form.password === form.confirmPassword;
+  const passwordLong = form.password.length >= 6;
+  const valid = !!(
+    form.firstName && form.lastName && form.email && form.phone &&
+    form.password && form.confirmPassword && passwordsMatch && passwordLong &&
+    form.wellnessType
+  );
 
   return (
-    <FormShell step={2} title="Wellness Professional Profile" subtitle="Help athletes perform, recover, and thrive with expert support."
-      roleTag={{ label: "Wellness Professional", cls: "bg-violet-50 text-violet-700" }}
+    <FormShell step={2} title="Consultant Profile" subtitle="Help athletes perform, recover, and thrive with expert support."
+      roleTag={{ label: "Consultant", cls: "bg-violet-50 text-violet-700" }}
       onBack={onBack} onContinue={onContinue} isValid={valid}
     >
       <SectionLabel>Personal Details</SectionLabel>
@@ -359,10 +523,21 @@ function WellnessStep2({ form, onChange, onBack, onContinue }: {
         <Field label="Last Name" value={form.lastName} onChange={v => set("lastName", v)} required placeholder="Carter" />
         <Field label="Email Address" type="email" value={form.email} onChange={v => set("email", v)} required placeholder="alex@example.com" />
         <Field label="Contact Number" type="tel" value={form.phone} onChange={v => set("phone", v)} required placeholder="+1 234 567 8900" />
-        <Field label="Address" value={form.address} onChange={v => set("address", v)} placeholder="Street, City, Country" className="sm:col-span-2" />
       </div>
 
-      <SectionLabel className="mt-6">Wellness Specialisation <span className="text-blue-500">*</span></SectionLabel>
+      <SectionLabel className="mt-6">Account Security</SectionLabel>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <PasswordField label="Password" value={form.password} onChange={v => set("password", v)} show={showPw} onToggle={() => setShowPw(!showPw)} />
+        <PasswordField label="Confirm Password" value={form.confirmPassword} onChange={v => set("confirmPassword", v)} show={showCpw} onToggle={() => setShowCpw(!showCpw)} />
+      </div>
+      {form.password && form.confirmPassword && !passwordsMatch && (
+        <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+      )}
+      {form.password && !passwordLong && (
+        <p className="text-xs text-red-500 mt-1">Password must be at least 6 characters</p>
+      )}
+
+      <SectionLabel className="mt-6">Specialisation <span className="text-blue-500">*</span></SectionLabel>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-1">
         {WELLNESS_TYPES.map(wt => {
           const active = form.wellnessType === wt.id;
@@ -387,7 +562,7 @@ function WellnessStep2({ form, onChange, onBack, onContinue }: {
         })}
       </div>
 
-      <SectionLabel className="mt-6">Qualifications & Certifications</SectionLabel>
+      {/* <SectionLabel className="mt-6">Qualifications & Certifications</SectionLabel>
       <div className="space-y-4">
         {form.qualifications.map((q, i) => (
           <QualCard key={i} index={i} qual={q} accentClass="text-violet-600"
@@ -400,293 +575,190 @@ function WellnessStep2({ form, onChange, onBack, onContinue }: {
           className="flex items-center gap-2 text-sm font-medium text-violet-600 hover:text-violet-700 transition-colors mt-1">
           <Plus size={15} /> Add another qualification
         </button>
-      </div>
+      </div> */}
     </FormShell>
   );
 }
 
 /* ══════════════════════════════════════════════════════════════
-   STEP 3 — VERIFY
+   STEP 3 — REVIEW & SUBMIT
 ══════════════════════════════════════════════════════════════ */
-function VerifyStep({ email, phone, onBack }: { email: string; phone: string; onBack: () => void }) {
-  const [otpStep, setOtpStep] = useState<OtpStep>("choose");
-  const [method, setMethod] = useState<VerifyMethod>(null);
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [countdown, setCountdown] = useState(0);
-  const [error, setError] = useState("");
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+function ReviewStep({ role, form, sports, isSubmitting, error, onBack, onSubmit }: {
+  role: NonNullable<Role>;
+  form: AthleteForm | CoachForm | WellnessForm;
+  sports: Sport[];
+  isSubmitting: boolean;
+  error: string;
+  onBack: () => void;
+  onSubmit: () => void;
+}) {
+  const roleName =
+    role === "athlete" ? "Athlete / Talent" :
+      role === "coach" ? "Coach" : "Consultant";
 
-  useEffect(() => {
-    if (countdown <= 0) return;
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [countdown]);
+  const roleColor =
+    role === "athlete" ? "blue" :
+      role === "coach" ? "emerald" : "violet";
 
+  const getSportName = (id: number | null) => {
+    if (!id) return "—";
+    return sports.find(s => s.id === id)?.name || "—";
+  };
+
+  return (
+    <div className="w-full max-w-2xl">
+      <p className="text-sm font-semibold text-gray-400 mb-2 tracking-widest uppercase text-center">Step 3 of 3</p>
+      <h1 className="text-3xl font-extrabold text-gray-900 mb-1 text-center">Review & Create Account</h1>
+      <p className="text-sm text-gray-500 text-center mb-5">
+        Please review your details. We&apos;ll send a confirmation link to your email.
+      </p>
+      <ProgressBar step={3} />
+
+      <div className="flex justify-center mt-4 mb-6">
+        <span className={`text-xs font-semibold px-3 py-1 rounded-full bg-${roleColor}-50 text-${roleColor}-700`}>{roleName}</span>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+        {/* Personal info */}
+        <SectionLabel>Personal Details</SectionLabel>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm mb-6">
+          <ReviewRow label="First Name" value={form.firstName} />
+          <ReviewRow label="Last Name" value={form.lastName} />
+          <ReviewRow label="Email" value={form.email} />
+          <ReviewRow label="Phone" value={form.phone || "—"} />
+        </div>
+
+        {/* Role-specific */}
+        {role === "athlete" && (
+          <>
+            <SectionLabel>Athlete Details</SectionLabel>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm mb-6">
+              <ReviewRow label="Age" value={(form as AthleteForm).age || "—"} />
+              <ReviewRow label="Height" value={(form as AthleteForm).height ? `${(form as AthleteForm).height} cm` : "—"} />
+              <ReviewRow label="Weight" value={(form as AthleteForm).weight ? `${(form as AthleteForm).weight} kg` : "—"} />
+              <ReviewRow label="Preferred Sport" value={getSportName((form as AthleteForm).preferredSportId)} />
+            </div>
+          </>
+        )}
+
+        {role === "coach" && (
+          <>
+            <SectionLabel>Coaching Details</SectionLabel>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm mb-6">
+              <ReviewRow label="Coaching Sport" value={getSportName((form as CoachForm).coachingSportId)} />
+              <ReviewRow label="Certifications"
+                value={(form as CoachForm).qualifications.filter(q => q.title).map(q => q.title).join(", ") || "—"} />
+            </div>
+          </>
+        )}
+
+        {role === "wellness_professional" && (
+          <>
+            <SectionLabel>Consultant Details</SectionLabel>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm mb-6">
+              <ReviewRow label="Specialisation"
+                value={WELLNESS_TYPES.find(w => w.id === (form as WellnessForm).wellnessType)?.label || "—"} />
+              <ReviewRow label="Certifications"
+                value={(form as WellnessForm).qualifications.filter(q => q.title).map(q => q.title).join(", ") || "—"} />
+            </div>
+          </>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+            {error}
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-6">
+          <button onClick={onBack} disabled={isSubmitting}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors">
+            <ChevronLeft size={16} /> Back
+          </button>
+          <button onClick={onSubmit} disabled={isSubmitting}
+            className={`flex items-center gap-2 px-7 py-3 rounded-xl text-white font-semibold text-sm transition-all
+              ${isSubmitting ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200"}`}>
+            {isSubmitting ? (
+              <><Loader2 size={16} className="animate-spin" /> Creating Account…</>
+            ) : (
+              <>Create Account <ChevronRight size={16} /></>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STEP 3 — SUCCESS (Check your email)
+══════════════════════════════════════════════════════════════ */
+function SuccessStep({ email, onGoToLogin }: { email: string; onGoToLogin: () => void }) {
   const maskEmail = (e: string) => {
     const [user, domain] = e.split("@");
     if (!user || !domain) return e;
     return user.slice(0, 2) + "****@" + domain;
   };
-  const maskPhone = (p: string) =>
-    p.length > 4 ? p.slice(0, -4).replace(/\d/g, "*") + p.slice(-4) : p;
 
-  const sendOtp = (m: VerifyMethod) => {
-    setMethod(m);
-    setOtp(["", "", "", "", "", ""]);
-    setError("");
-    setOtpStep("enter");
-    setCountdown(60);
-    setTimeout(() => inputRefs.current[0]?.focus(), 100);
-  };
-
-  const handleOtpChange = (val: string, i: number) => {
-    if (!/^\d*$/.test(val)) return;
-    const updated = [...otp];
-    updated[i] = val.slice(-1);
-    setOtp(updated);
-    setError("");
-    if (val && i < 5) inputRefs.current[i + 1]?.focus();
-  };
-
-  const handleOtpKey = (e: KeyboardEvent<HTMLInputElement>, i: number) => {
-    if (e.key === "Backspace" && !otp[i] && i > 0) {
-      inputRefs.current[i - 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (pasted.length === 6) {
-      setOtp(pasted.split(""));
-      inputRefs.current[5]?.focus();
-    }
-  };
-
-  const verifyOtp = () => {
-    const code = otp.join("");
-    if (code.length < 6) { setError("Please enter the full 6-digit code."); return; }
-    setOtpStep("success");
-  };
-
-  const destination = method === "email" ? maskEmail(email) : maskPhone(phone);
-  const isComplete = otp.every(d => d !== "");
-
-  /* ─── CHOOSE METHOD ─── */
-  if (otpStep === "choose") {
-    return (
-      <div className="w-full max-w-lg">
-        <p className="text-sm font-semibold text-gray-400 mb-2 tracking-widest uppercase text-center">Step 3 of 3</p>
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-1 text-center">Verify your account</h1>
-        <p className="text-sm text-gray-500 text-center mb-5">Choose how you'd like to receive your one-time code</p>
-        <ProgressBar step={3} />
-
-        <div className="mt-10 bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-5">Select verification method</p>
-
-          <div className="space-y-3">
-            {/* Email */}
-            <button onClick={() => setMethod("email")}
-              className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left
-                ${method === "email" ? "border-blue-600 bg-blue-50" : "border-gray-200 bg-white hover:border-blue-300"}`}>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors
-                ${method === "email" ? "bg-blue-600" : "bg-gray-100"}`}>
-                <Mail size={18} className={method === "email" ? "text-white" : "text-gray-500"} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold ${method === "email" ? "text-blue-700" : "text-gray-800"}`}>Email address</p>
-                <p className="text-xs text-gray-400 truncate mt-0.5">{maskEmail(email) || "—"}</p>
-              </div>
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors
-                ${method === "email" ? "border-blue-600 bg-blue-600" : "border-gray-300"}`}>
-                {method === "email" && <Check size={11} className="text-white" />}
-              </div>
-            </button>
-
-            {/* Phone */}
-            <button onClick={() => setMethod("phone")}
-              className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left
-                ${method === "phone" ? "border-blue-600 bg-blue-50" : "border-gray-200 bg-white hover:border-blue-300"}`}>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors
-                ${method === "phone" ? "bg-blue-600" : "bg-gray-100"}`}>
-                <Phone size={18} className={method === "phone" ? "text-white" : "text-gray-500"} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold ${method === "phone" ? "text-blue-700" : "text-gray-800"}`}>Phone number</p>
-                <p className="text-xs text-gray-400 truncate mt-0.5">{maskPhone(phone) || "—"}</p>
-              </div>
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors
-                ${method === "phone" ? "border-blue-600 bg-blue-600" : "border-gray-300"}`}>
-                {method === "phone" && <Check size={11} className="text-white" />}
-              </div>
-            </button>
-          </div>
-
-          <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-6">
-            <button onClick={onBack}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors">
-              <ChevronLeft size={16} /> Back
-            </button>
-            <button onClick={() => method && sendOtp(method)} disabled={!method}
-              className={`flex items-center gap-2 px-7 py-3 rounded-xl text-white font-semibold text-sm transition-all
-                ${method ? "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200" : "bg-blue-300 cursor-not-allowed"}`}>
-              Send Code <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ─── ENTER OTP ─── */
-  if (otpStep === "enter") {
-    return (
-      <div className="w-full max-w-lg">
-        <p className="text-sm font-semibold text-gray-400 mb-2 tracking-widest uppercase text-center">Step 3 of 3</p>
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-1 text-center">Enter your code</h1>
-        <p className="text-sm text-gray-500 text-center mb-5">
-          We sent a 6-digit code to{" "}
-          <span className="font-semibold text-gray-700">{destination}</span>
-        </p>
-        <ProgressBar step={3} />
-
-        <div className="mt-10 bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-          {/* Icon */}
-          <div className="flex justify-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-blue-50 border-2 border-blue-100 flex items-center justify-center">
-              {method === "email"
-                ? <Mail size={28} className="text-blue-600" />
-                : <Phone size={28} className="text-blue-600" />}
-            </div>
-          </div>
-
-          {/* OTP boxes */}
-          <div className="flex justify-center gap-3 mb-2" onPaste={handlePaste}>
-            {otp.map((digit, i) => (
-              <input
-                key={i}
-                ref={el => { inputRefs.current[i] = el; }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={e => handleOtpChange(e.target.value, i)}
-                onKeyDown={e => handleOtpKey(e, i)}
-                className={`w-12 h-14 text-center text-xl font-bold rounded-xl border-2 transition-all focus:outline-none
-                  ${digit
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
-                    : "border-gray-200 bg-gray-50 text-gray-800"}
-                  focus:border-blue-500 focus:bg-blue-50`}
-              />
-            ))}
-          </div>
-
-          {/* Error */}
-          {error && <p className="text-center text-xs text-red-500 mt-2 font-medium">{error}</p>}
-
-          {/* Resend */}
-          <div className="flex items-center justify-center mt-5 mb-1">
-            {countdown > 0 ? (
-              <p className="text-xs text-gray-400">
-                Resend code in <span className="font-semibold text-gray-600">{countdown}s</span>
-              </p>
-            ) : (
-              <button
-                onClick={() => { setOtp(["", "", "", "", "", ""]); setError(""); setCountdown(60); setTimeout(() => inputRefs.current[0]?.focus(), 100); }}
-                className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                <RefreshCw size={13} /> Resend code
-              </button>
-            )}
-          </div>
-
-          {/* Change method */}
-          <p className="text-center text-xs text-gray-400 mt-2">
-            Wrong destination?{" "}
-            <button
-              onClick={() => { setOtpStep("choose"); setMethod(null); setOtp(["", "", "", "", "", ""]); setError(""); }}
-              className="text-blue-600 font-semibold hover:underline"
-            >
-              Change method
-            </button>
-          </p>
-
-          {/* Nav */}
-          <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-6">
-            <button
-              onClick={() => { setOtpStep("choose"); setOtp(["", "", "", "", "", ""]); setError(""); }}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
-            >
-              <ChevronLeft size={16} /> Back
-            </button>
-            <button
-              onClick={verifyOtp}
-              disabled={!isComplete}
-              className={`flex items-center gap-2 px-7 py-3 rounded-xl text-white font-semibold text-sm transition-all
-                ${isComplete ? "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-200" : "bg-blue-300 cursor-not-allowed"}`}
-            >
-              <ShieldCheck size={16} /> Verify Account
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ─── SUCCESS ─── */
   return (
     <div className="w-full max-w-lg text-center">
       <ProgressBar step={3} />
 
       <div className="mt-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-10 flex flex-col items-center">
-        {/* Animated check */}
+        {/* Mail icon */}
         <div className="relative mb-6">
-          <div className="w-24 h-24 rounded-full bg-green-50 border-4 border-green-100 flex items-center justify-center">
-            <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-200">
-              <Check size={34} className="text-white" strokeWidth={2.5} />
+          <div className="w-24 h-24 rounded-full bg-blue-50 border-4 border-blue-100 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-200">
+              <Mail size={34} className="text-white" strokeWidth={2} />
             </div>
           </div>
-          {/* Sparkle rings */}
-          <div className="absolute inset-0 rounded-full border-2 border-green-200 opacity-50 scale-110" />
-          <div className="absolute inset-0 rounded-full border border-green-100 opacity-30 scale-125" />
+          <div className="absolute inset-0 rounded-full border-2 border-blue-200 opacity-50 scale-110" />
+          <div className="absolute inset-0 rounded-full border border-blue-100 opacity-30 scale-125" />
         </div>
 
-        <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-bold px-3 py-1.5 rounded-full mb-4">
-          <ShieldCheck size={13} /> Verified via {method === "email" ? "email" : "phone"}
-        </span>
-
-        <h2 className="text-3xl font-extrabold text-gray-900 mb-2">You're all set! 🎉</h2>
+        <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Check your email ✉️</h2>
         <p className="text-gray-500 text-sm leading-relaxed max-w-xs">
-          Your account has been successfully verified. Welcome to <span className="font-semibold text-gray-800">AthleteQ</span> — let's get started.
+          We&apos;ve sent a confirmation link to{" "}
+          <span className="font-semibold text-gray-800">{maskEmail(email)}</span>.
+          Click the link to activate your account.
         </p>
 
-        {/* Details card */}
         <div className="w-full mt-7 bg-gray-50 rounded-xl border border-gray-100 px-5 py-4 text-left space-y-2.5">
           <div className="flex items-center gap-3">
-            {method === "email"
-              ? <Mail size={15} className="text-blue-500 shrink-0" />
-              : <Phone size={15} className="text-blue-500 shrink-0" />}
-            <span className="text-xs text-gray-500">Verified {method === "email" ? "email" : "phone"}:</span>
-            <span className="text-xs font-semibold text-gray-800 ml-auto">
-              {method === "email" ? maskEmail(email) : maskPhone(phone)}
-            </span>
+            <Mail size={15} className="text-blue-500 shrink-0" />
+            <span className="text-xs text-gray-500">Sent to:</span>
+            <span className="text-xs font-semibold text-gray-800 ml-auto">{maskEmail(email)}</span>
           </div>
           <div className="flex items-center gap-3">
-            <ShieldCheck size={15} className="text-green-500 shrink-0" />
-            <span className="text-xs text-gray-500">Account status:</span>
-            <span className="text-xs font-semibold text-green-600 ml-auto">Active &amp; Verified</span>
+            <Check size={15} className="text-green-500 shrink-0" />
+            <span className="text-xs text-gray-500">Status:</span>
+            <span className="text-xs font-semibold text-amber-600 ml-auto">Awaiting confirmation</span>
           </div>
         </div>
 
-        <button className="mt-7 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all shadow-lg shadow-blue-200">
-          Go to Dashboard <ChevronRight size={16} />
+        <button onClick={onGoToLogin}
+          className="mt-7 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all shadow-lg shadow-blue-200">
+          Go to Login <ChevronRight size={16} />
         </button>
 
         <p className="text-xs text-gray-400 mt-4">
-          A confirmation has been sent to{" "}
-          <span className="text-gray-600 font-medium">{method === "email" ? maskEmail(email) : maskPhone(phone)}</span>
+          Didn&apos;t receive the email? Check your spam folder.
         </p>
       </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SHARED — REVIEW ROW
+══════════════════════════════════════════════════════════════ */
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+      <p className="text-gray-800 font-medium">{value}</p>
     </div>
   );
 }
@@ -834,6 +906,32 @@ function Field({ label, value, onChange, type = "text", placeholder, required, c
         className="border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 placeholder-gray-400
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
       />
+    </div>
+  );
+}
+
+function PasswordField({ label, value, onChange, show, onToggle }: {
+  label: string; value: string; onChange: (v: string) => void; show: boolean; onToggle: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-sm font-medium text-gray-700">
+        {label}<span className="text-blue-500 ml-0.5">*</span>
+      </label>
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder="••••••••"
+          className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 pr-10 text-sm text-gray-800 placeholder-gray-400
+            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+        />
+        <button type="button" onClick={onToggle}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+          {show ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
     </div>
   );
 }

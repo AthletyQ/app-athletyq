@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { createProfile } from "@/services/auth/auth.service";
 
+/**
+ * GET /api/auth/confirm
+ *
+ * Alternative email confirmation handler using token_hash query params.
+ * After verifying the token, it creates the profile + actor record
+ * via the same logic as create-profile, then redirects.
+ */
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const tokenHash = searchParams.get("token_hash");
@@ -10,90 +16,103 @@ export async function GET(request: NextRequest) {
 
   if (!tokenHash || !type) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: { message: "Missing token_hash or type parameter" },
-      },
-      { status: 400 }
+      { ok: false, error: { message: "Missing token_hash or type parameter" } },
+      { status: 400 },
     );
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseKey) {
+  if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: { message: "Supabase configuration missing" },
-      },
-      { status: 500 }
+      { ok: false, error: { message: "Supabase configuration missing" } },
+      { status: 500 },
     );
   }
 
-  // Create a Supabase client for server-side operations
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
   try {
     // Verify the email confirmation token
-    const { data, error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabaseClient.auth.verifyOtp({
       token_hash: tokenHash,
       type: type as "signup" | "email",
     });
 
     if (error) {
       return NextResponse.json(
-        {
-          ok: false,
-          error: { message: error.message, code: error.status?.toString() },
-        },
-        { status: 400 }
+        { ok: false, error: { message: error.message } },
+        { status: 400 },
       );
     }
 
     if (!data.user) {
       return NextResponse.json(
-        {
-          ok: false,
-          error: { message: "User not found after confirmation" },
-        },
-        { status: 400 }
+        { ok: false, error: { message: "User not found after confirmation" } },
+        { status: 400 },
       );
     }
 
-    // Check if profile already exists (idempotency)
-    const { data: existingProfile } = await supabase
+    // Service-role client to bypass RLS
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Check if profile already exists
+    const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
       .select("id")
       .eq("id", data.user.id)
-      .single();
+      .maybeSingle();
 
-    // Create profile if it doesn't exist
     if (!existingProfile) {
-      const profileResult = await createProfile(data.user.id, {
-        fullName: data.user.user_metadata?.fullName,
-        role: data.user.user_metadata?.role,
+      const meta = data.user.user_metadata ?? {};
+
+      // Insert profile
+      await supabaseAdmin.from("profiles").insert({
+        id: data.user.id,
         email: data.user.email,
+        role: meta.role,
+        first_name: meta.firstName,
+        last_name: meta.lastName,
+        phone_number: meta.phone || null,
       });
 
-      if (!profileResult.ok) {
-        console.error("Failed to create profile:", profileResult.error);
-        // Still redirect, but log the error
-        // In production, you might want to handle this differently
+      // Insert actor-specific record
+      if (meta.role === "athlete") {
+        await supabaseAdmin.from("athletes").insert({
+          user_id: data.user.id,
+          age: meta.age ? Number(meta.age) : null,
+          height_cm: meta.heightCm ? Number(meta.heightCm) : null,
+          weight_kg: meta.weightKg ? Number(meta.weightKg) : null,
+          preferred_sport_id: meta.preferredSportId ? Number(meta.preferredSportId) : null,
+        });
+      } else if (meta.role === "coach") {
+        await supabaseAdmin.from("coaches").insert({
+          user_id: data.user.id,
+          coaching_sport_id: meta.coachingSportId ? Number(meta.coachingSportId) : null,
+          specialization: meta.specialization || null,
+          years_of_experience: meta.yearsOfExperience ? Number(meta.yearsOfExperience) : null,
+          certifications: meta.coachCertifications ?? [],
+        });
+      } else if (meta.role === "wellness_professional") {
+        await supabaseAdmin.from("consultants").insert({
+          user_id: data.user.id,
+          specialty: meta.consultantSpecialty || null,
+          certifications: meta.consultantCertifications ?? [],
+        });
       }
     }
 
-    // Redirect to the specified URL or home page
-    // In a real app, you might want to set a session cookie here
+    // Redirect to the specified URL
     return NextResponse.redirect(new URL(redirectTo, request.url));
   } catch (error) {
     console.error("Email confirmation error:", error);
     return NextResponse.json(
-      {
-        ok: false,
-        error: { message: "Internal server error during confirmation" },
-      },
-      { status: 500 }
+      { ok: false, error: { message: "Internal server error during confirmation" } },
+      { status: 500 },
     );
   }
 }
