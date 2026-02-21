@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase/client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 /**
  * GET /api/auth/confirm
@@ -21,22 +22,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
-    return NextResponse.json(
-      { ok: false, error: { message: "Supabase configuration missing" } },
-      { status: 500 },
-    );
-  }
-
-  const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-
   try {
     // Verify the email confirmation token
-    const { data, error } = await supabaseClient.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
       type: type as "signup" | "email",
     });
@@ -47,18 +35,12 @@ export async function GET(request: NextRequest) {
         { status: 400 },
       );
     }
-
     if (!data.user) {
       return NextResponse.json(
         { ok: false, error: { message: "User not found after confirmation" } },
         { status: 400 },
       );
     }
-
-    // Service-role client to bypass RLS
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
 
     // Check if profile already exists
     const { data: existingProfile } = await supabaseAdmin
