@@ -2,6 +2,7 @@
 
 import { TrendingUp, Calendar, Activity, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ProfileBanner } from "@/components/athlete/ProfileBanner";
 
 // Mock data for the coaches list
 const coaches = [
@@ -14,10 +15,7 @@ const coaches = [
 export default function AthleteDashboardPage() {
     return (
         <div className="space-y-8">
-            {/* Header Banner Placeholder */}
-            <div className="h-48 bg-gray-200 rounded-2xl w-full flex items-center justify-center text-gray-400 font-medium">
-                Profile Banner / Cover Image
-            </div>
+            <ProfileBanner />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left Column: Coaches List */}
