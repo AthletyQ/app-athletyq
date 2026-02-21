@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 /**
  * GET /api/auth/confirm
@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+
+    const supabaseAdmin = getSupabaseAdmin();
     // Verify the email confirmation token
     const { data, error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,

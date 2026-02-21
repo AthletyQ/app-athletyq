@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
-import { supabaseAdmin } from "@/lib/supabase/admin";
-
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 /**
  * POST /api/auth/create-profile
  *
@@ -11,6 +10,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
+
     const authHeader = request.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
 
