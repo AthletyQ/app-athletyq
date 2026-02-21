@@ -1,9 +1,13 @@
-import { supabaseAdmin } from "@/lib/supabase/admin";
+
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { AthleteProfile, ServiceResponse } from "@/types/database.types";
 import { createClient } from "@supabase/supabase-js";
 
 export async function getAthleteProfile(): Promise<ServiceResponse<AthleteProfile>> {
     try {
+
+        const supabaseAdmin = getSupabaseAdmin();
+
         const {
            data: { user },
            error: authError,
