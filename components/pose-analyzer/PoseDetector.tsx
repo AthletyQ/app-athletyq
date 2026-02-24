@@ -202,25 +202,6 @@ export default function PoseDetector() {
         const drawingUtils = new DrawingUtils(ctx);
 
         for (const landmarks of results.landmarks) {
-          const rightArm: ArmLandmarks = {
-            shoulder: landmarks[12], // right shoulder
-            elbow: landmarks[14],    // right elbow
-            wrist: landmarks[16],    // right wrist
-          };
-
-          const leftArm: ArmLandmarks = {
-            shoulder: landmarks[11], // left shoulder
-            elbow: landmarks[13],    // left elbow
-            wrist: landmarks[15],    // left wrist
-          };
-
-          if (isArmVisible(rightArm)) {
-            console.log('[Detection] Right Arm:', rightArm);
-          }
-
-          if (isArmVisible(leftArm)) {
-            console.log('[Detection] Left Arm:', leftArm);
-          }
           // Draw connections
           drawingUtils.drawConnectors(
             landmarks,
@@ -234,6 +215,68 @@ export default function PoseDetector() {
             fillColor: '#FF0000',
             radius: 3
           });
+        }
+      }
+
+      function calculateAngle(
+        S: { x: number; y: number },
+        E: { x: number; y: number },
+        W: { x: number; y: number }
+      ): number {
+        const ES = { x: S.x - E.x, y: S.y - E.y };
+        const EW = { x: W.x - E.x, y: W.y - E.y };
+
+        const dotProduct = ES.x * EW.x + ES.y * EW.y;
+
+        const magES = Math.sqrt(ES.x * ES.x + ES.y * ES.y);
+        const magEW = Math.sqrt(EW.x * EW.x + EW.y * EW.y);
+
+        // Clamp to [-1, 1] to guard against floating-point drift before acos
+        const cosAngle = Math.max(-1, Math.min(1, dotProduct / (magES * magEW)));
+        return Math.acos(cosAngle) * (180 / Math.PI);
+      }
+
+      function drawAngleLabel(
+        ctx: CanvasRenderingContext2D,
+        landmark: { x: number; y: number },
+        angle: number,
+        label: string
+      ) {
+        const px = landmark.x * canvas.width;
+        const py = landmark.y * canvas.height;
+        const text = `${label}: ${angle.toFixed(1)}°`;
+
+        ctx.font = 'bold 16px Inter, sans-serif';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#000000';
+        ctx.strokeText(text, px + 10, py - 10);
+        ctx.fillStyle = '#FFFF00';
+        ctx.fillText(text, px + 10, py - 10);
+      }
+
+      // Calculate and display elbow angles for visible arms
+      for (const landmarks of results.landmarks) {
+        const rightArm: ArmLandmarks = {
+          shoulder: landmarks[12],
+          elbow: landmarks[14],
+          wrist: landmarks[16],
+        };
+        const leftArm: ArmLandmarks = {
+          shoulder: landmarks[11],
+          elbow: landmarks[13],
+          wrist: landmarks[15],
+        };
+
+        if (isArmVisible(rightArm)) {
+          const rightAngle = calculateAngle(rightArm.shoulder, rightArm.elbow, rightArm.wrist);
+          console.log('[Angle] Right elbow:', rightAngle.toFixed(1), '°');
+          drawAngleLabel(ctx, rightArm.elbow, rightAngle, 'R');
+        }
+
+        if (isArmVisible(leftArm)) {
+          const leftAngle = calculateAngle(leftArm.shoulder, leftArm.elbow, leftArm.wrist);
+          console.log('[Angle] Left elbow:', leftAngle.toFixed(1), '°');
+          drawAngleLabel(ctx, leftArm.elbow, leftAngle, 'L');
         }
       }
 
@@ -343,6 +386,7 @@ export default function PoseDetector() {
         <canvas
           ref={canvasRef}
           className="w-full h-full block bg-black"
+          style={{ transform: 'scaleX(-1)' }}
         />
       </div>
 
