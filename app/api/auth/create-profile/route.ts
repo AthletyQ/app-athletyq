@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
+import { supabase } from "@/lib/supabase/client";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 /**
  * POST /api/auth/create-profile
  *
@@ -10,6 +10,8 @@ import { createClient } from "@supabase/supabase-js";
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
+
     const authHeader = request.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
 
@@ -20,24 +22,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
-      console.error("Missing Supabase configuration");
-      return NextResponse.json(
-        { ok: false, error: { message: "Server configuration error" } },
-        { status: 500 },
-      );
-    }
-
     // ── Verify the caller's token ──
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
     const {
       data: { user },
       error: authError,
-    } = await supabaseClient.auth.getUser(token);
+    } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
       console.error("Authentication error:", authError);
@@ -71,15 +60,10 @@ export async function POST(request: NextRequest) {
     const validRoles = ["athlete", "coach", "wellness_professional"];
     if (!validRoles.includes(role)) {
       return NextResponse.json(
-        { ok: false, error: { message: `Invalid role: ${role}` } },
+        { ok: false, error: { message: `Invalid role: ${role} ` } },
         { status: 400 },
       );
     }
-
-    // ── Service-role client to bypass RLS ──
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
 
     // ── Idempotency: skip if profile already exists ──
     const { data: existingProfile } = await supabaseAdmin
@@ -172,7 +156,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (actorError) {
-      console.error(`Actor table insert error (${role}):`, actorError);
+      console.error(`Actor table insert error(${role}): `, actorError);
       // Profile was created successfully — log the actor error but don't fail
       // the whole request. The actor record can be populated later.
     }

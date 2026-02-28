@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { login } from "@/services/auth/login.service";
 
+function roleToDashboardPath(role: string | null | undefined) {
+  switch (role) {
+    case "athlete":
+      return "/athlete/dashboard";
+    case "coach":
+      return "/coach/dashboard";
+    // "consultant" UI is stored as wellness_professional in auth/profile
+    case "wellness_professional":
+    case "consultant":
+      return "/consultant/dashboard";
+    default:
+      return "/";
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -53,6 +68,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const role = (result.data.user.user_metadata?.role as string | undefined) ?? null;
+    const dashboardPath = roleToDashboardPath(role);
+
     // Success response
     return NextResponse.json(
       {
@@ -60,6 +78,8 @@ export async function POST(request: NextRequest) {
         data: {
           userId: result.data.user.id,
           email: result.data.user.email,
+          role,
+          dashboardPath,
           access_token: result.data.session.access_token,
           refresh_token: result.data.session.refresh_token,
           expires_at: result.data.session.expires_at,

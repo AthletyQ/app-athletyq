@@ -38,7 +38,7 @@ export default function LoginPage() {
         return;
       }
 
-      const { access_token, refresh_token } = json.data;
+      const { access_token, refresh_token, dashboardPath } = json.data;
 
       const { error: sessionError } = await supabase.auth.setSession({
         access_token,
@@ -50,8 +50,7 @@ export default function LoginPage() {
         return;
       }
 
-      // TODO: adjust redirect path if you have a dedicated dashboard
-      router.replace('/');
+      router.replace(typeof dashboardPath === 'string' && dashboardPath ? dashboardPath : '/');
     } catch (err: any) {
       setError(err?.message || 'Something went wrong. Please try again.');
     } finally {
