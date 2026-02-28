@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { PoseLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-vision';
 
-const VISIBILITY_THRESHOLD = 0.5;
+const VISIBILITY_THRESHOLD = 0.7;
+const ANGLE_BUFFER_SIZE = 5;
 
 interface ArmLandmarks {
   shoulder: { x: number; y: number; z: number; visibility?: number };
@@ -31,6 +32,8 @@ export default function PoseDetector() {
   const fpsTimestampRef = useRef<number>(0);
   const fpsCounterRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
+  const rightAngleBufferRef = useRef<number[]>([]);
+  const leftAngleBufferRef = useRef<number[]>([]);
 
   useEffect(() => {
     console.log('[PoseDetector] Component mounted, initializing...');
@@ -261,20 +264,31 @@ export default function PoseDetector() {
           elbow: landmarks[14],
           wrist: landmarks[16],
         };
+
+        //console.log("rightArm", rightArm);
+
         const leftArm: ArmLandmarks = {
           shoulder: landmarks[11],
           elbow: landmarks[13],
           wrist: landmarks[15],
         };
 
+       // console.log("leftArm", leftArm);
+
         if (isArmVisible(rightArm)) {
-          const rightAngle = calculateAngle(rightArm.shoulder, rightArm.elbow, rightArm.wrist);
+          const rawAngle = calculateAngle(rightArm.shoulder, rightArm.elbow, rightArm.wrist);
+          rightAngleBufferRef.current.push(rawAngle);
+          if (rightAngleBufferRef.current.length > ANGLE_BUFFER_SIZE) rightAngleBufferRef.current.shift();
+          const rightAngle = rightAngleBufferRef.current.reduce((a, b) => a + b, 0) / rightAngleBufferRef.current.length;
           console.log('[Angle] Right elbow:', rightAngle.toFixed(1), '°');
           drawAngleLabel(ctx, rightArm.elbow, rightAngle, 'R');
         }
 
         if (isArmVisible(leftArm)) {
-          const leftAngle = calculateAngle(leftArm.shoulder, leftArm.elbow, leftArm.wrist);
+          const rawAngle = calculateAngle(leftArm.shoulder, leftArm.elbow, leftArm.wrist);
+          leftAngleBufferRef.current.push(rawAngle);
+          if (leftAngleBufferRef.current.length > ANGLE_BUFFER_SIZE) leftAngleBufferRef.current.shift();
+          const leftAngle = leftAngleBufferRef.current.reduce((a, b) => a + b, 0) / leftAngleBufferRef.current.length;
           console.log('[Angle] Left elbow:', leftAngle.toFixed(1), '°');
           drawAngleLabel(ctx, leftArm.elbow, leftAngle, 'L');
         }
