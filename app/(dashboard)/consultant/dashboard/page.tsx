@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { Sidebar } from "@/components/dashboard/Sidebar";
+import { Sidebar } from "@/components/dashboard/ConsultantSidebar";
 import { Navbar } from "@/components/dashboard/Navbar";
 
 export default function ConsultantDashboard() {
