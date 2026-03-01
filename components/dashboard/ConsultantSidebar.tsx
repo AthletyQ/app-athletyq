@@ -22,8 +22,8 @@ import {
 
 const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/consultant/dashboard" },
-    { icon: Users, label: "Coaches", href: "/consultant/coaches" },
-    { icon: UserSearch, label: "Consultants", href: "/consultant/consultants" },
+    { icon: Users, label: "Athletes", href: "/consultant/coaches" },
+    { icon: UserSearch, label: "Coaches", href: "/consultant/consultants" },
     { icon: MessageSquare, label: "Chats", href: "/consultant/chats" },
 ];
 
