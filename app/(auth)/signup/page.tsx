@@ -10,9 +10,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 
-/* ══════════════════════════════════════════════════════════════
-   TYPES
-══════════════════════════════════════════════════════════════ */
+
 type Role = "athlete" | "coach" | "wellness_professional" | null;
 type WellnessType = "sport_doctor" | "physiotherapist" | "nutritionist" | "";
 
@@ -35,9 +33,6 @@ interface WellnessForm {
   wellnessType: WellnessType; qualifications: Qualification[];
 }
 
-/* ══════════════════════════════════════════════════════════════
-   CONSTANTS
-══════════════════════════════════════════════════════════════ */
 const WELLNESS_TYPES = [
   { id: "sport_doctor", label: "Sport Doctor", icon: "🩺", desc: "Clinical care & injury mgmt" },
   { id: "physiotherapist", label: "Physiotherapist", icon: "🦴", desc: "Rehab & movement therapy" },
@@ -71,9 +66,7 @@ const ROLES = [
   },
 ];
 
-/* ══════════════════════════════════════════════════════════════
-   ROOT
-══════════════════════════════════════════════════════════════ */
+
 export default function SignupPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -104,7 +97,6 @@ export default function SignupPage() {
     qualifications: [{ title: "", institution: "", year: "", file: null }],
   });
 
-  // Fetch sports on mount
   useEffect(() => {
     async function fetchSports() {
       setSportsLoading(true);
@@ -121,12 +113,10 @@ export default function SignupPage() {
     fetchSports();
   }, []);
 
-  /* ── Get current form's email for the confirmation screen ── */
   const currentForm =
     selectedRole === "athlete" ? athleteForm :
       selectedRole === "coach" ? coachForm : wellnessForm;
 
-  /* ── Build payload based on role ── */
   const buildPayload = () => {
     const form = currentForm;
     const common = {
@@ -160,7 +150,7 @@ export default function SignupPage() {
       };
     }
 
-    // wellness_professional
+   
     const f = form as WellnessForm;
     return {
       ...common,
@@ -171,7 +161,7 @@ export default function SignupPage() {
     };
   };
 
-  /* ── Submit signup ── */
+  
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setSubmitError("");
