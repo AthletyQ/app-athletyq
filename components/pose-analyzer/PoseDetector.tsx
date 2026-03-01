@@ -6,6 +6,10 @@ import { PoseLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-
 const VISIBILITY_THRESHOLD = 0.7;
 const ANGLE_BUFFER_SIZE = 5;
 
+// Bicep curl rep detection thresholds (degrees)
+const CURL_UP_THRESHOLD = 50;    // angle must drop below this to register "up"
+const CURL_DOWN_THRESHOLD = 160; // angle must rise above this to register "down" (= 1 rep)
+
 interface ArmLandmarks {
   shoulder: { x: number; y: number; z: number; visibility?: number };
   elbow: { x: number; y: number; z: number; visibility?: number };
@@ -34,6 +38,12 @@ export default function PoseDetector() {
   const streamRef = useRef<MediaStream | null>(null);
   const rightAngleBufferRef = useRef<number[]>([]);
   const leftAngleBufferRef = useRef<number[]>([]);
+  const rightCurlStateRef = useRef<'down' | 'up'>('down');
+  const leftCurlStateRef = useRef<'down' | 'up'>('down');
+  const rightRepCountRef = useRef<number>(0);
+  const leftRepCountRef = useRef<number>(0);
+  const [rightReps, setRightReps] = useState(0);
+  const [leftReps, setLeftReps] = useState(0);
 
   useEffect(() => {
     console.log('[PoseDetector] Component mounted, initializing...');
@@ -280,7 +290,19 @@ export default function PoseDetector() {
           rightAngleBufferRef.current.push(rawAngle);
           if (rightAngleBufferRef.current.length > ANGLE_BUFFER_SIZE) rightAngleBufferRef.current.shift();
           const rightAngle = rightAngleBufferRef.current.reduce((a, b) => a + b, 0) / rightAngleBufferRef.current.length;
-          console.log('[Angle] Right elbow:', rightAngle.toFixed(1), '°');
+
+          // State machine: down → up → down = 1 rep
+          if (rightCurlStateRef.current === 'down' && rightAngle < CURL_UP_THRESHOLD) {
+            rightCurlStateRef.current = 'up';
+          } else if (rightCurlStateRef.current === 'up' && rightAngle > CURL_DOWN_THRESHOLD) {
+            rightCurlStateRef.current = 'down';
+            rightRepCountRef.current += 1;
+            setRightReps(rightRepCountRef.current);
+            console.log('[Angle] Right elbow:', rightAngle.toFixed(1), '°');
+            console.log('[Rep] Right bicep curl rep:', rightRepCountRef.current);
+
+          }
+
           drawAngleLabel(ctx, rightArm.elbow, rightAngle, 'R');
         }
 
@@ -289,7 +311,18 @@ export default function PoseDetector() {
           leftAngleBufferRef.current.push(rawAngle);
           if (leftAngleBufferRef.current.length > ANGLE_BUFFER_SIZE) leftAngleBufferRef.current.shift();
           const leftAngle = leftAngleBufferRef.current.reduce((a, b) => a + b, 0) / leftAngleBufferRef.current.length;
-          console.log('[Angle] Left elbow:', leftAngle.toFixed(1), '°');
+
+          // State machine: down → up → down = 1 rep
+          if (leftCurlStateRef.current === 'down' && leftAngle < CURL_UP_THRESHOLD) {
+            leftCurlStateRef.current = 'up';
+          } else if (leftCurlStateRef.current === 'up' && leftAngle > CURL_DOWN_THRESHOLD) {
+            leftCurlStateRef.current = 'down';
+            leftRepCountRef.current += 1;
+            setLeftReps(leftRepCountRef.current);
+            console.log('[Angle] Left elbow:', leftAngle.toFixed(1), '°');
+            console.log('[Rep] Left bicep curl rep:', leftRepCountRef.current);
+          }
+
           drawAngleLabel(ctx, leftArm.elbow, leftAngle, 'L');
         }
       }
@@ -375,6 +408,14 @@ export default function PoseDetector() {
     }
 
     setFps(0);
+    rightAngleBufferRef.current = [];
+    leftAngleBufferRef.current = [];
+    rightCurlStateRef.current = 'down';
+    leftCurlStateRef.current = 'down';
+    rightRepCountRef.current = 0;
+    leftRepCountRef.current = 0;
+    setRightReps(0);
+    setLeftReps(0);
   };
 
   useEffect(() => {
@@ -403,6 +444,19 @@ export default function PoseDetector() {
           style={{ transform: 'scaleX(-1)' }}
         />
       </div>
+
+      {/* Rep counters */}
+      {isDetecting && (
+        <div className="flex gap-6 justify-center">
+          {[{ label: 'Right Arm', count: rightReps }, { label: 'Left Arm', count: leftReps }].map(({ label, count }) => (
+            <div key={label} className="flex flex-col items-center gap-1 px-8 py-4 bg-slate-800 rounded-2xl border border-indigo-500/30">
+              <span className="text-slate-400 text-sm font-medium">{label}</span>
+              <span className="text-5xl font-bold text-white tabular-nums">{count}</span>
+              <span className="text-slate-500 text-xs">reps</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Controls */}
       <div className="flex gap-4 justify-center flex-wrap">
