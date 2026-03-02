@@ -67,24 +67,26 @@ function ConfirmPageContent() {
             if (error) throw error;
             if (!data.user) throw new Error("User not found after confirmation");
 
-            // Get current session for auth header
-            const { data: sessionData } = await supabase.auth.getSession();
+            // Use the session returned directly by verifyOtp.
+            // Do NOT call getSession() here — in PKCE flow (used by hosted Supabase)
+            // the session may not yet be persisted to storage when getSession() runs,
+            // causing the Authorization header to be omitted and profile creation to fail.
+            if (!data.session) throw new Error("No session returned after OTP verification");
 
             // Create profile + actor record
             const response = await fetch("/api/auth/create-profile", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                ...(sessionData.session?.access_token
-                  ? { Authorization: `Bearer ${sessionData.session.access_token}` }
-                  : {}),
+                Authorization: `Bearer ${data.session.access_token}`,
               },
               body: JSON.stringify({}),
             });
 
             if (!response.ok) {
-              const errorData = await response.json();
+              const errorData = await response.text();
               console.error("Profile creation error:", errorData);
+              throw new Error("Failed to create profile. Please contact support.");
             }
 
             setStatus("success");
