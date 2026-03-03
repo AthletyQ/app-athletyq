@@ -22,9 +22,9 @@ import {
 
 const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/athlete/dashboard" },
-    { icon: Users, label: "Coaches", href: "/athlete/coaches" },
+    { icon: Users, label: "Coaches", href: "/athlete/coach" },
     { icon: UserSearch, label: "Consultants", href: "/athlete/consultants" },
-    { icon: MessageSquare, label: "Chats", href: "/athlete/chats" },
+    { icon: MessageSquare, label: "Chats", href: "/athlete/chat" },
 ];
 
 export function Sidebar({ ...props }: React.ComponentProps<typeof BaseSidebar>) {
