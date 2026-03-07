@@ -130,3 +130,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+:root {
+  --sidebar: hsl(221 83% 53%);
+  --sidebar-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(0 0% 100% / 0.15);
+  --sidebar-accent-foreground: hsl(0 0% 100%);
+  --sidebar-border: hsl(221 83% 45%);
+  --sidebar-ring: hsl(221 83% 53%);
+}

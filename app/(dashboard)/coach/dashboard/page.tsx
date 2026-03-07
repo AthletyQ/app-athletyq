@@ -1,20 +1,11 @@
 'use client'
 
-import { useState } from 'react'
 import {
   LayoutDashboard, Users, MessageSquare, CalendarCheck,
   Bell, User, Video, TrendingUp, DollarSign, Calendar,
-  CheckCircle, ChevronRight,
+  CheckCircle,
 } from 'lucide-react'
 
-// ─── DATA ────────────────────────────────────────────────────────────────────
-
-const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard' },
-  { icon: Users, label: 'Clients' },
-  { icon: MessageSquare, label: 'Chats' },
-  { icon: CalendarCheck, label: 'Booked Sessions' },
-]
 
 const STATS = [
   { label: 'Total Clients', value: '24', sub: '+3 this month', subColor: 'text-blue-500', icon: Users },
@@ -39,45 +30,19 @@ const ACTIVITIES = [
   { name: 'Sarah Johnson', action: 'Completed workout: 10K Run', time: '2 hours ago' },
 ]
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-
 function initials(name: string) {
   return name.split(' ').map((n) => n[0]).join('')
 }
 
-// ─── SUB-COMPONENTS ──────────────────────────────────────────────────────────
 
-function Sidebar({ activeNav, setActiveNav }: { activeNav: string; setActiveNav: (l: string) => void }) {
-  return (
-    <aside className="w-44 min-h-screen bg-blue-600 flex flex-col flex-shrink-0">
-      <div className="px-5 py-6">
-        <h1 className="text-white font-bold text-xl tracking-tight">AthliyQ</h1>
-      </div>
-      <nav className="flex flex-col gap-1 px-3 mt-1">
-        {NAV_ITEMS.map(({ icon: Icon, label }) => (
-          <button
-            key={label}
-            onClick={() => setActiveNav(label)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left ${
-              activeNav === label ? 'bg-white text-blue-600' : 'text-white/80 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            <Icon className="w-4 h-4 flex-shrink-0" />
-            {label}
-          </button>
-        ))}
-      </nav>
-    </aside>
-  )
-}
 
 function Topbar() {
   return (
     <header className="flex items-center justify-end gap-3 px-6 py-4 bg-white border-b border-gray-100">
-      <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
+      <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">
         <Bell className="w-4 h-4" />
       </button>
-      <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
+      <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">
         <User className="w-4 h-4" />
       </button>
     </header>
@@ -200,40 +165,29 @@ function AthleteActivity() {
   )
 }
 
-// ─── ROOT COMPONENT ──────────────────────────────────────────────────────────
-
-export default function AthliyQDashboard() {
-  const [activeNav, setActiveNav] = useState('Dashboard')
-
+export default function DashboardPage() {
   return (
-    <div className="flex min-h-screen bg-gray-50 font-sans">
-      <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} />
-
-      <div className="flex-1 flex flex-col min-w-0">
-        <Topbar />
-
-        <main className="flex-1 p-6">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Welcome back! Here's what's happening with your coaching today.
-            </p>
+    <div className="flex flex-col min-h-full bg-gray-50">
+      <Topbar />
+      <main className="flex-1 p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Welcome back! Here's what's happening with your coaching today.
+          </p>
+        </div>
+        <StatCards />
+        <div className="grid grid-cols-3 gap-5">
+          <div className="col-span-2">
+            <UpcomingSessions />
+            <EarningsSummary />
           </div>
-
-          <StatCards />
-
-          <div className="grid grid-cols-3 gap-5">
-            <div className="col-span-2">
-              <UpcomingSessions />
-              <EarningsSummary />
-            </div>
-            <div className="col-span-1">
-              <NewMessages />
-              <AthleteActivity />
-            </div>
+          <div className="col-span-1">
+            <NewMessages />
+            <AthleteActivity />
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }
