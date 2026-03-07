@@ -14,7 +14,7 @@ const coaches = [
 
 export default function AthleteDashboardPage() {
     return (
-        <div className="space-y-8">
+        <div className="max-w-7xl mx-auto space-y-8">
             <ProfileBanner />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
