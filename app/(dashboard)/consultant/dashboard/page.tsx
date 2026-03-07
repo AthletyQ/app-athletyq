@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Users } from "lucide-react";
 
 export default function ConsultantDashboard() {
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -36,6 +37,18 @@ export default function ConsultantDashboard() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Consultant Dashboard</h1>
         <p className="text-gray-600 mt-2">Overview of your athletes and their performance</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-gray-500">Total Clients</p>
+            <Users className="w-5 h-5 text-blue-500" />
+          </div>
+          <p className="text-3xl font-bold text-gray-900">
+            {dashboardData?.totalAthletes || 0}  {/* ← comes from API */}
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
