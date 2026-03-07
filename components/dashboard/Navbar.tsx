@@ -2,6 +2,7 @@
 
 import { Bell, UserCircle } from "lucide-react";
 
+
 export function Navbar() {
     return (
         <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-end px-8 sticky top-0 z-10">

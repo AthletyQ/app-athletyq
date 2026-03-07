@@ -189,13 +189,24 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-[#F4F6F9] flex flex-col">
       {/* ── Header ── */}
-      <header className="px-10 py-6">
-        <div className="flex items-center gap-2">
+      <header className="px-4 sm:px-10 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push("/")}>
           <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-200">
             <Zap size={18} className="text-white" strokeWidth={2.5} />
           </div>
           <span className="text-gray-900 font-bold text-xl tracking-tight">AthletyQ</span>
         </div>
+        {!submitted && (
+          <div className="hidden sm:flex items-center gap-2 text-sm text-gray-500 bg-white/50 backdrop-blur-sm px-4 py-2 rounded-full border border-gray-100 shadow-sm">
+            <span>Already have an account?</span>
+            <button
+              onClick={() => router.push("/login")}
+              className="text-blue-600 font-bold hover:text-blue-700 transition-colors cursor-pointer"
+            >
+              Log in
+            </button>
+          </div>
+        )}
       </header>
 
       {/* ── Main ── */}
@@ -260,6 +271,7 @@ export default function SignupPage() {
 function Step1({ selectedRole, onSelect, onContinue }: {
   selectedRole: Role; onSelect: (r: Role) => void; onContinue: () => void;
 }) {
+  const router = useRouter();
   return (
     <div className="w-full max-w-5xl">
       <p className="text-sm font-semibold text-gray-400 mb-2 tracking-widest uppercase">Step 1 of 3</p>
@@ -300,15 +312,25 @@ function Step1({ selectedRole, onSelect, onContinue }: {
         })}
       </div>
 
-      <div className="mt-10 flex justify-center">
+      <div className="mt-10 flex flex-col items-center gap-6">
         <button
           onClick={onContinue}
           disabled={!selectedRole}
-          className={`flex items-center gap-2 px-10 py-4 rounded-xl text-white font-semibold text-base transition-all
-            ${selectedRole ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200" : "bg-blue-300 cursor-not-allowed"}`}
+          className={`flex items-center gap-2 px-10 py-4 rounded-xl text-white font-bold text-base transition-all
+            ${selectedRole ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 transform hover:-translate-y-0.5" : "bg-blue-300 cursor-not-allowed"}`}
         >
           Continue <ChevronRight size={18} />
         </button>
+
+        <p className="text-sm text-gray-500">
+          Already have an account?{" "}
+          <button
+            onClick={() => router.push("/login")}
+            className="text-blue-600 font-bold hover:text-blue-700 transition-colors cursor-pointer"
+          >
+            Log in
+          </button>
+        </p>
       </div>
     </div>
   );

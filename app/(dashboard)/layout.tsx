@@ -1,11 +1,11 @@
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+'use client';
+
+import { SidebarProvider } from "@/components/ui/sidebar";
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="antialiased">
+    <SidebarProvider>
       {children}
-    </div>
+    </SidebarProvider>
   );
 }

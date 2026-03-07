@@ -51,7 +51,7 @@ function Topbar() {
 
 function StatCards() {
   return (
-    <div className="grid grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {STATS.map(({ label, value, sub, subColor, icon: Icon }) => (
         <div key={label} className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between mb-3">
