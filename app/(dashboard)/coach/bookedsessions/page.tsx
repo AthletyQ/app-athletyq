@@ -286,10 +286,10 @@ export default function BookedSessionsPage() {
 
     return (
         <div className="flex flex-col min-h-full bg-gray-50">
-            <Topbar/>
-            
+            <Topbar />
+
             <div className="flex flex-col flex-1 min-w-0">
-               
+
 
                 <main className="flex-1 overflow-y-auto p-6">
                     {/* Page header */}
