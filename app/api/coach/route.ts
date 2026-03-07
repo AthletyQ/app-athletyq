@@ -1,20 +1,13 @@
-// app/api/coach/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-);
+import { supabase } from "@/lib/supabase/client";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
 
+  const sportId      = searchParams.get("sport");       // sports.id (integer)
   const search       = searchParams.get("search");
-  const coachingType = searchParams.get("coachingType");
   const minPrice     = searchParams.get("minPrice");
   const maxPrice     = searchParams.get("maxPrice");
-  const availability = searchParams.get("availability");
   const page         = parseInt(searchParams.get("page")  || "1");
   const limit        = parseInt(searchParams.get("limit") || "10");
 
@@ -35,7 +28,11 @@ export async function GET(request: NextRequest) {
       is_available,
       rating,
       total_sessions,
-      profiles (
+      sports (
+        id,
+        name
+      ),
+      profiles!coaches_user_id_fkey (
         id,
         first_name,
         last_name,
@@ -48,11 +45,22 @@ export async function GET(request: NextRequest) {
     )
     .range(from, to);
 
-  if (coachingType) query = query.ilike("specialization", `%${coachingType}%`);
-  if (minPrice)     query = query.gte("hourly_rate", parseFloat(minPrice));
-  if (maxPrice)     query = query.lte("hourly_rate", parseFloat(maxPrice));
-  if (availability === "available") query = query.eq("is_available", true);
-  if (search)       query = query.ilike("bio", `%${search}%`);
+  // Filter by sport id
+  if (sportId) {
+    query = query.eq("coaching_sport_id", parseInt(sportId));
+  }
+
+  // Filter by hourly rate
+  if (minPrice) query = query.gte("hourly_rate", parseFloat(minPrice));
+  if (maxPrice) query = query.lte("hourly_rate", parseFloat(maxPrice));
+
+  // Filter by availability
+  query = query.eq("is_available", true);
+
+  // Search by bio or specialization
+  if (search) {
+    query = query.or(`bio.ilike.%${search}%,specialization.ilike.%${search}%`);
+  }
 
   const { data, error, count } = await query;
 
@@ -74,19 +82,20 @@ export async function GET(request: NextRequest) {
       email:             profile?.email             ?? "",
       phoneNumber:       profile?.phone_number      ?? "",
       profileImageUrl:   profile?.profile_image_url ?? null,
+      sport:             row.sports?.name           ?? "General",
+      sportId:           row.coaching_sport_id,
       specialization:    row.specialization,
       bio:               row.bio,
       yearsOfExperience: row.years_of_experience,
       hourlyRate:        row.hourly_rate,
-      certifications:    row.certifications ?? [],
+      certifications:    row.certifications         ?? [],
       isAvailable:       row.is_available,
       rating:            row.rating,
       totalSessions:     row.total_sessions,
-      coachingSportId:   row.coaching_sport_id,
     };
   });
 
-  // Fallback: also filter by name client-side if search is set
+  // Client-side name search fallback
   const filtered = search
     ? coaches.filter((c) =>
         `${c.firstName} ${c.lastName}`.toLowerCase().includes(search.toLowerCase())
