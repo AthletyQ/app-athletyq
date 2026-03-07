@@ -1,13 +1,11 @@
 'use client'
 
-import { useState } from 'react'
 import {
   LayoutDashboard, Users, MessageSquare, CalendarCheck,
-  Video, TrendingUp, DollarSign, Calendar,
-  CheckCircle
+  Bell, User, Video, TrendingUp, DollarSign, Calendar,
+  CheckCircle,
 } from 'lucide-react'
 
-// ─── DATA ────────────────────────────────────────────────────────────────────
 
 const STATS = [
   { label: 'Total Clients', value: '24', sub: '+3 this month', subColor: 'text-blue-500', icon: Users },
@@ -32,13 +30,24 @@ const ACTIVITIES = [
   { name: 'Sarah Johnson', action: 'Completed workout: 10K Run', time: '2 hours ago' },
 ]
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-
 function initials(name: string) {
   return name.split(' ').map((n) => n[0]).join('')
 }
 
-// ─── SUB-COMPONENTS ──────────────────────────────────────────────────────────
+
+
+function Topbar() {
+  return (
+    <header className="flex items-center justify-end gap-3 px-6 py-4 bg-white border-b border-gray-100">
+      <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">
+        <Bell className="w-4 h-4" />
+      </button>
+      <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">
+        <User className="w-4 h-4" />
+      </button>
+    </header>
+  )
+}
 
 function StatCards() {
   return (
@@ -156,30 +165,29 @@ function AthleteActivity() {
   )
 }
 
-// ─── ROOT COMPONENT ──────────────────────────────────────────────────────────
-
-export default function AthliyQDashboard() {
+export default function DashboardPage() {
   return (
-    <div className="font-sans">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Welcome back! Here's what's happening with your coaching today.
-        </p>
-      </div>
-
-      <StatCards />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2">
-          <UpcomingSessions />
-          <EarningsSummary />
+    <div className="flex flex-col min-h-full bg-gray-50">
+      <Topbar />
+      <main className="flex-1 p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Welcome back! Here's what's happening with your coaching today.
+          </p>
         </div>
-        <div className="lg:col-span-1">
-          <NewMessages />
-          <AthleteActivity />
+        <StatCards />
+        <div className="grid grid-cols-3 gap-5">
+          <div className="col-span-2">
+            <UpcomingSessions />
+            <EarningsSummary />
+          </div>
+          <div className="col-span-1">
+            <NewMessages />
+            <AthleteActivity />
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

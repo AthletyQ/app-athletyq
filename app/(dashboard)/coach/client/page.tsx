@@ -2,18 +2,11 @@
 
 import { useState } from 'react'
 import {
-  LayoutDashboard, Users, MessageSquare, CalendarCheck,
   Bell, User, Search, Clock,
 } from 'lucide-react'
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 
-const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard' },
-  { icon: Users, label: 'Clients' },
-  { icon: MessageSquare, label: 'Chats' },
-  { icon: CalendarCheck, label: 'Booked Sessions' },
-]
 
 const ACTIVE_CLIENTS = [
   {
@@ -89,33 +82,6 @@ const SPORT_COLORS: Record<string, string> = {
   Yoga: 'bg-pink-100 text-pink-600',
 }
 
-// ─── COMPONENTS ──────────────────────────────────────────────────────────────
-
-function Sidebar({ activeNav, setActiveNav }: { activeNav: string; setActiveNav: (l: string) => void }) {
-  return (
-    <aside className="w-44 min-h-screen bg-blue-600 flex flex-col flex-shrink-0">
-      <div className="px-5 py-6">
-        <h1 className="text-white font-bold text-xl tracking-tight">AthliyQ</h1>
-      </div>
-      <nav className="flex flex-col gap-1 px-3 mt-1">
-        {NAV_ITEMS.map(({ icon: Icon, label }) => (
-          <button
-            key={label}
-            onClick={() => setActiveNav(label)}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left ${
-              activeNav === label
-                ? 'bg-white text-blue-600'
-                : 'text-white/80 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            <Icon className="w-4 h-4 flex-shrink-0" />
-            {label}
-          </button>
-        ))}
-      </nav>
-    </aside>
-  )
-}
 
 function Topbar() {
   return (
@@ -151,7 +117,6 @@ function ClientCard({ client, pending = false }: { client: Client; pending?: boo
         </div>
       </div>
 
-      {/* Stats */}
       {!pending && (
         <>
           <div className="grid grid-cols-2 gap-3">
@@ -165,7 +130,7 @@ function ClientCard({ client, pending = false }: { client: Client; pending?: boo
             </div>
           </div>
 
-          {/* Progress */}
+
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-xs text-gray-500">Progress</p>
@@ -181,7 +146,7 @@ function ClientCard({ client, pending = false }: { client: Client; pending?: boo
         </>
       )}
 
-      {/* Footer meta */}
+
       <div className="flex items-center justify-between text-xs text-gray-400">
         <span className="flex items-center gap-1">
           <Clock className="w-3 h-3" />
@@ -190,7 +155,7 @@ function ClientCard({ client, pending = false }: { client: Client; pending?: boo
         {!pending && <span>Joined {client.joined}</span>}
       </div>
 
-      {/* Actions */}
+
       <div className="flex gap-2">
         {pending ? (
           <>
@@ -216,10 +181,8 @@ function ClientCard({ client, pending = false }: { client: Client; pending?: boo
   )
 }
 
-// ─── ROOT ─────────────────────────────────────────────────────────────────────
 
 export default function ClientsPage() {
-  const [activeNav, setActiveNav] = useState('Clients')
   const [activeTab, setActiveTab] = useState<'active' | 'pending'>('active')
   const [search, setSearch] = useState('')
 
@@ -230,70 +193,54 @@ export default function ClientsPage() {
       c.sport.toLowerCase().includes(search.toLowerCase())
   )
 
-  return (
-    <div className="flex min-h-screen bg-gray-50 font-sans">
-      <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} />
-
-      <div className="flex-1 flex flex-col min-w-0">
-        <Topbar />
-
-        <main className="flex-1 p-6">
-          {/* Page Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">My Clients</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Manage your athletes and view their progress.</p>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex gap-6 border-b border-gray-200 mb-5">
-            <button
-              onClick={() => setActiveTab('active')}
-              className={`pb-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${
-                activeTab === 'active'
-                  ? 'text-blue-600 border-blue-600'
-                  : 'text-gray-400 border-transparent hover:text-gray-600'
-              }`}
-            >
-              Active Clients ({ACTIVE_CLIENTS.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('pending')}
-              className={`pb-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${
-                activeTab === 'pending'
-                  ? 'text-blue-600 border-blue-600'
-                  : 'text-gray-400 border-transparent hover:text-gray-600'
-              }`}
-            >
-              Pending Requests ({PENDING_CLIENTS.length})
-            </button>
-          </div>
-
-          {/* Search */}
-          <div className="relative mb-6 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search clients by name or sport..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition"
-            />
-          </div>
-
-          {/* Client Cards Grid */}
-          {filtered.length > 0 ? (
-            <div className="grid grid-cols-3 gap-5">
-              {filtered.map((client) => (
-                <ClientCard key={client.name} client={client} pending={activeTab === 'pending'} />
-              ))}
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
-              No clients found.
-            </div>
-          )}
-        </main>
+  return (<div className="flex flex-col min-h-full bg-gray-50">
+    <Topbar />
+    <main className="flex-1 p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">My Clients</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Manage your athletes and view their progress.</p>
       </div>
-    </div>
+
+      <div className="flex gap-6 border-b border-gray-200 mb-5">
+        <button
+          onClick={() => setActiveTab('active')}
+          className={`pb-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${activeTab === 'active' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-gray-600'
+            }`}
+        >
+          Active Clients ({ACTIVE_CLIENTS.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={`pb-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${activeTab === 'pending' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-gray-600'
+            }`}
+        >
+          Pending Requests ({PENDING_CLIENTS.length})
+        </button>
+      </div>
+
+      <div className="relative mb-6 max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search clients by name or sport..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+        />
+      </div>
+
+      {filtered.length > 0 ? (
+        <div className="grid grid-cols-3 gap-5">
+          {filtered.map((client) => (
+            <ClientCard key={client.name} client={client} pending={activeTab === 'pending'} />
+          ))}
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
+          No clients found.
+        </div>
+      )}
+    </main>
+  </div>
   )
 }

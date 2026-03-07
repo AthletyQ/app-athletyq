@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import {
-    LayoutDashboard, Users, MessageSquare, CalendarCheck,
     Bell, User, Video, MapPin, Clock, ChevronLeft, ChevronRight,
     Filter, Plus, MoreVertical, CheckCircle, XCircle, AlertCircle,
 } from 'lucide-react'
@@ -25,13 +24,6 @@ type Session = {
     status: SessionStatus
 }
 
-
-const NAV_ITEMS = [
-    { icon: LayoutDashboard, label: 'Dashboard' },
-    { icon: Users, label: 'Clients' },
-    { icon: MessageSquare, label: 'Chats' },
-    { icon: CalendarCheck, label: 'Booked Sessions' },
-]
 
 const SESSIONS: Session[] = [
     {
@@ -142,33 +134,6 @@ const STATUS_CONFIG: Record<SessionStatus, { label: string; classes: string; ico
     confirmed: { label: 'Confirmed', classes: 'bg-green-50 text-green-600', icon: CheckCircle },
     pending: { label: 'Pending', classes: 'bg-amber-50 text-amber-600', icon: AlertCircle },
     cancelled: { label: 'Cancelled', classes: 'bg-red-50 text-red-500', icon: XCircle },
-}
-
-// ─── SIDEBAR ─────────────────────────────────────────────────────────────────
-
-function Sidebar({ activeNav, setActiveNav }: { activeNav: string; setActiveNav: (l: string) => void }) {
-    return (
-        <aside className="w-44 h-full bg-blue-600 flex flex-col flex-shrink-0">
-            <div className="px-5 py-6">
-                <h1 className="text-white font-bold text-xl tracking-tight">AthliyQ</h1>
-            </div>
-            <nav className="flex flex-col gap-1 px-3 mt-1">
-                {NAV_ITEMS.map(({ icon: Icon, label }) => (
-                    <button
-                        key={label}
-                        onClick={() => setActiveNav(label)}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full text-left ${activeNav === label
-                            ? 'bg-white text-blue-600'
-                            : 'text-white/80 hover:bg-white/10 hover:text-white'
-                            }`}
-                    >
-                        <Icon className="w-4 h-4 flex-shrink-0" />
-                        {label}
-                    </button>
-                ))}
-            </nav>
-        </aside>
-    )
 }
 
 
@@ -305,10 +270,8 @@ function SessionCard({ session }: { session: Session }) {
     )
 }
 
-// ─── ROOT ─────────────────────────────────────────────────────────────────────
 
 export default function BookedSessionsPage() {
-    const [activeNav, setActiveNav] = useState('Booked Sessions')
     const [activeDay, setActiveDay] = useState('Mon, Feb 24')
     const [filterStatus, setFilterStatus] = useState<'all' | SessionStatus>('all')
 
@@ -322,11 +285,11 @@ export default function BookedSessionsPage() {
     const totalPending = SESSIONS.filter((s) => s.status === 'pending').length
 
     return (
-        <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
-            <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} />
+        <div className="flex flex-col min-h-full bg-gray-50">
+            <Topbar />
 
             <div className="flex flex-col flex-1 min-w-0">
-                <Topbar />
+
 
                 <main className="flex-1 overflow-y-auto p-6">
                     {/* Page header */}
