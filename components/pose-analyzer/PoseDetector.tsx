@@ -10,16 +10,54 @@ const ANGLE_BUFFER_SIZE = 5;
 const CURL_UP_THRESHOLD = 50;    // angle must drop below this to register "up"
 const CURL_DOWN_THRESHOLD = 160; // angle must rise above this to register "down" (= 1 rep)
 
+// Form quality thresholds
+const FLEX_QUALITY_THRESHOLD = 40;    // minAngle during curl must be < this (deeper = better)
+const EXTEND_QUALITY_THRESHOLD = 170; // maxAngle at bottom must be > this for full extension
+const ELBOW_DRIFT_THRESHOLD = 0.12;   // shoulder.z - elbow.z > this = elbow drifted forward
+const TORSO_LEAN_THRESHOLD = 0.05;    // change in (shoulder.z - hipMid.z) > this = torso lean
+
 interface ArmLandmarks {
   shoulder: { x: number; y: number; z: number; visibility?: number };
   elbow: { x: number; y: number; z: number; visibility?: number };
   wrist: { x: number; y: number; z: number; visibility?: number };
 }
 
+interface RepFormErrors {
+  incompleteFlexion: boolean;   // didn't curl high enough
+  incompleteExtension: boolean; // didn't extend low enough
+  elbowDrift: boolean;          // upper arm swung forward during curl
+  torsoLean: boolean;           // torso leaned back to assist the lift
+}
+
+interface RepAccumulator {
+  extensionAngle: number;     // max angle seen in the 'down' phase before this curl
+  minAngle: number;           // min angle reached during the 'up' (curl) phase
+  maxElbowDrift: number;      // max (shoulder.z − elbow.z) during the curl
+  baselineTorsoZ: number;     // shoulder.z − hipMid.z at curl start
+  maxTorsoLeanDelta: number;  // max deviation from baseline during curl
+}
+
+const newRepAcc = (): RepAccumulator => ({
+  extensionAngle: 0,
+  minAngle: Infinity,
+  maxElbowDrift: 0,
+  baselineTorsoZ: 0,
+  maxTorsoLeanDelta: 0,
+});
+
 const isArmVisible = (arm: ArmLandmarks): boolean =>
   (arm.shoulder.visibility ?? 0) > VISIBILITY_THRESHOLD &&
   (arm.elbow.visibility ?? 0) > VISIBILITY_THRESHOLD &&
   (arm.wrist.visibility ?? 0) > VISIBILITY_THRESHOLD;
+
+function FormCheck({ ok, good, bad }: { ok: boolean; good: string; bad: string }) {
+  return (
+    <div className={`flex items-center gap-2 text-sm font-medium ${ok ? 'text-emerald-400' : 'text-red-400'}`}>
+      <span className="w-4 text-center">{ok ? '✓' : '✗'}</span>
+      <span>{ok ? good : bad}</span>
+    </div>
+  );
+}
 
 export default function PoseDetector() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -44,6 +82,12 @@ export default function PoseDetector() {
   const leftRepCountRef = useRef<number>(0);
   const [rightReps, setRightReps] = useState(0);
   const [leftReps, setLeftReps] = useState(0);
+  const rightRepAccRef = useRef<RepAccumulator>(newRepAcc());
+  const leftRepAccRef = useRef<RepAccumulator>(newRepAcc());
+  const rightMaxExtensionRef = useRef<number>(0);
+  const leftMaxExtensionRef = useRef<number>(0);
+  const [rightFormErrors, setRightFormErrors] = useState<RepFormErrors | null>(null);
+  const [leftFormErrors, setLeftFormErrors] = useState<RepFormErrors | null>(null);
 
   useEffect(() => {
     console.log('[PoseDetector] Component mounted, initializing...');
@@ -285,22 +329,54 @@ export default function PoseDetector() {
 
        // console.log("leftArm", leftArm);
 
+        // Hip midpoint z — used for torso lean detection
+        const hipMidZ = ((landmarks[23]?.z ?? 0) + (landmarks[24]?.z ?? 0)) / 2;
+
         if (isArmVisible(rightArm)) {
           const rawAngle = calculateAngle(rightArm.shoulder, rightArm.elbow, rightArm.wrist);
           rightAngleBufferRef.current.push(rawAngle);
           if (rightAngleBufferRef.current.length > ANGLE_BUFFER_SIZE) rightAngleBufferRef.current.shift();
           const rightAngle = rightAngleBufferRef.current.reduce((a, b) => a + b, 0) / rightAngleBufferRef.current.length;
 
-          // State machine: down → up → down = 1 rep
-          if (rightCurlStateRef.current === 'down' && rightAngle < CURL_UP_THRESHOLD) {
-            rightCurlStateRef.current = 'up';
-          } else if (rightCurlStateRef.current === 'up' && rightAngle > CURL_DOWN_THRESHOLD) {
-            rightCurlStateRef.current = 'down';
-            rightRepCountRef.current += 1;
-            setRightReps(rightRepCountRef.current);
-            console.log('[Angle] Right elbow:', rightAngle.toFixed(1), '°');
-            console.log('[Rep] Right bicep curl rep:', rightRepCountRef.current);
+          const elbowDrift = rightArm.shoulder.z - rightArm.elbow.z;
+          const torsoZ     = rightArm.shoulder.z - hipMidZ;
 
+          if (rightCurlStateRef.current === 'down') {
+            // Track max extension while arm hangs
+            rightMaxExtensionRef.current = Math.max(rightMaxExtensionRef.current, rightAngle);
+            if (rightAngle < CURL_UP_THRESHOLD) {
+              // Transition down → up: arm starting to curl, snapshot baseline
+              rightCurlStateRef.current = 'up';
+              rightRepAccRef.current = {
+                ...newRepAcc(),
+                extensionAngle: rightMaxExtensionRef.current,
+                minAngle: rightAngle,
+                maxElbowDrift: elbowDrift,
+                baselineTorsoZ: torsoZ,
+              };
+              rightMaxExtensionRef.current = 0;
+            }
+          } else {
+            // In 'up' phase: accumulate form metrics every frame
+            const acc = rightRepAccRef.current;
+            acc.minAngle          = Math.min(acc.minAngle, rightAngle);
+            acc.maxElbowDrift     = Math.max(acc.maxElbowDrift, elbowDrift);
+            acc.maxTorsoLeanDelta = Math.max(acc.maxTorsoLeanDelta, Math.abs(torsoZ - acc.baselineTorsoZ));
+
+            if (rightAngle > CURL_DOWN_THRESHOLD) {
+              // Transition up → down: rep complete — evaluate form
+              rightCurlStateRef.current = 'down';
+              rightRepCountRef.current += 1;
+              setRightReps(rightRepCountRef.current);
+              const errors: RepFormErrors = {
+                incompleteFlexion:   acc.minAngle > FLEX_QUALITY_THRESHOLD,
+                incompleteExtension: acc.extensionAngle < EXTEND_QUALITY_THRESHOLD,
+                elbowDrift:          acc.maxElbowDrift > ELBOW_DRIFT_THRESHOLD,
+                torsoLean:           acc.maxTorsoLeanDelta > TORSO_LEAN_THRESHOLD,
+              };
+              setRightFormErrors(errors);
+              console.log('[Form] Right rep', rightRepCountRef.current, errors);
+            }
           }
 
           drawAngleLabel(ctx, rightArm.elbow, rightAngle, 'R');
@@ -312,15 +388,41 @@ export default function PoseDetector() {
           if (leftAngleBufferRef.current.length > ANGLE_BUFFER_SIZE) leftAngleBufferRef.current.shift();
           const leftAngle = leftAngleBufferRef.current.reduce((a, b) => a + b, 0) / leftAngleBufferRef.current.length;
 
-          // State machine: down → up → down = 1 rep
-          if (leftCurlStateRef.current === 'down' && leftAngle < CURL_UP_THRESHOLD) {
-            leftCurlStateRef.current = 'up';
-          } else if (leftCurlStateRef.current === 'up' && leftAngle > CURL_DOWN_THRESHOLD) {
-            leftCurlStateRef.current = 'down';
-            leftRepCountRef.current += 1;
-            setLeftReps(leftRepCountRef.current);
-            console.log('[Angle] Left elbow:', leftAngle.toFixed(1), '°');
-            console.log('[Rep] Left bicep curl rep:', leftRepCountRef.current);
+          const elbowDrift = leftArm.shoulder.z - leftArm.elbow.z;
+          const torsoZ     = leftArm.shoulder.z - hipMidZ;
+
+          if (leftCurlStateRef.current === 'down') {
+            leftMaxExtensionRef.current = Math.max(leftMaxExtensionRef.current, leftAngle);
+            if (leftAngle < CURL_UP_THRESHOLD) {
+              leftCurlStateRef.current = 'up';
+              leftRepAccRef.current = {
+                ...newRepAcc(),
+                extensionAngle: leftMaxExtensionRef.current,
+                minAngle: leftAngle,
+                maxElbowDrift: elbowDrift,
+                baselineTorsoZ: torsoZ,
+              };
+              leftMaxExtensionRef.current = 0;
+            }
+          } else {
+            const acc = leftRepAccRef.current;
+            acc.minAngle          = Math.min(acc.minAngle, leftAngle);
+            acc.maxElbowDrift     = Math.max(acc.maxElbowDrift, elbowDrift);
+            acc.maxTorsoLeanDelta = Math.max(acc.maxTorsoLeanDelta, Math.abs(torsoZ - acc.baselineTorsoZ));
+
+            if (leftAngle > CURL_DOWN_THRESHOLD) {
+              leftCurlStateRef.current = 'down';
+              leftRepCountRef.current += 1;
+              setLeftReps(leftRepCountRef.current);
+              const errors: RepFormErrors = {
+                incompleteFlexion:   acc.minAngle > FLEX_QUALITY_THRESHOLD,
+                incompleteExtension: acc.extensionAngle < EXTEND_QUALITY_THRESHOLD,
+                elbowDrift:          acc.maxElbowDrift > ELBOW_DRIFT_THRESHOLD,
+                torsoLean:           acc.maxTorsoLeanDelta > TORSO_LEAN_THRESHOLD,
+              };
+              setLeftFormErrors(errors);
+              console.log('[Form] Left rep', leftRepCountRef.current, errors);
+            }
           }
 
           drawAngleLabel(ctx, leftArm.elbow, leftAngle, 'L');
@@ -414,8 +516,14 @@ export default function PoseDetector() {
     leftCurlStateRef.current = 'down';
     rightRepCountRef.current = 0;
     leftRepCountRef.current = 0;
+    rightRepAccRef.current = newRepAcc();
+    leftRepAccRef.current = newRepAcc();
+    rightMaxExtensionRef.current = 0;
+    leftMaxExtensionRef.current = 0;
     setRightReps(0);
     setLeftReps(0);
+    setRightFormErrors(null);
+    setLeftFormErrors(null);
   };
 
   useEffect(() => {
@@ -455,6 +563,28 @@ export default function PoseDetector() {
               <span className="text-slate-500 text-xs">reps</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Form feedback — shown after each rep */}
+      {isDetecting && (rightFormErrors !== null || leftFormErrors !== null) && (
+        <div className="flex gap-6 justify-center flex-wrap">
+          {([
+            { label: 'Right Arm', errors: rightFormErrors },
+            { label: 'Left Arm',  errors: leftFormErrors  },
+          ] as const).filter(({ errors }) => errors !== null).map(({ label, errors }) => {
+            const e = errors!;
+            const allGood = !e.incompleteFlexion && !e.incompleteExtension && !e.elbowDrift && !e.torsoLean;
+            return (
+              <div key={label} className={`flex flex-col gap-2 px-6 py-4 bg-slate-800/80 rounded-2xl border min-w-[220px] ${allGood ? 'border-emerald-500/40' : 'border-red-500/40'}`}>
+                <span className="text-slate-300 text-sm font-semibold">{label} — Last Rep</span>
+                <FormCheck ok={!e.incompleteFlexion}   good="Full curl"        bad="Curl deeper (incomplete flexion)" />
+                <FormCheck ok={!e.incompleteExtension} good="Full extension"   bad="Extend fully at bottom" />
+                <FormCheck ok={!e.elbowDrift}          good="Elbow stable"     bad="Elbow drifted forward" />
+                <FormCheck ok={!e.torsoLean}           good="Torso straight"   bad="Torso leaning back" />
+              </div>
+            );
+          })}
         </div>
       )}
 
