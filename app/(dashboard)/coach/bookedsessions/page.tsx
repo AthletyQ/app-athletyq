@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import {
     Bell, User, Video, MapPin, Clock, ChevronLeft, ChevronRight,
-    Filter, MoreVertical, CheckCircle, XCircle, AlertCircle, CalendarCheck
+    Filter, Plus, MoreVertical, CheckCircle, XCircle, AlertCircle, CalendarCheck,
 } from 'lucide-react'
 import build from 'next/dist/build'
 
