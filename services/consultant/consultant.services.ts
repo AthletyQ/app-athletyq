@@ -19,10 +19,12 @@ export async function getAthletes() {
   return data || [];
 }
 
-export async function getTotalAthletes() {
+export async function getTotalAthletes(consultantId: string) {
   const { count, error } = await supabase
-    .from('bookings')
-    .select('*', { count: 'exact', head: true });
+    .from('sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('provider_id', consultantId)
+    .eq('provider_type', 'consultant');
 
   if (error) throw new Error(error.message);
   return count || 0;
