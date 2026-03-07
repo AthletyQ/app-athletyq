@@ -5,72 +5,51 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, MessageSquare, CalendarCheck,
 } from 'lucide-react'
-import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
-  SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton,
-  SidebarMenuItem, SidebarProvider,
-} from '@/components/ui/sidebar'
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/coach/dashboard' },
   { icon: Users, label: 'Clients', href: '/coach/client' },
-  { icon: MessageSquare, label: 'Chats', href: '/dashboard/coach/chat' },
-  { icon: CalendarCheck, label: 'Booked Sessions', href: '/dashboard/coach/bookedsessions' },
+  { icon: MessageSquare, label: 'Chats', href: '/coach/chat' },
+  { icon: CalendarCheck, label: 'Booked Sessions', href: '/coach/bookedsessions' },
 ]
 
 function CoachSidebar() {
   const pathname = usePathname()
 
   return (
-    <Sidebar collapsible="none" className="w-44 min-h-screen [background:hsl(221_83%_53%)]">
-      <SidebarHeader className="px-5 py-6">
-        <h1 className="text-white font-bold text-xl tracking-tight">AthliyQ</h1>
-      </SidebarHeader>
-
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {NAV_ITEMS.map(({ icon: Icon, label, href }) => {
-                const isActive = pathname === href
-
-                return (
-                  <SidebarMenuItem key={label}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      className={`
-                        flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-                        transition-colors w-full
-                        ${isActive
-                          ? 'bg-white !text-blue-600 hover:bg-white hover:!text-blue-600'
-                          : 'text-white/80 hover:bg-white/10 hover:text-white'
-                        }
-                      `}
-                    >
-                      <Link href={href}>
-                        <Icon className="w-4 h-4 flex-shrink-0" />
-                        <span>{label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
+    <aside className="w-44 h-screen sticky top-0 bg-blue-600 flex flex-col flex-shrink-0">
+      <div className="px-5 py-6">
+        <h1 className="text-white font-bold text-xl tracking-tight">AthletyQ</h1>
+      </div>
+      <nav className="flex flex-col gap-1 px-3 mt-1">
+        {NAV_ITEMS.map(({ icon: Icon, label, href }) => {
+          const isActive = pathname === href
+          return (
+            <Link
+              key={label}
+              href={href}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${isActive
+                ? 'bg-white text-blue-600'
+                : 'text-white/80 hover:bg-white/10 hover:text-white'
+                }`}
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {label}
+            </Link>
+          )
+        })}
+      </nav>
+    </aside>
   )
 }
 
 export default function CoachLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
+    <div className="flex h-screen w-full overflow-hidden">
       <CoachSidebar />
-      <SidebarInset>
+      <main className="flex-1 flex flex-col h-full overflow-hidden">
         {children}
-      </SidebarInset>
-    </SidebarProvider>
+      </main>
+    </div>
   )
 }

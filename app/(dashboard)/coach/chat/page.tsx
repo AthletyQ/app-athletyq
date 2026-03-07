@@ -6,7 +6,6 @@ import {
   Paperclip, Smile, Send,
 } from 'lucide-react'
 
-// ─── TYPES ───────────────────────────────────────────────────────────────────
 
 type Message = {
   id: number
@@ -29,7 +28,6 @@ type Conversation = {
   messages: Message[]
 }
 
-// ─── DATA ────────────────────────────────────────────────────────────────────
 
 const CONVERSATIONS: Conversation[] = [
   {
@@ -117,7 +115,6 @@ function Topbar() {
   )
 }
 
-// ─── CONVERSATION ITEM ───────────────────────────────────────────────────────
 
 function ConversationItem({
   conv, selected, onClick,
@@ -160,7 +157,6 @@ function ConversationItem({
   )
 }
 
-// ─── CHAT WINDOW ─────────────────────────────────────────────────────────────
 
 function ChatWindow({ conv }: { conv: Conversation }) {
   const [messages, setMessages] = useState<Message[]>(conv.messages)
@@ -291,11 +287,11 @@ export default function ChatsPage() {
 
   return (
     // ← No Sidebar or outer wrapper — layout.tsx provides that
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       <Topbar />
 
       <div className="flex flex-1 min-h-0">
-        {/* Conversations panel */}
+        
         <div className="w-56 flex flex-col bg-white border-r border-gray-100 flex-shrink-0">
           <div className="px-3 pt-4 pb-3">
             <div className="relative">
