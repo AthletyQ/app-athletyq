@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import {
     Bell, User, Video, MapPin, Clock, ChevronLeft, ChevronRight,
-    Filter, Plus, MoreVertical, CheckCircle, XCircle, AlertCircle,
+    Filter, Plus, MoreVertical, CheckCircle, XCircle, AlertCircle, CalendarCheck,
 } from 'lucide-react'
 
 
