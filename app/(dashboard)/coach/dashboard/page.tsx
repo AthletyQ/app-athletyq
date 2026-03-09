@@ -1,38 +1,20 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import {
   Users, Bell, User, Video, TrendingUp, DollarSign, Calendar,
   CheckCircle, MapPin,
 } from 'lucide-react'
+import {
+  getCoachProfile, getDashboardStats,
+  getDashboardSessions, getDashboardMessages,
+} from '@/services/api'
 
-const STATS = [
-  { label: 'Total Clients',       value: '24',    sub: '+3 this month',       subColor: 'text-blue-500',  icon: Users    },
-  { label: 'Sessions This Week',  value: '18',    sub: '3 today',             subColor: 'text-gray-400',  icon: Calendar },
-  { label: 'This Month',          value: '$3,240',sub: '+12% vs last month',  subColor: 'text-green-500', icon: DollarSign },
-  { label: 'Client Satisfaction', value: '4.9',   sub: 'Based on 155 reviews',subColor: 'text-gray-400',  icon: TrendingUp },
-]
-
-const SESSIONS = [
-  { name: 'Sarah Johnson',  type: 'Running',  mode: 'Online',    time: 'Today, 2:00 PM',      duration: '60 min' },
-  { name: 'Michael Chen',   type: 'Swimming', mode: 'In-person', time: 'Today, 4:30 PM',      duration: '45 min' },
-  { name: 'Emma Rodriguez', type: 'Cycling',  mode: 'Online',    time: 'Tomorrow, 10:00 AM',  duration: '90 min' },
-]
-
-const MESSAGES = [
-  { name: 'Alex Thompson',  time: '5 min ago',  text: "Thanks for the last session! When can we schedule the next one?", color: 'bg-purple-100 text-purple-700' },
-  { name: 'Jennifer Walsh', time: '23 min ago', text: 'I have a question about the training plan you sent...',           color: 'bg-pink-100 text-pink-700'   },
-  { name: 'David Kim',      time: '1 hour ago', text: 'Great progress on my sprint times! 🎉',                           color: 'bg-amber-100 text-amber-700' },
-]
-
-const ACTIVITIES = [
-  { name: 'Sarah Johnson', action: 'Completed workout: 10K Run', time: '2 hours ago' },
-]
+const COACH_USER_ID = '3c8b590f-b28d-4f3a-9451-002dc279fcb1' // replace with auth session later
 
 function initials(name: string) {
   return name.split(' ').map((n) => n[0]).join('')
 }
-
-// ─── TOPBAR ──────────────────────────────────────────────────────────────────
 
 function Topbar({ name }: { name: string }) {
   return (
@@ -54,29 +36,30 @@ function Topbar({ name }: { name: string }) {
   )
 }
 
-// ─── PROFILE CARD ─────────────────────────────────────────────────────────────
-
-function ProfileCard() {
+function ProfileCard({ profile }: { profile: any }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6 flex items-center gap-6">
-      {/* Avatar */}
       <div className="relative flex-shrink-0">
-        <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center">
-          <User className="w-9 h-9 text-gray-400" />
-        </div>
-        <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white" />
+        {profile.profileImageUrl ? (
+          <img src={profile.profileImageUrl} className="w-20 h-20 rounded-full object-cover" />
+        ) : (
+          <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center">
+            <span className="text-2xl font-bold text-gray-400">{profile.initials}</span>
+          </div>
+        )}
+        {profile.isAvailable && (
+          <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white" />
+        )}
       </div>
-
-      {/* Info */}
       <div className="flex-1 min-w-0">
-        <h2 className="text-2xl font-bold text-gray-900 mb-1">Coach Nathan</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">{profile.fullName}</h2>
         <div className="flex items-center gap-3 mb-3">
           <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-            <TrendingUp className="w-3 h-3" /> ATHLETICS
+            <TrendingUp className="w-3 h-3" /> {profile.sport?.toUpperCase()}
           </span>
-          <span className="flex items-center gap-1 text-xs text-gray-500">
-            <MapPin className="w-3 h-3" /> Sri Lanka
-          </span>
+          {profile.specialization && (
+            <span className="text-xs text-gray-500">{profile.specialization}</span>
+          )}
         </div>
         <div className="flex items-center gap-6">
           <div>
@@ -85,23 +68,34 @@ function ProfileCard() {
           </div>
           <div>
             <p className="text-xs text-gray-400 uppercase font-medium tracking-wide">Email</p>
-            <p className="text-sm font-semibold text-gray-900">coach.nathan@athletyq.com</p>
+            <p className="text-sm font-semibold text-gray-900">{profile.email}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 uppercase font-medium tracking-wide">Experience</p>
+            <p className="text-sm font-semibold text-gray-900">{profile.yearsOfExperience} yrs</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 uppercase font-medium tracking-wide">Rating</p>
+            <p className="text-sm font-semibold text-gray-900">⭐ {profile.rating}</p>
           </div>
         </div>
       </div>
-
-      {/* Coach ID badge */}
       <div className="flex-shrink-0 bg-gray-900 text-white rounded-xl px-4 py-3 text-right">
         <p className="text-xs text-gray-400 font-medium mb-0.5">COACH ID:</p>
-        <p className="text-sm font-bold tracking-widest">NATH2026</p>
+        <p className="text-sm font-bold tracking-widest">{profile.id?.slice(0, 8).toUpperCase()}</p>
+        <p className="text-xs text-gray-400 mt-2">{profile.totalSessions} sessions</p>
       </div>
     </div>
   )
 }
 
-// ─── STAT CARDS ───────────────────────────────────────────────────────────────
-
-function StatCards() {
+function StatCards({ stats }: { stats: any }) {
+  const STATS = [
+    { label: 'Total Clients',       value: String(stats?.totalClients ?? '—'),     sub: '+3 this month',       subColor: 'text-blue-500',  icon: Users      },
+    { label: 'Sessions This Week',  value: String(stats?.sessionsThisWeek ?? '—'), sub: '3 today',             subColor: 'text-gray-400',  icon: Calendar   },
+    { label: 'This Month',          value: stats?.monthlyEarnings ?? '—',          sub: '+12% vs last month',  subColor: 'text-green-500', icon: DollarSign },
+    { label: 'Client Satisfaction', value: stats?.clientSatisfaction ?? '—',       sub: 'Based on reviews',    subColor: 'text-gray-400',  icon: TrendingUp },
+  ]
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {STATS.map(({ label, value, sub, subColor, icon: Icon }) => (
@@ -118,18 +112,16 @@ function StatCards() {
   )
 }
 
-// ─── UPCOMING SESSIONS ────────────────────────────────────────────────────────
-
-function UpcomingSessions() {
+function UpcomingSessions({ sessions }: { sessions: any[] }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-bold text-gray-900 text-base">Upcoming Sessions</h2>
-        <button className="text-sm text-blue-600 font-medium hover:text-blue-700 transition-colors">View All</button>
+        <button className="text-sm text-blue-600 font-medium hover:text-blue-700">View All</button>
       </div>
       <div className="space-y-3">
-        {SESSIONS.map((s) => (
-          <div key={s.name} className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 hover:border-blue-100 hover:bg-blue-50/30 transition-colors">
+        {sessions.map((s) => (
+          <div key={s.id} className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 hover:border-blue-100 hover:bg-blue-50/30 transition-colors">
             <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
               <Video className="w-4 h-4 text-blue-400" />
             </div>
@@ -141,7 +133,7 @@ function UpcomingSessions() {
               <p className="text-sm text-gray-700 font-medium">{s.time}</p>
               <p className="text-xs text-gray-400">{s.duration}</p>
             </div>
-            <button className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors flex-shrink-0">
+            <button className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0">
               Join
             </button>
           </div>
@@ -151,19 +143,17 @@ function UpcomingSessions() {
   )
 }
 
-// ─── EARNINGS SUMMARY ─────────────────────────────────────────────────────────
-
-function EarningsSummary() {
+function EarningsSummary({ earnings }: { earnings: string }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-bold text-gray-900 text-base">Earnings Summary</h2>
-        <button className="text-sm text-blue-600 font-medium hover:text-blue-700 transition-colors">Details</button>
+        <button className="text-sm text-blue-600 font-medium">Details</button>
       </div>
       <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
         <div>
           <p className="text-xs text-gray-500 mb-1">Total Earnings (This Month)</p>
-          <p className="text-2xl font-bold text-gray-900">$3,240</p>
+          <p className="text-2xl font-bold text-gray-900">{earnings}</p>
         </div>
         <TrendingUp className="w-8 h-8 text-green-500" />
       </div>
@@ -171,18 +161,18 @@ function EarningsSummary() {
   )
 }
 
-// ─── NEW MESSAGES ─────────────────────────────────────────────────────────────
-
-function NewMessages() {
+function NewMessages({ messages }: { messages: any[] }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-bold text-gray-900 text-base">New Messages</h2>
-        <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">2</span>
+        <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">
+          {messages.length}
+        </span>
       </div>
       <div className="space-y-3 mb-4">
-        {MESSAGES.map(({ name, time, text, color }) => (
-          <div key={name} className="flex gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
+        {messages.map(({ id, name, time, text, color }) => (
+          <div key={id} className="flex gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer">
             <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${color}`}>
               {initials(name)}
             </div>
@@ -196,57 +186,78 @@ function NewMessages() {
           </div>
         ))}
       </div>
-      <button className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors">
+      <button className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 font-medium hover:bg-gray-50">
         View All Messages
       </button>
     </div>
   )
 }
 
-// ─── ATHLETE ACTIVITY ─────────────────────────────────────────────────────────
-
 function AthleteActivity() {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
       <h2 className="font-bold text-gray-900 text-base mb-4">Athlete Activity</h2>
-      <div className="space-y-3">
-        {ACTIVITIES.map(({ name, action, time }) => (
-          <div key={name} className="flex gap-3 items-start">
-            <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{name}</p>
-              <p className="text-xs text-gray-500">{action}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{time}</p>
-            </div>
-          </div>
-        ))}
+      <div className="flex flex-col items-center justify-center h-20 text-gray-300 text-xs">
+        No recent activity
       </div>
     </div>
   )
 }
 
-// ─── PAGE ─────────────────────────────────────────────────────────────────────
-
 export default function DashboardPage() {
+  const [profile,  setProfile]  = useState<any>(null)
+  const [stats,    setStats]    = useState<any>(null)
+  const [sessions, setSessions] = useState<any[]>([])
+  const [messages, setMessages] = useState<any[]>([])
+  const [loading,  setLoading]  = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const profileData = await getCoachProfile(COACH_USER_ID)
+        const [statsData, sessionsData, messagesData] = await Promise.all([
+          getDashboardStats(profileData.id),
+          getDashboardSessions(profileData.id),
+          getDashboardMessages(profileData.id),
+        ])
+        setProfile(profileData)
+        setStats(statsData)
+        setSessions(sessionsData)
+        setMessages(messagesData)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-full bg-gray-50">
+      <p className="text-sm text-gray-400">Loading...</p>
+    </div>
+  )
+
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
-      <Topbar name="Coach Nathan" />
+      <Topbar name={profile?.fullName ?? 'Coach'} />
       <main className="flex-1 p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Welcome back, <span className="font-semibold text-gray-700">Coach Nathan</span>! Here's what's happening with your coaching today.
+            Welcome <span className="font-semibold text-gray-700">{profile?.fullName}</span>! Here's what's happening with your coaching today.
           </p>
         </div>
-        <ProfileCard />
-        <StatCards />
+        <ProfileCard profile={profile} />
+        <StatCards stats={stats} />
         <div className="grid grid-cols-3 gap-5">
           <div className="col-span-2">
-            <UpcomingSessions />
-            <EarningsSummary />
+            <UpcomingSessions sessions={sessions} />
+            <EarningsSummary earnings={stats?.monthlyEarnings ?? '—'} />
           </div>
           <div className="col-span-1">
-            <NewMessages />
+            <NewMessages messages={messages} />
             <AthleteActivity />
           </div>
         </div>
