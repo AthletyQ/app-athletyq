@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -14,16 +19,27 @@ export async function GET(request: NextRequest) {
 
   const [{ count: totalClients }, { count: sessionsThisWeek }, { data: payments }] =
     await Promise.all([
-      supabase.from('sessions').select('athlete_id', { count: 'exact', head: true }).eq('coach_id', coachId),
-      supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('coach_id', coachId).gte('scheduled_at', weekStart.toISOString()),
-      supabase.from('payments').select('amount').eq('coach_id', coachId).gte('created_at', monthStart.toISOString()),
+      supabase
+        .from('sessions')
+        .select('athlete_id', { count: 'exact', head: true })
+        .eq('provider_id', coachId),           // ✅ was coach_id
+      supabase
+        .from('sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('provider_id', coachId)            // ✅ was coach_id
+        .gte('scheduled_at', weekStart.toISOString()),
+      supabase
+        .from('payments')
+        .select('amount')
+        .eq('provider_id', coachId)            // ✅ was coach_id — check your payments table
+        .gte('created_at', monthStart.toISOString()),
     ])
 
   const monthlyEarnings = (payments ?? []).reduce((sum: number, p: any) => sum + (p.amount ?? 0), 0)
 
   return NextResponse.json({
-    totalClients:       totalClients ?? 0,
-    sessionsThisWeek:   sessionsThisWeek ?? 0,
+    totalClients:       totalClients      ?? 0,
+    sessionsThisWeek:   sessionsThisWeek  ?? 0,
     monthlyEarnings:    `$${monthlyEarnings.toLocaleString()}`,
     clientSatisfaction: '4.9',
   })
