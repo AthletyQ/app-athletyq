@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -16,20 +21,28 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from('sessions')
     .select(`
-      athlete_id, status, scheduled_at,
-      athletes (
-        user_id, skill_level,
-        profiles!athletes_user_id_fkey ( first_name, last_name, created_at ),
-        sports ( name )
+      athlete_id,
+      status,
+      scheduled_at,
+      profiles!sessions_athlete_id_fkey (
+        first_name,
+        last_name,
+        created_at
+      ),
+      sports!sessions_sport_id_fkey (
+        name
       )
     `)
-    .eq('coach_id', coachId)
+    .eq('provider_id', coachId)              // ✅ was coach_id
     .eq('status', status === 'pending' ? 'pending' : 'confirmed')
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Clients error:', error.message)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 
   // deduplicate by athlete_id
-  const seen  = new Set()
+  const seen = new Set()
   const clients = (data ?? [])
     .filter((row: any) => {
       if (seen.has(row.athlete_id)) return false
@@ -37,16 +50,17 @@ export async function GET(request: NextRequest) {
       return true
     })
     .map((row: any, i: number) => {
-      const athlete   = row.athletes
-      const profile   = athlete?.profiles
+      const profile   = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
+      const sport     = Array.isArray(row.sports)   ? row.sports[0]   : row.sports
       const firstName = profile?.first_name ?? ''
       const lastName  = profile?.last_name  ?? ''
+
       return {
         id:            row.athlete_id,
-        initials:      `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase(),
-        name:          `${firstName} ${lastName}`.trim(),
-        sport:         athlete?.sports?.name ?? 'General',
-        level:         athlete?.skill_level  ?? 'Beginner',
+        initials:      `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '??',
+        name:          `${firstName} ${lastName}`.trim() || 'Unknown',
+        sport:         sport?.name     ?? 'General',
+        level:         'Beginner',               // athletes table not joined — add if needed
         totalSessions: 0,
         upcoming:      0,
         progress:      0,
