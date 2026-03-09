@@ -4,10 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
     LayoutDashboard,
+    Calendar,
     Users,
-    UserSearch,
     MessageSquare
 } from "lucide-react";
+
 import {
     Sidebar as BaseSidebar,
     SidebarContent,
@@ -22,8 +23,8 @@ import {
 
 const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/consultant/dashboard" },
-    { icon: Users, label: "Athletes", href: "/consultant/coaches" },
-    { icon: UserSearch, label: "Coaches", href: "/consultant/consultants" },
+    { icon: Users, label: "Athletes", href: "/consultant/athletes" },
+    { icon: Calendar, label: "Booked Sessions", href: "/consultant/bookedsession" },
     { icon: MessageSquare, label: "Chats", href: "/consultant/chats" },
 ];
 
@@ -34,7 +35,7 @@ export function Sidebar({ ...props }: React.ComponentProps<typeof BaseSidebar>) 
         <BaseSidebar className="border-r-0" {...props}>
             <SidebarHeader className="h-20 flex items-center justify-start px-6">
                 <h1 className="text-2xl font-bold tracking-tight text-white hover:opacity-90 transition-opacity">
-                    <Link href="/athlete/dashboard">AthletyQ</Link>
+                    <Link href="/consultant/dashboard">AthletyQ</Link>
                 </h1>
             </SidebarHeader>
             <SidebarContent className="px-2">
