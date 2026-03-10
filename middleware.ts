@@ -3,22 +3,23 @@ import type { NextRequest } from "next/server";
 import { createMiddlewareClient } from "@/lib/supabase/middleware-client";
 import type { UserRole } from "@/services/auth/auth.service";
 
-/* ─── Route configuration ─────────────────────────────────────────────────── */
 
 /** Public routes that never require authentication. */
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/confirm"];
 
 /**
- * Maps a URL path prefix to the role that is allowed to access it.
- * The order matters — more specific prefixes should come first.
+ * API route prefixes that are always public (they handle their own auth).
+ * The middleware passes these through without any checks.
  */
+const PUBLIC_API_PREFIXES = ["/api/auth/"];
+
+
 const ROLE_ROUTE_MAP: Array<{ prefix: string; role: UserRole }> = [
   { prefix: "/athlete", role: "athlete" },
   { prefix: "/coach", role: "coach" },
   { prefix: "/consultant", role: "wellness_professional" },
 ];
 
-/* ─── Helpers ─────────────────────────────────────────────────────────────── */
 
 function defaultDashboard(role: UserRole | undefined): string {
   switch (role) {
@@ -44,25 +45,34 @@ function isPublicRoute(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // ── 1. Always allow public API routes through immediately ─────────────────
+  if (PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return NextResponse.next({ request });
+  }
+
   // Start with a passthrough response so cookies can be forwarded.
   const response = NextResponse.next({ request });
   const supabase = createMiddlewareClient(request, response);
 
-  // Always call getUser() — it refreshes expired tokens and keeps cookies
-  // up to date. IMPORTANT: use getUser(), not getSession(), to avoid trusting
-  // an unverified client-side session.
+  console.log("client ", supabase);
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  console.log("user", user);
+
   const role = user?.user_metadata?.role as UserRole | undefined;
 
-  // ── 1. Allow static assets and Next.js internals through immediately ──────
-  // (handled by the `matcher` in config below — middleware won't even run)
+  console.log("role", role);
 
   // ── 2. Unauthenticated user ───────────────────────────────────────────────
   if (!user) {
     if (!isPublicRoute(pathname)) {
+      // API routes should get a 401 JSON response, not an HTML redirect.
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirectedFrom", pathname);
       return NextResponse.redirect(loginUrl);
@@ -70,21 +80,21 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // ── 3. Authenticated user hitting an auth/public route ───────────────────
-  // Redirect them straight to their dashboard instead of showing login/signup.
   if (isPublicRoute(pathname)) {
     return NextResponse.redirect(
       new URL(defaultDashboard(role), request.url),
     );
   }
 
-  // ── 4. Role-based access control ─────────────────────────────────────────
   const matchedRoute = ROLE_ROUTE_MAP.find(({ prefix }) =>
     pathname.startsWith(prefix),
   );
 
   if (matchedRoute && role !== matchedRoute.role) {
     // User is authenticated but is trying to access another role's area.
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     return NextResponse.redirect(
       new URL(defaultDashboard(role), request.url),
     );
@@ -93,7 +103,6 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
-/* ─── Matcher ────────────────────────────────────────────────────────────── */
 
 export const config = {
   matcher: [

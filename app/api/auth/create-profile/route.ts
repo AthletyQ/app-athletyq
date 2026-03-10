@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-/**
- * POST /api/auth/create-profile
- *
- * Called from the client-side /confirm page after the magic-link is verified.
- * Inserts into `profiles` table + the actor-specific table
- * (`athletes`, `coaches`, or `consultants`).
- */
+
 export async function POST(request: NextRequest) {
   try {
     const supabaseAdmin = getSupabaseAdmin();

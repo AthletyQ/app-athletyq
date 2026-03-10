@@ -17,6 +17,7 @@ function roleToDashboardPath(role: string | null | undefined) {
 }
 
 export async function POST(request: NextRequest) {
+  console.log("login route");
   try {
     const body = await request.json();
     const { email, password } = body;
