@@ -2,7 +2,7 @@ import type { AuthError, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 
 /* ─── Types ─── */
-export type UserRole = "athlete" | "coach" | "wellness_professional";
+export type UserRole = "athlete" | "coach" | "consultant";
 
 export interface QualificationInput {
   title: string;
@@ -32,7 +32,7 @@ export type SignUpInput = {
   yearsOfExperience?: number;
   coachCertifications?: string[];
 
-  /* Consultant (wellness_professional) specific */
+  /* Consultant specific */
   consultantSpecialty?: string;
   consultantCertifications?: string[];
 };
@@ -64,14 +64,6 @@ function toServiceError(error: AuthError | Error): AuthServiceResult<never> {
   };
 }
 
-/**
- * Handles the signup flow:
- * 1. Creates the auth user in Supabase Auth
- * 2. Stores ALL signup data in user_metadata so it survives email confirmation
- *
- * Profile + actor-specific record are created AFTER email confirmation
- * via the /api/auth/create-profile handler.
- */
 export async function signUp(
   input: SignUpInput,
 ): Promise<AuthServiceResult<SignUpResult>> {
@@ -87,8 +79,7 @@ export async function signUp(
 
   const { email, password, emailRedirectTo, ...metadata } = input;
 
-  // Store ALL form data in user_metadata — it will be available after
-  // the user clicks the magic-link and we call create-profile.
+  // Step 1 — Create auth user
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
@@ -107,6 +98,53 @@ export async function signUp(
       ok: false,
       error: { message: "Failed to create user account." },
     };
+  }
+
+  // Step 2 — Insert into profiles table immediately
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .insert({
+      id: authData.user.id,
+      email,
+      role: input.role,
+      first_name: input.firstName,
+      last_name: input.lastName,
+      phone_number: input.phone || null,
+    });
+
+  if (profileError && profileError.code !== '23505') {
+    // 23505 = duplicate key, means profile already exists — safe to ignore
+    console.error('Profile insert error:', profileError);
+  }
+
+  // Step 3 — Insert into role specific table
+  if (input.role === 'consultant') {
+    const { error } = await supabase.from('consultants').insert({
+      user_id: authData.user.id,
+      specialty: input.consultantSpecialty || null,
+      certifications: input.consultantCertifications ?? [],
+    });
+    if (error) console.error('Consultant insert error:', error);
+
+  } else if (input.role === 'athlete') {
+    const { error } = await supabase.from('athletes').insert({
+      user_id: authData.user.id,
+      age: input.age ? Number(input.age) : null,
+      height_cm: input.heightCm ? Number(input.heightCm) : null,
+      weight_kg: input.weightKg ? Number(input.weightKg) : null,
+      preferred_sport_id: input.preferredSportId ? Number(input.preferredSportId) : null,
+    });
+    if (error) console.error('Athlete insert error:', error);
+
+  } else if (input.role === 'coach') {
+    const { error } = await supabase.from('coaches').insert({
+      user_id: authData.user.id,
+      coaching_sport_id: input.coachingSportId ? Number(input.coachingSportId) : null,
+      specialization: input.specialization || null,
+      years_of_experience: input.yearsOfExperience ? Number(input.yearsOfExperience) : null,
+      certifications: input.coachCertifications ?? [],
+    });
+    if (error) console.error('Coach insert error:', error);
   }
 
   return {

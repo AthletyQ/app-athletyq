@@ -7,8 +7,8 @@ function roleToDashboardPath(role: string | null | undefined) {
       return "/athlete/dashboard";
     case "coach":
       return "/coach/dashboard";
-    // "consultant" UI is stored as wellness_professional in auth/profile
-    case "wellness_professional":
+    // "consultant" UI is stored as consultant in auth/profile
+    case "consultant":
     case "consultant":
       return "/consultant/dashboard";
     default:

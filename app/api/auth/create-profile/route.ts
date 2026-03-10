@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validRoles = ["athlete", "coach", "wellness_professional"];
+    const validRoles = ["athlete", "coach", "consultant"];
     if (!validRoles.includes(role)) {
       return NextResponse.json(
         { ok: false, error: { message: `Invalid role: ${role} ` } },
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
         certifications: meta.coachCertifications ?? [],
       });
       actorError = error;
-    } else if (role === "wellness_professional") {
+    } else if (role === "consultant") {
       const { error } = await supabaseAdmin.from("consultants").insert({
         user_id: user.id,
         specialty: meta.consultantSpecialty || null,

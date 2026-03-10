@@ -2,7 +2,7 @@
 // DATABASE TYPES — mirrors your exact Supabase schema
 // ============================================================
 
-export type UserRole = "athlete" | "coach" | "wellness_professional";
+export type UserRole = "athlete" | "coach" | "consultant";
 
 // ── profiles ────────────────────────────────────────────────
 export interface Profile {
@@ -53,7 +53,7 @@ export interface Coach {
   created_at: string;
 }
 
-// ── wellness_professionals ───────────────────────────────────
+// ── consultants ───────────────────────────────────
 export interface WellnessProfessional {
   user_id: string;
   specialty: string | null;

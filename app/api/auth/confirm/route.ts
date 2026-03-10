@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
           years_of_experience: meta.yearsOfExperience ? Number(meta.yearsOfExperience) : null,
           certifications: meta.coachCertifications ?? [],
         });
-      } else if (meta.role === "wellness_professional") {
+      } else if (meta.role === "consultant") {
         await supabaseAdmin.from("consultants").insert({
           user_id: data.user.id,
           specialty: meta.consultantSpecialty || null,

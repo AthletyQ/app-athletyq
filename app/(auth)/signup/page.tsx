@@ -11,7 +11,7 @@ import {
 import { supabase } from "@/lib/supabase/client";
 
 
-type Role = "athlete" | "coach" | "wellness_professional" | null;
+type Role = "athlete" | "coach" | "consultant" | null;
 type WellnessType = "sport_doctor" | "physiotherapist" | "nutritionist" | "";
 
 interface Qualification { title: string; institution: string; year: string; file: File | null; }
@@ -57,7 +57,7 @@ const ROLES = [
     icon: Users,
   },
   {
-    id: "wellness_professional" as Role,
+    id: "consultant" as Role,
     eyebrow: "SUPPORTING PERFORMANCE",
     title: "Consultant",
     desc: "You support athletes as a sport doctor, physiotherapist, or nutritionist.",
@@ -238,7 +238,7 @@ export default function SignupPage() {
             onContinue={() => setStep(3)}
           />
         )}
-        {step === 2 && selectedRole === "wellness_professional" && (
+        {step === 2 && selectedRole === "consultant" && (
           <WellnessStep2
             form={wellnessForm}
             onChange={setWellnessForm}
@@ -664,7 +664,7 @@ function ReviewStep({ role, form, sports, isSubmitting, error, onBack, onSubmit 
           </>
         )}
 
-        {role === "wellness_professional" && (
+        {role === "consultant" && (
           <>
             <SectionLabel>Consultant Details</SectionLabel>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm mb-6">

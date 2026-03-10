@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Validate role ──
-    const validRoles: UserRole[] = ["athlete", "coach", "wellness_professional"];
+    const validRoles: UserRole[] = ["athlete", "coach", "consultant"];
     if (!validRoles.includes(role as UserRole)) {
       return NextResponse.json(
         {
