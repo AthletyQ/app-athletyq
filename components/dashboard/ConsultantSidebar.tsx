@@ -25,7 +25,7 @@ const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/consultant/dashboard" },
     { icon: Users, label: "Athletes", href: "/consultant/athletes" },
     { icon: Calendar, label: "Booked Sessions", href: "/consultant/bookedsession" },
-    { icon: MessageSquare, label: "Chats", href: "/consultant/chats" },
+    { icon: MessageSquare, label: "Chats", href: "/consultant/chat" },
 ];
 
 export function Sidebar({ ...props }: React.ComponentProps<typeof BaseSidebar>) {
