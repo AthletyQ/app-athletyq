@@ -1,23 +1,29 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import {
   Bell, User, Search, Phone, Video, Star, MoreVertical,
   Paperclip, Smile, Send, PhoneIncoming, PhoneMissed, PhoneOutgoing
 } from 'lucide-react'
-import { getConversations, getMessages, sendMessage, getCallRecords } from '@/services/api'
+import { getCoachProfile, getConversations, getMessages, sendMessage, getCallRecords } from '@/services/api'
 
-const COACH_USER_ID = 'your-user-id-here'
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+)
 
-type Message     = { id: number; text: string; time: string; fromMe: boolean }
-type Conversation = { id: string; initials: string; name: string; preview: string; time: string; role: string; roleColor: string; online: boolean; unread?: number; color: string; messages: Message[] }
-type CallRecord  = { id: number; initials: string; name: string; color: string; type: 'incoming' | 'outgoing' | 'missed'; duration: string; time: string; date: string }
+type Message      = { id: string | number; text: string; time: string; fromMe: boolean; senderId?: string }
+type Conversation = { id: string; partnerId: string; initials: string; name: string; preview: string; time: string; role: string; roleColor: string; online: boolean; unread?: number; color: string; messages: Message[] }
+type CallRecord   = { id: number; initials: string; name: string; color: string; type: 'incoming' | 'outgoing' | 'missed'; duration: string; time: string; date: string }
 
 const CALL_ICON = {
   incoming: { icon: PhoneIncoming, color: 'text-green-500' },
   outgoing: { icon: PhoneOutgoing, color: 'text-blue-500'  },
   missed:   { icon: PhoneMissed,   color: 'text-red-500'   },
 }
+
+// ─── TOPBAR ──────────────────────────────────────────────────────────────────
 
 function Topbar() {
   return (
@@ -33,12 +39,27 @@ function Topbar() {
   )
 }
 
-function ConversationItem({ conv, selected, onClick }: { conv: Conversation; selected: boolean; onClick: () => void }) {
+// ─── CONVERSATION ITEM ────────────────────────────────────────────────────────
+
+function ConversationItem({ conv, selected, onClick }: {
+  conv:     Conversation
+  selected: boolean
+  onClick:  () => void
+}) {
   return (
-    <button onClick={onClick} className={`w-full flex items-start gap-3 px-4 py-3 transition-colors text-left ${selected ? 'bg-blue-50 border-r-2 border-blue-600' : 'hover:bg-gray-50'}`}>
+    <button
+      onClick={onClick}
+      className={`w-full flex items-start gap-3 px-4 py-3 transition-colors text-left ${
+        selected ? 'bg-blue-50 border-r-2 border-blue-600' : 'hover:bg-gray-50'
+      }`}
+    >
       <div className="relative flex-shrink-0">
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${conv.color}`}>{conv.initials}</div>
-        {conv.online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />}
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${conv.color}`}>
+          {conv.initials}
+        </div>
+        {conv.online && (
+          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-0.5">
@@ -46,26 +67,45 @@ function ConversationItem({ conv, selected, onClick }: { conv: Conversation; sel
           <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{conv.time}</span>
         </div>
         <p className="text-xs text-gray-500 truncate mb-1.5">{conv.preview}</p>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${conv.roleColor}`}>{conv.role}</span>
+        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${conv.roleColor}`}>
+          {conv.role}
+        </span>
       </div>
       {conv.unread ? (
-        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold mt-1">{conv.unread}</span>
+        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold mt-1">
+          {conv.unread}
+        </span>
       ) : null}
     </button>
   )
 }
 
-function CallItem({ call, onClick, selected }: { call: CallRecord; onClick: () => void; selected: boolean }) {
+// ─── CALL ITEM ────────────────────────────────────────────────────────────────
+
+function CallItem({ call, onClick, selected }: {
+  call:     CallRecord
+  onClick:  () => void
+  selected: boolean
+}) {
   const { icon: CallIcon, color } = CALL_ICON[call.type]
   return (
-    <div onClick={onClick} className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${selected ? 'bg-blue-50 border-r-2 border-blue-600' : 'hover:bg-gray-50'}`}>
-      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${call.color}`}>{call.initials}</div>
+    <div
+      onClick={onClick}
+      className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
+        selected ? 'bg-blue-50 border-r-2 border-blue-600' : 'hover:bg-gray-50'
+      }`}
+    >
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${call.color}`}>
+        {call.initials}
+      </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-gray-900">{call.name}</p>
         <div className="flex items-center gap-1 mt-0.5">
           <CallIcon className={`w-3 h-3 ${color}`} />
           <span className={`text-xs font-medium capitalize ${color}`}>{call.type}</span>
-          {call.duration !== '—' && <span className="text-xs text-gray-400">· {call.duration}</span>}
+          {call.duration !== '—' && (
+            <span className="text-xs text-gray-400">· {call.duration}</span>
+          )}
         </div>
       </div>
       <div className="text-right flex-shrink-0">
@@ -76,27 +116,49 @@ function CallItem({ call, onClick, selected }: { call: CallRecord; onClick: () =
   )
 }
 
-function CallsPanel({ calls, onSelect, selectedId }: { calls: CallRecord[]; onSelect: (c: CallRecord) => void; selectedId?: number }) {
+// ─── CALLS PANEL ─────────────────────────────────────────────────────────────
+
+function CallsPanel({ calls, onSelect, selectedId }: {
+  calls:      CallRecord[]
+  onSelect:   (c: CallRecord) => void
+  selectedId?: number
+}) {
+  if (calls.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-sm text-gray-400">No call history</p>
+      </div>
+    )
+  }
+
   const grouped = calls.reduce<Record<string, CallRecord[]>>((acc, call) => {
     if (!acc[call.date]) acc[call.date] = []
     acc[call.date].push(call)
     return acc
   }, {})
+
   return (
     <div className="flex-1 overflow-y-auto">
-      {Object.entries(grouped).map(([date, calls]) => (
+      {Object.entries(grouped).map(([date, dateCalls]) => (
         <div key={date}>
           <div className="px-4 py-2 bg-gray-50 border-y border-gray-100">
             <p className="text-xs font-semibold text-gray-400">{date}</p>
           </div>
-          {calls.map(call => (
-            <CallItem key={call.id} call={call} onClick={() => onSelect(call)} selected={call.id === selectedId} />
+          {dateCalls.map(call => (
+            <CallItem
+              key={call.id}
+              call={call}
+              onClick={() => onSelect(call)}
+              selected={call.id === selectedId}
+            />
           ))}
         </div>
       ))}
     </div>
   )
 }
+
+// ─── CALL DETAIL PANEL ────────────────────────────────────────────────────────
 
 function CallDetailPanel({ call }: { call: CallRecord }) {
   const { icon: CallIcon, color } = CALL_ICON[call.type]
@@ -106,7 +168,9 @@ function CallDetailPanel({ call }: { call: CallRecord }) {
         <p className="text-sm font-bold text-gray-900">Call Details</p>
       </div>
       <div className="flex flex-col items-center justify-center flex-1 gap-6 px-8">
-        <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold ${call.color}`}>{call.initials}</div>
+        <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold ${call.color}`}>
+          {call.initials}
+        </div>
         <div className="text-center">
           <p className="text-xl font-bold text-gray-900 mb-1">{call.name}</p>
           <div className="flex items-center justify-center gap-1.5">
@@ -115,7 +179,11 @@ function CallDetailPanel({ call }: { call: CallRecord }) {
           </div>
         </div>
         <div className="grid grid-cols-3 gap-4 w-full max-w-sm">
-          {[{ label: 'Date', value: call.date }, { label: 'Time', value: call.time }, { label: 'Duration', value: call.duration }].map(({ label, value }) => (
+          {[
+            { label: 'Date',     value: call.date     },
+            { label: 'Time',     value: call.time     },
+            { label: 'Duration', value: call.duration },
+          ].map(({ label, value }) => (
             <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
               <p className="text-xs text-gray-400 font-medium mb-1">{label}</p>
               <p className="text-sm font-bold text-gray-900">{value}</p>
@@ -135,55 +203,90 @@ function CallDetailPanel({ call }: { call: CallRecord }) {
   )
 }
 
+// ─── CHAT WINDOW ─────────────────────────────────────────────────────────────
+
 function ChatWindow({ conv, coachId }: { conv: Conversation; coachId: string }) {
-  const [messages, setMessages] = useState<Message[]>(conv.messages)
+  const [messages, setMessages] = useState<Message[]>([])
   const [input,    setInput]    = useState('')
   const [loading,  setLoading]  = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (!conv.id || !coachId) return
     setLoading(true)
-    getMessages(conv.id)
-      .then(setMessages)
+    setMessages([])
+
+    getMessages(conv.id, coachId)
+      .then((res: any) => {
+        // API returns { messages: [...] }
+        const msgs = res?.messages ?? res ?? []
+        // set fromMe based on coachId
+        setMessages(msgs.map((m: any) => ({
+          ...m,
+          fromMe: m.senderId === coachId || m.sender_id === coachId,
+        })))
+      })
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [conv.id])
+  }, [conv.id, coachId])
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   async function handleSend() {
     const text = input.trim()
     if (!text) return
     setInput('')
+
+    // optimistic update
+    const optimistic: Message = {
+      id:     `temp-${Date.now()}`,
+      text,
+      time:   new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      fromMe: true,
+    }
+    setMessages(prev => [...prev, optimistic])
+
     try {
-      const newMsg = await sendMessage(conv.id, text, coachId)
-      setMessages(prev => [...prev, newMsg])
-    } catch {
-      // optimistic fallback
-      setMessages(prev => [...prev, {
-        id: prev.length + 1, text,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        fromMe: true,
-      }])
+      const res = await sendMessage(conv.id, text, coachId)
+      if (res?.message) {
+        // replace optimistic with real message
+        setMessages(prev => prev.map(m =>
+          m.id === optimistic.id ? { ...res.message, fromMe: true } : m
+        ))
+      }
+    } catch (err) {
+      console.error('Send failed:', err)
     }
   }
 
   function handleKey(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
   }
 
   return (
     <div className="flex flex-col flex-1 min-w-0 bg-gray-50">
+      {/* Chat Header */}
       <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${conv.color}`}>{conv.initials}</div>
-            {conv.online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />}
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${conv.color}`}>
+              {conv.initials}
+            </div>
+            {conv.online && (
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-bold text-gray-900">{conv.name}</p>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${conv.roleColor}`}>{conv.role}</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${conv.roleColor}`}>
+                {conv.role}
+              </span>
             </div>
             <p className={`text-xs font-medium ${conv.online ? 'text-green-500' : 'text-gray-400'}`}>
               {conv.online ? 'Online' : 'Offline'}
@@ -199,9 +302,19 @@ function ChatWindow({ conv, coachId }: { conv: Conversation; coachId: string }) 
         </div>
       </div>
 
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
         {loading ? (
-          <p className="text-center text-xs text-gray-400">Loading messages...</p>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+              <p className="text-xs text-gray-400">Loading messages...</p>
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-sm text-gray-400">No messages yet. Say hello!</p>
+          </div>
         ) : (
           <>
             <div className="flex items-center gap-3 my-2">
@@ -212,7 +325,9 @@ function ChatWindow({ conv, coachId }: { conv: Conversation; coachId: string }) 
             {messages.map((msg) => (
               <div key={msg.id} className={`flex flex-col ${msg.fromMe ? 'items-end' : 'items-start'}`}>
                 <div className={`max-w-xs lg:max-w-sm px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                  msg.fromMe ? 'bg-blue-600 text-white rounded-br-md' : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-md'
+                  msg.fromMe
+                    ? 'bg-blue-600 text-white rounded-br-md'
+                    : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-md'
                 }`}>
                   {msg.text}
                 </div>
@@ -224,11 +339,17 @@ function ChatWindow({ conv, coachId }: { conv: Conversation; coachId: string }) 
         <div ref={bottomRef} />
       </div>
 
+      {/* Input */}
       <div className="flex-shrink-0 bg-white border-t border-gray-100 px-4 py-3 flex items-center gap-3">
-        <button className="text-gray-400 hover:text-gray-600 p-1"><Paperclip className="w-5 h-5" /></button>
-        <button className="text-gray-400 hover:text-gray-600 p-1"><Smile className="w-5 h-5" /></button>
+        <button className="text-gray-400 hover:text-gray-600 p-1">
+          <Paperclip className="w-5 h-5" />
+        </button>
+        <button className="text-gray-400 hover:text-gray-600 p-1">
+          <Smile className="w-5 h-5" />
+        </button>
         <input
-          type="text" value={input}
+          type="text"
+          value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
           placeholder="Type a message..."
@@ -237,7 +358,9 @@ function ChatWindow({ conv, coachId }: { conv: Conversation; coachId: string }) 
         <button
           onClick={handleSend}
           className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${
-            input.trim() ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-400 cursor-default'
+            input.trim()
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-gray-100 text-gray-400 cursor-default'
           }`}
         >
           <Send className="w-4 h-4" />
@@ -246,6 +369,8 @@ function ChatWindow({ conv, coachId }: { conv: Conversation; coachId: string }) 
     </div>
   )
 }
+
+// ─── PAGE ─────────────────────────────────────────────────────────────────────
 
 export default function ChatsPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -256,81 +381,164 @@ export default function ChatsPage() {
   const [selectedCall,  setSelectedCall]  = useState<CallRecord | null>(null)
   const [coachId,       setCoachId]       = useState('')
   const [loading,       setLoading]       = useState(true)
+  const [error,         setError]         = useState<string | null>(null)
 
   useEffect(() => {
-    fetch(`/api/coach/profile?userId=${COACH_USER_ID}`)
-      .then(r => r.json())
-      .then(async (profile) => {
-        setCoachId(profile.id)
-        const [convs, callRecords] = await Promise.all([
-          getConversations(profile.id),
-          getCallRecords(profile.id),
+    async function load() {
+      try {
+        // ✅ Step 1 — get logged in user
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+        if (authError || !user) {
+          setError('Not logged in. Please sign in to continue.')
+          setLoading(false)
+          return
+        }
+
+        // ✅ Step 2 — get coach profile for logged in user
+        const profileData = await getCoachProfile(user.id)
+
+        if (!profileData || profileData.error) {
+          setError('No coach profile found for this account.')
+          setLoading(false)
+          return
+        }
+
+        const id = profileData.id
+        setCoachId(id)
+
+        // ✅ Step 3 — fetch conversations and calls in parallel
+        const [convs, callRecords] = await Promise.allSettled([
+          getConversations(id),
+          getCallRecords(id),
         ])
-        setConversations(convs)
-        setCalls(callRecords)
-        if (convs.length > 0) setSelected(convs[0])
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+
+        const convsData    = convs.status      === 'fulfilled' ? convs.value      : []
+        const callsData    = callRecords.status === 'fulfilled' ? callRecords.value : []
+
+        setConversations(Array.isArray(convsData)  ? convsData  : [])
+        setCalls(        Array.isArray(callsData)   ? callsData  : [])
+
+        // auto-select first conversation
+        if (Array.isArray(convsData) && convsData.length > 0) {
+          setSelected(convsData[0])
+        }
+
+      } catch (err: any) {
+        console.error('ChatsPage load error:', err)
+        setError(err.message ?? 'Something went wrong.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    load()
   }, [])
 
   const filtered = conversations.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   )
 
+  // ─── LOADING ──────────────────────────────────────────────────────────────
+
   if (loading) return (
     <div className="flex items-center justify-center h-full bg-gray-50">
-      <p className="text-sm text-gray-400">Loading...</p>
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-sm text-gray-400">Loading chats...</p>
+      </div>
     </div>
   )
+
+  // ─── ERROR ────────────────────────────────────────────────────────────────
+
+  if (error) return (
+    <div className="flex items-center justify-center h-full bg-gray-50">
+      <div className="text-center">
+        <p className="text-sm font-semibold text-red-500 mb-1">Failed to load chats</p>
+        <p className="text-xs text-gray-400">{error}</p>
+      </div>
+    </div>
+  )
+
+  // ─── RENDER ───────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Topbar />
       <div className="flex flex-1 min-h-0">
+
+        {/* Left Panel */}
         <div className="w-72 flex flex-col bg-white border-r border-gray-100 flex-shrink-0">
+
+          {/* Search */}
           <div className="px-3 pt-4 pb-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
               <input
-                type="text" placeholder="Search conversations..."
-                value={search} onChange={(e) => setSearch(e.target.value)}
+                type="text"
+                placeholder="Search conversations..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
               />
             </div>
           </div>
+
+          {/* Tabs */}
           <div className="flex gap-4 px-4 border-b border-gray-100 mb-1">
             {(['Chats', 'Calls'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setSelectedCall(null) }}
                 className={`pb-2.5 text-sm font-semibold border-b-2 transition-colors ${
-                  activeTab === tab ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-gray-600'
+                  activeTab === tab
+                    ? 'text-blue-600 border-blue-600'
+                    : 'text-gray-400 border-transparent hover:text-gray-600'
                 }`}
               >
                 {tab}
               </button>
             ))}
           </div>
+
+          {/* List */}
           {activeTab === 'Chats' ? (
             <div className="flex-1 overflow-y-auto">
-              {filtered.map((conv) => (
-                <ConversationItem
-                  key={conv.id} conv={conv}
-                  selected={selected?.id === conv.id}
-                  onClick={() => setSelected(conv)}
-                />
-              ))}
+              {filtered.length === 0 ? (
+                <div className="flex items-center justify-center h-32">
+                  <p className="text-xs text-gray-400">No conversations found</p>
+                </div>
+              ) : (
+                filtered.map((conv) => (
+                  <ConversationItem
+                    key={conv.id}
+                    conv={conv}
+                    selected={selected?.id === conv.id}
+                    onClick={() => setSelected(conv)}
+                  />
+                ))
+              )}
             </div>
           ) : (
-            <CallsPanel calls={calls} onSelect={setSelectedCall} selectedId={selectedCall?.id} />
+            <CallsPanel
+              calls={calls}
+              onSelect={setSelectedCall}
+              selectedId={selectedCall?.id}
+            />
           )}
         </div>
 
+        {/* Right Panel */}
         {activeTab === 'Chats' ? (
-          selected ? <ChatWindow conv={selected} coachId={coachId} /> : (
+          selected ? (
+            <ChatWindow conv={selected} coachId={coachId} />
+          ) : (
             <div className="flex-1 flex items-center justify-center bg-gray-50">
-              <p className="text-sm text-gray-400">Select a conversation</p>
+              <div className="text-center">
+                <Search className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+                <p className="font-medium text-gray-400">Select a conversation to start chatting</p>
+              </div>
             </div>
           )
         ) : selectedCall ? (
@@ -343,6 +551,7 @@ export default function ChatsPage() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   )
