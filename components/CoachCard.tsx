@@ -140,8 +140,7 @@ export default function CoachCard({ coach }: { coach: Coach }) {
       */}
       {isBooking && (
         <SessionCard 
-          coachName={fullName} 
-          coachId={coach.id} 
+          coach={coach} 
           onClose={handleCloseBooking} 
         />
       )}
