@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Users, Calendar, DollarSign, TrendingUp } from "lucide-react";
 
 export default function ConsultantDashboard() {
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -32,14 +33,58 @@ export default function ConsultantDashboard() {
 
   return (
     <>
-      {/* Header */}
+      
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Consultant Dashboard</h1>
         <p className="text-gray-600 mt-2">Overview of your athletes and their performance</p>
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
+  
+      {/* Card 1 - Total Clients */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-gray-500">Total Clients</p>
+          <Users className="w-5 h-5 text-blue-500" />
+        </div>
+        <p className="text-3xl font-bold text-gray-900">{dashboardData?.totalAthletes || 0}</p>
+        <p className="text-sm text-blue-500 mt-1">+3 this month</p>
+      </div>
+
+      {/* Card 2 - Sessions This Week */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-gray-500">Sessions This Week</p>
+          <Calendar className="w-5 h-5 text-blue-500" />
+        </div>
+        <p className="text-3xl font-bold text-gray-900">{dashboardData?.sessionsThisWeek || 0}</p>
+        <p className="text-sm text-gray-400 mt-1">{dashboardData?.sessionsToday || 0} today</p>
+      </div>
+
+      {/* Card 3 - This Month Revenue */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-gray-500">This Month</p>
+          <DollarSign className="w-5 h-5 text-blue-500" />
+        </div>
+        <p className="text-3xl font-bold text-gray-900">${dashboardData?.revenue || 0}</p>
+        <p className="text-sm text-green-500 mt-1">+12% vs last month</p>
+      </div>
+
+      {/* Card 4 - Client Satisfaction */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-gray-500">Client Satisfaction</p>
+          <TrendingUp className="w-5 h-5 text-blue-500" />
+        </div>
+        <p className="text-3xl font-bold text-gray-900">{dashboardData?.rating || 0}</p>
+        <p className="text-sm text-gray-400 mt-1">Based on {dashboardData?.totalReviews || 0} reviews</p>
+      </div>
+
+    </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Athletes List */}
+
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold mb-4">Athletes</h2>
           <div className="space-y-3">
@@ -53,7 +98,6 @@ export default function ConsultantDashboard() {
           </div>
         </div>
 
-        {/* Right - Charts */}
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg shadow p-6">

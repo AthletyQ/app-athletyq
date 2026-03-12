@@ -63,6 +63,48 @@ export interface WellnessProfessional {
   created_at: string;
 }
 
+// ── availability ─────────────────────────────────────────────
+export interface Availability {
+  id: number;
+  provider_id: string;
+  provider_type: "coach" | "consultant";
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  specific_date: string | null;
+  is_available: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── sessions ────────────────────────────────────────────────
+export interface Session {
+  id: number;
+  athlete_id: string;
+  provider_id: string;
+  provider_type: "coach" | "consultant";
+  sport_id: number | null;
+  session_type: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  timezone: string;
+  status: "pending" | "confirmed" | "completed" | "cancelled" | "no_show";
+  price: number;
+  currency: string;
+  payment_status: "unpaid" | "paid" | "refunded" | "pending";
+  location_type: "online" | "in_person" | "hybrid";
+  location_details: string | null;
+  athlete_notes: string | null;
+  provider_notes: string | null;
+  cancellation_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  confirmed_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  cancelled_by: string | null;
+}
+
 // ============================================================
 // JOINED / COMPOSITE TYPES
 // ── These are what services return after joining tables
