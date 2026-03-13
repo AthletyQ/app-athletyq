@@ -1,75 +1,186 @@
 const BASE = '/api'
 
+// ─── COACH PROFILE ────────────────────────────────────────────────────────────
+
 export async function getCoachProfile(userId: string) {
-  const res = await fetch(`${BASE}/coach/profile?userId=${userId}`)
-  if (!res.ok) throw new Error('Failed to fetch coach profile')
-  return res.json()
+  try {
+    const res  = await fetch(`${BASE}/coach/profile?userId=${userId}`)
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('getCoachProfile error:', data)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('getCoachProfile fetch failed:', err)
+    return null
+  }
 }
 
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+
 export async function getDashboardStats(coachId: string) {
-  const res = await fetch(`${BASE}/dashboard/stats?coachId=${coachId}`)
-  if (!res.ok) throw new Error('Failed to fetch stats')
-  return res.json()
+  try {
+    const res  = await fetch(`${BASE}/dashboard/stats?coachId=${coachId}`)
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('getDashboardStats error:', data)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('getDashboardStats fetch failed:', err)
+    return null
+  }
 }
 
 export async function getDashboardSessions(coachId: string) {
-  const res = await fetch(`${BASE}/dashboard/sessions?coachId=${coachId}`)
-  if (!res.ok) throw new Error('Failed to fetch sessions')
-  return res.json()
+  try {
+    const res  = await fetch(`${BASE}/dashboard/sessions?coachId=${coachId}`)
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('getDashboardSessions error:', data)
+      return []
+    }
+    return Array.isArray(data) ? data : []
+  } catch (err) {
+    console.error('getDashboardSessions fetch failed:', err)
+    return []
+  }
 }
 
 export async function getDashboardMessages(coachId: string) {
-  const res = await fetch(`${BASE}/dashboard/messages?coachId=${coachId}`)
-  if (!res.ok) throw new Error('Failed to fetch messages')
-  return res.json()
+  try {
+    const res  = await fetch(`${BASE}/dashboard/messages?coachId=${coachId}`)
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('getDashboardMessages error:', data)
+      return []
+    }
+    return Array.isArray(data) ? data : []
+  } catch (err) {
+    console.error('getDashboardMessages fetch failed:', err)
+    return []
+  }
 }
 
+// ─── CLIENTS ──────────────────────────────────────────────────────────────────
+
 export async function getClients(coachId: string, status: 'active' | 'pending') {
-  const res = await fetch(`${BASE}/clients?coachId=${coachId}&status=${status}`)
-  if (!res.ok) throw new Error('Failed to fetch clients')
-  return res.json()
+  try {
+    const res  = await fetch(`${BASE}/clients?coachId=${coachId}&status=${status}`)
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('getClients error:', data)
+      return []
+    }
+    return Array.isArray(data) ? data : []
+  } catch (err) {
+    console.error('getClients fetch failed:', err)
+    return []
+  }
 }
 
 export async function updateClientStatus(clientId: string, action: 'accept' | 'decline') {
-  const res = await fetch(`${BASE}/clients/${clientId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action }),
-  })
-  if (!res.ok) throw new Error('Failed to update client')
-  return res.json()
+  try {
+    const res  = await fetch(`${BASE}/clients/${clientId}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ action }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('updateClientStatus error:', data)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('updateClientStatus fetch failed:', err)
+    return null
+  }
 }
+
+// ─── SESSIONS ─────────────────────────────────────────────────────────────────
 
 export async function getBookedSessions(coachId: string) {
-  const res = await fetch(`${BASE}/sessions?coachId=${coachId}`)
-  if (!res.ok) throw new Error('Failed to fetch booked sessions')
-  return res.json()
+  try {
+    const res  = await fetch(`${BASE}/sessions?coachId=${coachId}`)
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('getBookedSessions error:', data)
+      return []
+    }
+    return Array.isArray(data) ? data : []
+  } catch (err) {
+    console.error('getBookedSessions fetch failed:', err)
+    return []
+  }
 }
+
+// ─── MESSAGES ─────────────────────────────────────────────────────────────────
 
 export async function getConversations(coachId: string) {
-  const res = await fetch(`${BASE}/messages/conversations?coachId=${coachId}`)
-  if (!res.ok) throw new Error('Failed to fetch conversations')
-  return res.json()
+  try {
+    const res  = await fetch(`${BASE}/messages/conversations?coachId=${coachId}`)
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('getConversations error:', data)
+      return []
+    }
+    return Array.isArray(data) ? data : []
+  } catch (err) {
+    console.error('getConversations fetch failed:', err)
+    return []
+  }
 }
 
-export async function getMessages(conversationId: string) {
-  const res = await fetch(`${BASE}/messages/${conversationId}`)
-  if (!res.ok) throw new Error('Failed to fetch messages')
-  return res.json()
+export async function getMessages(conversationId: string, coachId: string) {
+  try {
+    const res  = await fetch(`${BASE}/messages/${conversationId}?coachId=${coachId}`)
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('getMessages error:', data)
+      return { messages: [] }
+    }
+    return data
+  } catch (err) {
+    console.error('getMessages fetch failed:', err)
+    return { messages: [] }
+  }
 }
 
 export async function sendMessage(conversationId: string, text: string, senderId: string) {
-  const res = await fetch(`${BASE}/messages/${conversationId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, senderId }),
-  })
-  if (!res.ok) throw new Error('Failed to send message')
-  return res.json()
+  try {
+    const res  = await fetch(`${BASE}/messages/${conversationId}`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ content: text, senderId }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('sendMessage error:', data)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('sendMessage fetch failed:', err)
+    return null
+  }
 }
 
+// ─── CALLS ────────────────────────────────────────────────────────────────────
+
 export async function getCallRecords(coachId: string) {
-  const res = await fetch(`${BASE}/calls?coachId=${coachId}`)
-  if (!res.ok) throw new Error('Failed to fetch call records')
-  return res.json()
+  try {
+    const res  = await fetch(`${BASE}/calls?coachId=${coachId}`)
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('getCallRecords error:', data)
+      return []
+    }
+    return Array.isArray(data) ? data : []
+  } catch (err) {
+    console.error('getCallRecords fetch failed:', err)
+    return []
+  }
 }
