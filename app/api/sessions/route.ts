@@ -50,10 +50,13 @@ export async function GET(request: NextRequest) {
       )
     `)
     .eq('provider_id', coachId)
+    .neq('status', 'cancelled')                        // ✅ exclude cancelled
+    .gte('scheduled_at', new Date().toISOString())     // ✅ only upcoming
     .order('scheduled_at', { ascending: true })
+    .limit(5)                                          // ✅ dashboard only needs 5
 
   if (error) {
-    console.error('Sessions error:', error.message)
+    console.error('Dashboard sessions error:', error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
