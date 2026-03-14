@@ -16,6 +16,12 @@ const EXTEND_QUALITY_THRESHOLD = 170; // maxAngle at bottom must be > this for f
 const ELBOW_DRIFT_THRESHOLD = 0.12;   // shoulder.z - elbow.z > this = elbow drifted forward
 const TORSO_LEAN_THRESHOLD = 0.05;    // change in (shoulder.z - hipMid.z) > this = torso lean
 
+// Landmark index sets per arm — used to suppress the non-active arm when user stands side-on
+const LEFT_ARM_INDICES  = new Set([11, 13, 15, 17, 19, 21]);
+const RIGHT_ARM_INDICES = new Set([12, 14, 16, 18, 20, 22]);
+// Minimum visibility gap to confidently decide which side is active (0 = always filter)
+const SIDE_VIS_GAP = 0.2;
+
 interface ArmLandmarks {
   shoulder: { x: number; y: number; z: number; visibility?: number };
   elbow: { x: number; y: number; z: number; visibility?: number };
@@ -254,23 +260,59 @@ export default function PoseDetector() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Draw pose landmarks
+      // Draw pose landmarks — suppress the non-active arm when user stands side-on
       if (results.landmarks && results.landmarks.length > 0) {
         const drawingUtils = new DrawingUtils(ctx);
 
         for (const landmarks of results.landmarks) {
-          // Draw connections
-          drawingUtils.drawConnectors(
-            landmarks,
-            PoseLandmarker.POSE_CONNECTIONS,
-            { color: '#00FF00', lineWidth: 2 }
-          );
+          // Per-landmark visibility (shoulder/elbow/wrist for each side)
+          const lShoulder = landmarks[11]?.visibility ?? 0;
+          const lElbow    = landmarks[13]?.visibility ?? 0;
+          const lWrist    = landmarks[15]?.visibility ?? 0;
+          const rShoulder = landmarks[12]?.visibility ?? 0;
+          const rElbow    = landmarks[14]?.visibility ?? 0;
+          const rWrist    = landmarks[16]?.visibility ?? 0;
 
-          // Draw landmarks
-          drawingUtils.drawLandmarks(landmarks, {
+          // Use min: all three joints must be visible for the arm to count as "visible"
+          const leftArmVis  = Math.min(lShoulder, lElbow, lWrist);
+          const rightArmVis = Math.min(rShoulder, rElbow, rWrist);
+          const gap = leftArmVis - rightArmVis;
+
+          // Debug log throttled to ~1/s (fpsCounterRef hasn't incremented for this frame yet)
+          if (fpsCounterRef.current % 30 === 0) {
+            console.log(
+              '[ArmVis] L shoulder/elbow/wrist:',
+              lShoulder.toFixed(3), lElbow.toFixed(3), lWrist.toFixed(3),
+              '→ max:', leftArmVis.toFixed(3),
+              '| R shoulder/elbow/wrist:',
+              rShoulder.toFixed(3), rElbow.toFixed(3), rWrist.toFixed(3),
+              '→ max:', rightArmVis.toFixed(3),
+              '| gap (L-R):', gap.toFixed(3),
+              '| threshold:', SIDE_VIS_GAP,
+            );
+          }
+
+          let inactiveSet: Set<number> | null = null;
+          if      (gap >  SIDE_VIS_GAP) { inactiveSet = RIGHT_ARM_INDICES; if (fpsCounterRef.current % 30 === 0) console.log('[ArmVis] → suppressing RIGHT arm skeleton'); }
+          else if (gap < -SIDE_VIS_GAP) { inactiveSet = LEFT_ARM_INDICES;  if (fpsCounterRef.current % 30 === 0) console.log('[ArmVis] → suppressing LEFT arm skeleton');  }
+          else                          {                                    if (fpsCounterRef.current % 30 === 0) console.log('[ArmVis] → gap too small, drawing both arms'); }
+
+          // Connections — drop any connection where both endpoints are on the inactive arm
+          const connections = inactiveSet
+            ? PoseLandmarker.POSE_CONNECTIONS.filter(
+                ({ start, end }) => !(inactiveSet!.has(start) && inactiveSet!.has(end))
+              )
+            : PoseLandmarker.POSE_CONNECTIONS;
+          drawingUtils.drawConnectors(landmarks, connections, { color: '#00FF00', lineWidth: 2 });
+
+          // Landmark dots — skip inactive arm's indices entirely
+          const visibleLandmarks = inactiveSet
+            ? landmarks.filter((_, i) => !inactiveSet!.has(i))
+            : landmarks;
+          drawingUtils.drawLandmarks(visibleLandmarks, {
             color: '#FF0000',
             fillColor: '#FF0000',
-            radius: 3
+            radius: 3,
           });
         }
       }
