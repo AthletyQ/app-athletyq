@@ -72,3 +72,51 @@ export async function getSessionStats(consultantId: string) {
     sessionDates: sessions.map(s => s.scheduled_at), // ← for calendar dots
   };
 }
+
+export async function getUpcomingSessions(consultantId: string) {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select(`
+      id,
+      scheduled_at,
+      duration_minutes,
+      location_type,
+      status,
+      athletes (
+        user_id,
+        sports ( name ),
+        profiles ( first_name, last_name )
+      )
+    `)
+    .eq('provider_id', consultantId)
+    .eq('provider_type', 'consultant')
+    .eq('status', 'confirmed')
+    .gte('scheduled_at', new Date().toISOString())
+    .order('scheduled_at', { ascending: true })
+    .limit(3);
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function getNewMessages(consultantId: string) {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select(`
+      id,
+      last_message,
+      last_message_at,
+      unread_count,
+      athlete:profiles!conversations_athlete_id_fkey (
+        first_name,
+        last_name
+      )
+    `)
+    .eq('contact_id', consultantId)
+    .gt('unread_count', 0)
+    .order('last_message_at', { ascending: false })
+    .limit(3);
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
