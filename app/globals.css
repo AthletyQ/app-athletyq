@@ -131,34 +131,11 @@
   }
 }
 
-/* Pose Analyzer Custom Keyframes */
-@keyframes gradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
-@keyframes fadeInDown {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-  20%, 40%, 60%, 80% { transform: translateX(5px); }
-}
-
-@keyframes bgRotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+:root {
+  --sidebar: hsl(221 83% 53%);
+  --sidebar-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(0 0% 100% / 0.15);
+  --sidebar-accent-foreground: hsl(0 0% 100%);
+  --sidebar-border: hsl(221 83% 45%);
+  --sidebar-ring: hsl(221 83% 53%);
 }

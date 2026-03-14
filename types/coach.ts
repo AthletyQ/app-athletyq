@@ -1,26 +1,27 @@
-export type CoachingType = "Online" | "In-person" | "Hybrid" | "Online & In-person";
-
 export interface Coach {
   id: string;
   firstName: string;
   lastName: string;
   initials: string;
-  avatarColor: string;
-  sports: string[];
-  rating: number;
-  reviewCount: number;
-  yearsExperience: number;
-  coachingType: CoachingType;
-  bio: string;
-  pricePerSession: number;
-  availability: string[];
-  verified: boolean;
+  email: string;
+  phoneNumber: string;
+  profileImageUrl: string | null;
+  sport: string;
+  sportId: number;
+  specialization: string | null;
+  bio: string | null;
+  yearsOfExperience: number | null;
+  hourlyRate: number | null;
+  certifications: string[];
+  isAvailable: boolean;
+  rating: number | null;
+  totalSessions: number | null;
 }
 
 export interface CoachFilters {
   sport?: string;
   experienceLevel?: string;
-  coachingType?: CoachingType;
+  coachingType?: string;
   location?: string;
   minPrice?: number;
   maxPrice?: number;
