@@ -47,13 +47,13 @@ export const coachService = {
 
       // 3. Process availability into slots
       const allPossibleSlots: string[] = [];
-      
+
       if (relevantAvailability.length === 0) {
         // --- DYNAMIC FALLBACK LOGIC ---
         let currentHour = 8;
         // 8 AM to 8 PM for online (20:00), 8 AM to 4 PM for in-person (16:00)
-        const endHour = sessionType === 'in_person' ? 16 : 20; 
-        
+        const endHour = sessionType === 'in_person' ? 16 : 20;
+
         while (currentHour < endHour) {
           allPossibleSlots.push(`${currentHour.toString().padStart(2, '0')}:00`);
           currentHour++;
@@ -71,7 +71,7 @@ export const coachService = {
 
       // 4. Identify booked and PAST slots
       const bookedSlotsSet = new Set<string>();
-      
+
       // Add existing bookings from DB
       sessionsData?.forEach((session: any) => {
         const d = new Date(session.scheduled_at);
@@ -83,7 +83,7 @@ export const coachService = {
       const isToday = date.toDateString() === now.toDateString();
       if (isToday) {
         const currentHour = now.getHours();
-        allPossibleSlots.forEach(slot => {
+        allPossibleSlots.forEach(slot => { 
           const slotHour = parseInt(slot.split(':')[0]);
           if (slotHour <= currentHour) {
             bookedSlotsSet.add(slot); // Treat past slots as "booked" (disabled)

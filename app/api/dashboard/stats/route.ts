@@ -22,24 +22,30 @@ export async function GET(request: NextRequest) {
       supabase
         .from('sessions')
         .select('athlete_id', { count: 'exact', head: true })
-        .eq('provider_id', coachId),           // ✅ was coach_id
+        .eq('provider_id', coachId)
+        .neq('status', 'cancelled'),           // ✅ exclude cancelled
+
       supabase
         .from('sessions')
         .select('*', { count: 'exact', head: true })
-        .eq('provider_id', coachId)            // ✅ was coach_id
+        .eq('provider_id', coachId)
+        .neq('status', 'cancelled')            // ✅ exclude cancelled
         .gte('scheduled_at', weekStart.toISOString()),
+
       supabase
         .from('payments')
         .select('amount')
-        .eq('provider_id', coachId)            // ✅ was coach_id — check your payments table
+        .eq('provider_id', coachId)
         .gte('created_at', monthStart.toISOString()),
     ])
 
-  const monthlyEarnings = (payments ?? []).reduce((sum: number, p: any) => sum + (p.amount ?? 0), 0)
+  const monthlyEarnings = (payments ?? []).reduce(
+    (sum: number, p: any) => sum + (p.amount ?? 0), 0
+  )
 
   return NextResponse.json({
-    totalClients:       totalClients      ?? 0,
-    sessionsThisWeek:   sessionsThisWeek  ?? 0,
+    totalClients:       totalClients     ?? 0,
+    sessionsThisWeek:   sessionsThisWeek ?? 0,
     monthlyEarnings:    `$${monthlyEarnings.toLocaleString()}`,
     clientSatisfaction: '4.9',
   })
