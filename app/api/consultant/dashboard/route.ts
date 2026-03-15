@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAthletes, getTotalAthletes } from "@/services/consultant/consultant.services";
+import { 
+  getAthletes, 
+  getTotalAthletes, 
+  getUpcomingSessions, 
+  getNewMessages,
+  getConsultantProfile,
+  getEarningsSummary,
+  getAthleteActivity
+} from "@/services/consultant/consultant.services";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,16 +18,29 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-    const athletes = await getAthletes();
-    const totalAthletes = await getTotalAthletes(consultantId);
+
+    const [athletes, totalAthletes, upcomingSessions, newMessages, profile, earnings, activity] = await Promise.all([
+    getAthletes(),
+    getTotalAthletes(consultantId),
+    getUpcomingSessions(consultantId),
+    getNewMessages(consultantId),
+    getConsultantProfile(consultantId),
+    getEarningsSummary(consultantId),
+    getAthleteActivity(consultantId),
+  ]);
 
     return NextResponse.json({
-      ok: true,
-      data: {
-        athletes,
-        totalAthletes,
-      }
-    });
+    ok: true,
+    data: {
+      athletes,
+      totalAthletes,
+      upcomingSessions,
+      newMessages,
+      profile,
+      earnings,
+      activity,
+    }
+  });
 
   } catch (error: any) {
     return NextResponse.json(
