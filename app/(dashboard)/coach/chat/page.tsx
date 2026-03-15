@@ -1,105 +1,29 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import {
   Bell, User, Search, Phone, Video, Star, MoreVertical,
   Paperclip, Smile, Send, PhoneIncoming, PhoneMissed, PhoneOutgoing
 } from 'lucide-react'
+import { getCoachProfile, getConversations, getMessages, sendMessage, getCallRecords } from '@/services/api'
 
-type Message = {
-  id: number
-  text: string
-  time: string
-  fromMe: boolean
-}
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+)
 
-type Conversation = {
-  id: number
-  initials: string
-  name: string
-  preview: string
-  time: string
-  role: string
-  roleColor: string
-  online: boolean
-  unread?: number
-  color: string
-  messages: Message[]
-}
-
-type CallRecord = {
-  id: number
-  initials: string
-  name: string
-  color: string
-  type: 'incoming' | 'outgoing' | 'missed'
-  duration: string
-  time: string
-  date: string
-}
-
-const CONVERSATIONS: Conversation[] = [
-  {
-    id: 1, initials: 'SJ', name: 'Sarah Johnson',
-    preview: "Great progress! Let's schedu...", time: '2m ago',
-    role: 'Coach', roleColor: 'bg-blue-100 text-blue-600',
-    online: true, unread: 2, color: 'bg-blue-100 text-blue-700',
-    messages: [
-      { id: 1, text: 'Hi! How are you feeling today?', time: '10:30 AM', fromMe: false },
-      { id: 2, text: "Feeling great! Ready for today's workout.", time: '10:32 AM', fromMe: true },
-      { id: 3, text: "Excellent! Let's focus on endurance today.", time: '10:33 AM', fromMe: false },
-      { id: 4, text: "Sounds good! What's the target distance?", time: '10:35 AM', fromMe: true },
-      { id: 5, text: "We'll aim for 10K at zone 2 pace.", time: '10:36 AM', fromMe: false },
-      { id: 6, text: "Great progress! Let's schedule your next session.", time: '10:45 AM', fromMe: false },
-    ],
-  },
-  {
-    id: 2, initials: 'MC', name: 'Marcus Chen',
-    preview: "I've updated your training plan...", time: '1h ago',
-    role: 'Coach', roleColor: 'bg-blue-100 text-blue-600',
-    online: true, color: 'bg-indigo-100 text-indigo-700',
-    messages: [
-      { id: 1, text: "I've updated your training plan. Check it out!", time: '9:15 AM', fromMe: false },
-      { id: 2, text: 'Thanks! Looks intense 😅', time: '9:20 AM', fromMe: true },
-      { id: 3, text: "You can handle it. Let's crush it this week!", time: '9:22 AM', fromMe: false },
-    ],
-  },
-  {
-    id: 3, initials: 'ER', name: 'Emily Rodriguez',
-    preview: 'Your nutrition plan is ready...', time: '3h ago',
-    role: 'Consultant', roleColor: 'bg-purple-100 text-purple-600',
-    online: false, unread: 1, color: 'bg-purple-100 text-purple-700',
-    messages: [
-      { id: 1, text: 'Your nutrition plan is ready for review!', time: '7:45 AM', fromMe: false },
-      { id: 2, text: 'Perfect timing, I was just thinking about that.', time: '7:50 AM', fromMe: true },
-    ],
-  },
-  {
-    id: 4, initials: 'DK', name: 'David Kim',
-    preview: 'See you at 5 PM for the session!', time: 'Yesterday',
-    role: 'Coach', roleColor: 'bg-blue-100 text-blue-600',
-    online: false, color: 'bg-amber-100 text-amber-700',
-    messages: [
-      { id: 1, text: 'See you at 5 PM for the session!', time: 'Yesterday', fromMe: false },
-      { id: 2, text: "I'll be there!", time: 'Yesterday', fromMe: true },
-    ],
-  },
-]
-
-const CALL_RECORDS: CallRecord[] = [
-  { id: 1, initials: 'SJ', name: 'Sarah Johnson',  color: 'bg-blue-100 text-blue-700',    type: 'incoming', duration: '24 min', time: '10:30 AM', date: 'Today'      },
-  { id: 2, initials: 'MC', name: 'Marcus Chen',    color: 'bg-indigo-100 text-indigo-700', type: 'outgoing', duration: '12 min', time: '9:15 AM',  date: 'Today'      },
-  { id: 3, initials: 'ER', name: 'Emily Rodriguez',color: 'bg-purple-100 text-purple-700', type: 'missed',   duration: '—',      time: '7:45 AM',  date: 'Today'      },
-  { id: 4, initials: 'DK', name: 'David Kim',      color: 'bg-amber-100 text-amber-700',   type: 'outgoing', duration: '35 min', time: '5:00 PM',  date: 'Yesterday'  },
-  { id: 5, initials: 'SJ', name: 'Sarah Johnson',  color: 'bg-blue-100 text-blue-700',     type: 'incoming', duration: '18 min', time: '2:00 PM',  date: 'Yesterday'  },
-  { id: 6, initials: 'MC', name: 'Marcus Chen',    color: 'bg-indigo-100 text-indigo-700', type: 'missed',   duration: '—',      time: '11:30 AM', date: 'Mon, Mar 3' },
-]
+type Message      = { id: string | number; text: string; time: string; fromMe: boolean; senderId?: string }
+type Conversation = { id: string; partnerId: string; initials: string; name: string; preview: string; time: string; role: string; roleColor: string; online: boolean; unread?: number; color: string; messages: Message[] }
+type CallRecord   = { id: number; initials: string; name: string; color: string; type: 'incoming' | 'outgoing' | 'missed'; duration: string; time: string; date: string }
 
 const CALL_ICON = {
   incoming: { icon: PhoneIncoming, color: 'text-green-500' },
   outgoing: { icon: PhoneOutgoing, color: 'text-blue-500'  },
   missed:   { icon: PhoneMissed,   color: 'text-red-500'   },
 }
+
+// ─── TOPBAR ──────────────────────────────────────────────────────────────────
 
 function Topbar() {
   return (
@@ -115,12 +39,12 @@ function Topbar() {
   )
 }
 
-function ConversationItem({
-  conv, selected, onClick,
-}: {
-  conv: Conversation
+// ─── CONVERSATION ITEM ────────────────────────────────────────────────────────
+
+function ConversationItem({ conv, selected, onClick }: {
+  conv:     Conversation
   selected: boolean
-  onClick: () => void
+  onClick:  () => void
 }) {
   return (
     <button
@@ -147,18 +71,20 @@ function ConversationItem({
           {conv.role}
         </span>
       </div>
-      {conv.unread && (
+      {conv.unread ? (
         <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold mt-1">
           {conv.unread}
         </span>
-      )}
+      ) : null}
     </button>
   )
 }
 
+// ─── CALL ITEM ────────────────────────────────────────────────────────────────
+
 function CallItem({ call, onClick, selected }: {
-  call: CallRecord
-  onClick: () => void
+  call:     CallRecord
+  onClick:  () => void
   selected: boolean
 }) {
   const { icon: CallIcon, color } = CALL_ICON[call.type]
@@ -190,11 +116,22 @@ function CallItem({ call, onClick, selected }: {
   )
 }
 
-function CallsPanel({ onSelect, selectedId }: {
-  onSelect: (call: CallRecord) => void
+// ─── CALLS PANEL ─────────────────────────────────────────────────────────────
+
+function CallsPanel({ calls, onSelect, selectedId }: {
+  calls:      CallRecord[]
+  onSelect:   (c: CallRecord) => void
   selectedId?: number
 }) {
-  const grouped = CALL_RECORDS.reduce<Record<string, CallRecord[]>>((acc, call) => {
+  if (calls.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-sm text-gray-400">No call history</p>
+      </div>
+    )
+  }
+
+  const grouped = calls.reduce<Record<string, CallRecord[]>>((acc, call) => {
     if (!acc[call.date]) acc[call.date] = []
     acc[call.date].push(call)
     return acc
@@ -202,12 +139,12 @@ function CallsPanel({ onSelect, selectedId }: {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      {Object.entries(grouped).map(([date, calls]) => (
+      {Object.entries(grouped).map(([date, dateCalls]) => (
         <div key={date}>
           <div className="px-4 py-2 bg-gray-50 border-y border-gray-100">
             <p className="text-xs font-semibold text-gray-400">{date}</p>
           </div>
-          {calls.map(call => (
+          {dateCalls.map(call => (
             <CallItem
               key={call.id}
               call={call}
@@ -220,6 +157,8 @@ function CallsPanel({ onSelect, selectedId }: {
     </div>
   )
 }
+
+// ─── CALL DETAIL PANEL ────────────────────────────────────────────────────────
 
 function CallDetailPanel({ call }: { call: CallRecord }) {
   const { icon: CallIcon, color } = CALL_ICON[call.type]
@@ -252,10 +191,10 @@ function CallDetailPanel({ call }: { call: CallRecord }) {
           ))}
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors">
+          <button className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700">
             <Phone className="w-4 h-4" /> Call Back
           </button>
-          <button className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors">
+          <button className="flex items-center gap-2 px-5 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">
             <Star className="w-4 h-4" /> Save
           </button>
         </div>
@@ -264,31 +203,74 @@ function CallDetailPanel({ call }: { call: CallRecord }) {
   )
 }
 
-function ChatWindow({ conv }: { conv: Conversation }) {
-  const [messages, setMessages] = useState<Message[]>(conv.messages)
-  const [input, setInput] = useState('')
+// ─── CHAT WINDOW ─────────────────────────────────────────────────────────────
+
+function ChatWindow({ conv, coachId }: { conv: Conversation; coachId: string }) {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input,    setInput]    = useState('')
+  const [loading,  setLoading]  = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { setMessages(conv.messages) }, [conv.id])
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  useEffect(() => {
+    if (!conv.id || !coachId) return
+    setLoading(true)
+    setMessages([])
 
-  function sendMessage() {
+    getMessages(conv.id, coachId)
+      .then((res: any) => {
+        // API returns { messages: [...] }
+        const msgs = res?.messages ?? res ?? []
+        // set fromMe based on coachId
+        setMessages(msgs.map((m: any) => ({
+          ...m,
+          fromMe: m.senderId === coachId || m.sender_id === coachId,
+        })))
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [conv.id, coachId])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  async function handleSend() {
     const text = input.trim()
     if (!text) return
-    setMessages((prev) => [...prev, {
-      id: prev.length + 1, text,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      fromMe: true,
-    }])
     setInput('')
+
+    // optimistic update
+    const optimistic: Message = {
+      id:     `temp-${Date.now()}`,
+      text,
+      time:   new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      fromMe: true,
+    }
+    setMessages(prev => [...prev, optimistic])
+
+    try {
+      const res = await sendMessage(conv.id, text, coachId)
+      if (res?.message) {
+        // replace optimistic with real message
+        setMessages(prev => prev.map(m =>
+          m.id === optimistic.id ? { ...res.message, fromMe: true } : m
+        ))
+      }
+    } catch (err) {
+      console.error('Send failed:', err)
+    }
   }
 
   function handleKey(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
   }
 
   return (
     <div className="flex flex-col flex-1 min-w-0 bg-gray-50">
+      {/* Chat Header */}
       <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -302,7 +284,9 @@ function ChatWindow({ conv }: { conv: Conversation }) {
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-bold text-gray-900">{conv.name}</p>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${conv.roleColor}`}>{conv.role}</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${conv.roleColor}`}>
+                {conv.role}
+              </span>
             </div>
             <p className={`text-xs font-medium ${conv.online ? 'text-green-500' : 'text-gray-400'}`}>
               {conv.online ? 'Online' : 'Offline'}
@@ -311,48 +295,72 @@ function ChatWindow({ conv }: { conv: Conversation }) {
         </div>
         <div className="flex items-center gap-1">
           {[Phone, Video, Star, MoreVertical].map((Icon, i) => (
-            <button key={i} className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+            <button key={i} className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100">
               <Icon className="w-4 h-4" />
             </button>
           ))}
         </div>
       </div>
 
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
-        <div className="flex items-center gap-3 my-2">
-          <div className="flex-1 h-px bg-gray-200" />
-          <span className="text-xs text-gray-400 font-medium">Today</span>
-          <div className="flex-1 h-px bg-gray-200" />
-        </div>
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex flex-col ${msg.fromMe ? 'items-end' : 'items-start'}`}>
-            <div className={`max-w-xs lg:max-w-sm px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-              msg.fromMe
-                ? 'bg-blue-600 text-white rounded-br-md'
-                : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-md'
-            }`}>
-              {msg.text}
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+              <p className="text-xs text-gray-400">Loading messages...</p>
             </div>
-            <span className="text-xs text-gray-400 mt-1 px-1">{msg.time}</span>
           </div>
-        ))}
+        ) : messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-sm text-gray-400">No messages yet. Say hello!</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 my-2">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400 font-medium">Today</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+            {messages.map((msg) => (
+              <div key={msg.id} className={`flex flex-col ${msg.fromMe ? 'items-end' : 'items-start'}`}>
+                <div className={`max-w-xs lg:max-w-sm px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                  msg.fromMe
+                    ? 'bg-blue-600 text-white rounded-br-md'
+                    : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-md'
+                }`}>
+                  {msg.text}
+                </div>
+                <span className="text-xs text-gray-400 mt-1 px-1">{msg.time}</span>
+              </div>
+            ))}
+          </>
+        )}
         <div ref={bottomRef} />
       </div>
 
+      {/* Input */}
       <div className="flex-shrink-0 bg-white border-t border-gray-100 px-4 py-3 flex items-center gap-3">
-        <button className="text-gray-400 hover:text-gray-600 p-1"><Paperclip className="w-5 h-5" /></button>
-        <button className="text-gray-400 hover:text-gray-600 p-1"><Smile className="w-5 h-5" /></button>
+        <button className="text-gray-400 hover:text-gray-600 p-1">
+          <Paperclip className="w-5 h-5" />
+        </button>
+        <button className="text-gray-400 hover:text-gray-600 p-1">
+          <Smile className="w-5 h-5" />
+        </button>
         <input
-          type="text" value={input}
+          type="text"
+          value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
           placeholder="Type a message..."
           className="flex-1 text-sm text-gray-700 placeholder:text-gray-400 bg-transparent focus:outline-none"
         />
         <button
-          onClick={sendMessage}
+          onClick={handleSend}
           className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${
-            input.trim() ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-400 cursor-default'
+            input.trim()
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-gray-100 text-gray-400 cursor-default'
           }`}
         >
           <Send className="w-4 h-4" />
@@ -362,22 +370,108 @@ function ChatWindow({ conv }: { conv: Conversation }) {
   )
 }
 
-export default function ChatsPage() {
-  const [selected, setSelected] = useState<Conversation>(CONVERSATIONS[0])
-  const [search, setSearch] = useState('')
-  const [activeTab, setActiveTab] = useState<'Chats' | 'Calls'>('Chats')
-  const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null)
+// ─── PAGE ─────────────────────────────────────────────────────────────────────
 
-  const filtered = CONVERSATIONS.filter((c) =>
+export default function ChatsPage() {
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [calls,         setCalls]         = useState<CallRecord[]>([])
+  const [selected,      setSelected]      = useState<Conversation | null>(null)
+  const [search,        setSearch]        = useState('')
+  const [activeTab,     setActiveTab]     = useState<'Chats' | 'Calls'>('Chats')
+  const [selectedCall,  setSelectedCall]  = useState<CallRecord | null>(null)
+  const [coachId,       setCoachId]       = useState('')
+  const [loading,       setLoading]       = useState(true)
+  const [error,         setError]         = useState<string | null>(null)
+
+  useEffect(() => {
+    async function load() {
+      try {
+        // ✅ Step 1 — get logged in user
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+        if (authError || !user) {
+          setError('Not logged in. Please sign in to continue.')
+          setLoading(false)
+          return
+        }
+
+        // ✅ Step 2 — get coach profile for logged in user
+        const profileData = await getCoachProfile(user.id)
+
+        if (!profileData || profileData.error) {
+          setError('No coach profile found for this account.')
+          setLoading(false)
+          return
+        }
+
+        const id = profileData.id
+        setCoachId(id)
+
+        // ✅ Step 3 — fetch conversations and calls in parallel
+        const [convs, callRecords] = await Promise.allSettled([
+          getConversations(id),
+          getCallRecords(id),
+        ])
+
+        const convsData    = convs.status      === 'fulfilled' ? convs.value      : []
+        const callsData    = callRecords.status === 'fulfilled' ? callRecords.value : []
+
+        setConversations(Array.isArray(convsData)  ? convsData  : [])
+        setCalls(        Array.isArray(callsData)   ? callsData  : [])
+
+        // auto-select first conversation
+        if (Array.isArray(convsData) && convsData.length > 0) {
+          setSelected(convsData[0])
+        }
+
+      } catch (err: any) {
+        console.error('ChatsPage load error:', err)
+        setError(err.message ?? 'Something went wrong.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    load()
+  }, [])
+
+  const filtered = conversations.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   )
+
+  // ─── LOADING ──────────────────────────────────────────────────────────────
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-full bg-gray-50">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-sm text-gray-400">Loading chats...</p>
+      </div>
+    </div>
+  )
+
+  // ─── ERROR ────────────────────────────────────────────────────────────────
+
+  if (error) return (
+    <div className="flex items-center justify-center h-full bg-gray-50">
+      <div className="text-center">
+        <p className="text-sm font-semibold text-red-500 mb-1">Failed to load chats</p>
+        <p className="text-xs text-gray-400">{error}</p>
+      </div>
+    </div>
+  )
+
+  // ─── RENDER ───────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Topbar />
       <div className="flex flex-1 min-h-0">
 
+        {/* Left Panel */}
         <div className="w-72 flex flex-col bg-white border-r border-gray-100 flex-shrink-0">
+
+          {/* Search */}
           <div className="px-3 pt-4 pb-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
@@ -391,6 +485,7 @@ export default function ChatsPage() {
             </div>
           </div>
 
+          {/* Tabs */}
           <div className="flex gap-4 px-4 border-b border-gray-100 mb-1">
             {(['Chats', 'Calls'] as const).map((tab) => (
               <button
@@ -407,24 +502,45 @@ export default function ChatsPage() {
             ))}
           </div>
 
+          {/* List */}
           {activeTab === 'Chats' ? (
             <div className="flex-1 overflow-y-auto">
-              {filtered.map((conv) => (
-                <ConversationItem
-                  key={conv.id}
-                  conv={conv}
-                  selected={selected.id === conv.id}
-                  onClick={() => setSelected(conv)}
-                />
-              ))}
+              {filtered.length === 0 ? (
+                <div className="flex items-center justify-center h-32">
+                  <p className="text-xs text-gray-400">No conversations found</p>
+                </div>
+              ) : (
+                filtered.map((conv) => (
+                  <ConversationItem
+                    key={conv.id}
+                    conv={conv}
+                    selected={selected?.id === conv.id}
+                    onClick={() => setSelected(conv)}
+                  />
+                ))
+              )}
             </div>
           ) : (
-            <CallsPanel onSelect={setSelectedCall} selectedId={selectedCall?.id} />
+            <CallsPanel
+              calls={calls}
+              onSelect={setSelectedCall}
+              selectedId={selectedCall?.id}
+            />
           )}
         </div>
 
+        {/* Right Panel */}
         {activeTab === 'Chats' ? (
-          <ChatWindow conv={selected} />
+          selected ? (
+            <ChatWindow conv={selected} coachId={coachId} />
+          ) : (
+            <div className="flex-1 flex items-center justify-center bg-gray-50">
+              <div className="text-center">
+                <Search className="w-12 h-12 mx-auto mb-3 text-gray-200" />
+                <p className="font-medium text-gray-400">Select a conversation to start chatting</p>
+              </div>
+            </div>
+          )
         ) : selectedCall ? (
           <CallDetailPanel call={selectedCall} />
         ) : (
