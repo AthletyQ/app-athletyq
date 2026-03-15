@@ -104,11 +104,45 @@ function ProfileCard({ profile }: { profile: any }) {
 
 function StatCards({ stats }: { stats: any }) {
   const STATS = [
-    { label: 'Total Clients',       value: String(stats?.totalClients     ?? '—'), sub: '+3 this month',      subColor: 'text-blue-500',  icon: Users      },
-    { label: 'Sessions This Week',  value: String(stats?.sessionsThisWeek ?? '—'), sub: '3 today',            subColor: 'text-gray-400',  icon: Calendar   },
-    { label: 'This Month',          value: stats?.monthlyEarnings         ?? '—',  sub: '+12% vs last month', subColor: 'text-green-500', icon: DollarSign },
-    { label: 'Client Satisfaction', value: stats?.clientSatisfaction      ?? '—',  sub: 'Based on reviews',   subColor: 'text-gray-400',  icon: TrendingUp },
+    {
+      label:    'Total Clients',
+      value:    String(stats?.totalClients ?? '—'),
+      // ✅ real pending count
+      sub:      stats?.pendingClients > 0
+                  ? `+${stats.pendingClients} pending`
+                  : 'No pending clients',
+      subColor: stats?.pendingClients > 0 ? 'text-blue-500' : 'text-gray-400',
+      icon:     Users,
+    },
+    {
+      label:    'Sessions This Week',
+      value:    String(stats?.sessionsThisWeek ?? '—'),
+      // ✅ real today count
+      sub:      stats?.sessionsToday > 0
+                  ? `${stats.sessionsToday} today`
+                  : 'None today',
+      subColor: stats?.sessionsToday > 0 ? 'text-blue-500' : 'text-gray-400',
+      icon:     Calendar,
+    },
+    {
+      label:    'This Month',
+      value:    stats?.monthlyEarnings ?? '—',
+      // ✅ real % change vs last month
+      sub:      stats?.earningsChange ?? '—',
+      subColor: stats?.earningsChange?.startsWith('+') ? 'text-green-500'
+              : stats?.earningsChange?.startsWith('-') ? 'text-red-400'
+              : 'text-gray-400',
+      icon:     DollarSign,
+    },
+    {
+      label:    'Client Satisfaction',
+      value:    stats?.clientSatisfaction ?? '—',
+      sub:      'Based on reviews',
+      subColor: 'text-gray-400',
+      icon:     TrendingUp,
+    },
   ]
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {STATS.map(({ label, value, sub, subColor, icon: Icon }) => (
@@ -150,16 +184,14 @@ function UpcomingSessions({ sessions }: { sessions: any[] }) {
               <Video className="w-4 h-4 text-blue-400" />
             </div>
             <div className="flex-1 min-w-0">
-              {/* ✅ fixed: was s.name — now s.client */}
+              {/* ✅ correct field names from API */}
               <p className="text-sm font-semibold text-gray-900">{s.client}</p>
-              {/* ✅ fixed: was s.type — now s.sport */}
               <p className="text-xs text-gray-400">{s.sport} • {s.mode}</p>
             </div>
             <div className="text-right mr-3">
               <p className="text-sm text-gray-700 font-medium">{s.time}</p>
               <p className="text-xs text-gray-400">{s.duration}</p>
             </div>
-            {/* ✅ only show Join for online + confirmed sessions */}
             {s.mode === 'Online' && s.status === 'confirmed' && (
               <button className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0">
                 Join
