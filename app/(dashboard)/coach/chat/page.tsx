@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import {
-  Bell, User, Search, Phone, Video, Star, MoreVertical,
+  Search, Phone, Video, Star, MoreVertical,
   Paperclip, Smile, Send, PhoneIncoming, PhoneMissed, PhoneOutgoing
 } from 'lucide-react'
 import { getCoachProfile, getConversations, getMessages, sendMessage, getCallRecords } from '@/services/api'
@@ -23,21 +23,7 @@ const CALL_ICON = {
   missed:   { icon: PhoneMissed,   color: 'text-red-500'   },
 }
 
-// ─── TOPBAR ──────────────────────────────────────────────────────────────────
 
-function Topbar() {
-  return (
-    <header className="flex items-center justify-end gap-3 px-6 py-4 bg-white border-b border-gray-100 flex-shrink-0">
-      <button className="relative w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">
-        <Bell className="w-4 h-4" />
-        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-blue-600" />
-      </button>
-      <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">
-        <User className="w-4 h-4" />
-      </button>
-    </header>
-  )
-}
 
 // ─── CONVERSATION ITEM ────────────────────────────────────────────────────────
 
@@ -465,7 +451,7 @@ export default function ChatsPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Topbar />
+      
       <div className="flex flex-1 min-h-0">
 
         {/* Left Panel */}

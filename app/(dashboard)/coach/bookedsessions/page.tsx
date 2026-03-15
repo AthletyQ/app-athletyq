@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import {
-  Bell, User, Video, MapPin, Clock, ChevronLeft, ChevronRight,
+  Video, MapPin, Clock, ChevronLeft, ChevronRight,
   Filter, MoreVertical, CheckCircle, XCircle, AlertCircle,
   CalendarCheck, X, Calendar, Trash2,
 } from 'lucide-react'
@@ -68,21 +68,6 @@ const STATUS_CONFIG: Record<SessionStatus, {
   cancelled: { label: 'Cancelled', classes: 'bg-red-50 text-red-500',     icon: XCircle     },
 }
 
-// ─── TOPBAR ──────────────────────────────────────────────────────────────────
-
-function Topbar() {
-  return (
-    <header className="flex items-center justify-end gap-3 px-6 py-4 bg-white border-b border-gray-100 flex-shrink-0">
-      <button className="relative w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">
-        <Bell className="w-4 h-4" />
-        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-blue-600" />
-      </button>
-      <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">
-        <User className="w-4 h-4" />
-      </button>
-    </header>
-  )
-}
 
 // ─── WEEK STRIP ───────────────────────────────────────────────────────────────
 
@@ -463,7 +448,7 @@ export default function BookedSessionsPage() {
 
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
-      <Topbar />
+     
 
       {/* Toast */}
       {toast && (
