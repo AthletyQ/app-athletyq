@@ -71,4 +71,130 @@ export async function getSessionStats(consultantId: string) {
     pending: sessions.filter(s => s.status === 'pending').length,
     sessionDates: sessions.map(s => s.scheduled_at), // ← for calendar dots
   };
+  
+}
+// ─── New: fetch all consultants ───────────────────────────────────────────────
+// Strategy: fetch consultants + profiles in two separate queries to avoid
+// FK join ambiguity. This is more reliable than nested select across tables.
+ 
+export async function getConsultants(params?: {
+  search?:    string;
+  specialty?: string;
+  minPrice?:  number;
+  maxPrice?:  number;
+}) {
+  // 1. Fetch consultants with filters
+  let query = supabase
+    .from("consultants")
+    .select("user_id, specialty, bio, hourly_rate, certifications", { count: "exact" });
+ 
+  if (params?.specialty)              query = query.ilike("specialty",  `%${params.specialty}%`);
+  if (params?.minPrice !== undefined) query = query.gte("hourly_rate", params.minPrice);
+  if (params?.maxPrice !== undefined) query = query.lte("hourly_rate", params.maxPrice);
+ 
+  const { data: consultantRows, error: consultantError, count } = await query
+    .order("created_at", { ascending: false });
+ 
+  if (consultantError) throw new Error(consultantError.message);
+  if (!consultantRows || consultantRows.length === 0) {
+    return { consultants: [], total: 0 };
+  }
+ 
+  // 2. Fetch matching profiles using the collected user_ids
+  const userIds = consultantRows.map((r) => r.user_id);
+ 
+  const { data: profileRows, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name")
+    .in("id", userIds);
+ 
+  if (profileError) throw new Error(profileError.message);
+ 
+  // 3. Build a lookup map: profile.id → profile
+  const profileMap = new Map(
+    (profileRows || []).map((p) => [p.id, p])
+  );
+ 
+  // 4. Merge and shape
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let consultants = consultantRows.map((row: any) => {
+    const profile   = profileMap.get(row.user_id);
+    const firstName = profile?.first_name ?? "";
+    const lastName  = profile?.last_name  ?? "";
+ 
+    return {
+      id:             row.user_id,
+      firstName,
+      lastName,
+      initials:       `${firstName[0] ?? "?"}${lastName[0] ?? ""}`.toUpperCase(),
+     // avatarUrl:      profile?.profile_picture_url ?? null,
+      specialty:      row.specialty    ?? "",
+      bio:            row.bio          ?? null,
+      hourlyRate:     row.hourly_rate  !== null ? Number(row.hourly_rate) : null,
+      certifications: row.certifications ?? [],
+    };
+  });
+ 
+  // 5. Name/specialty search in JS (name lives in profiles, not consultants)
+  if (params?.search) {
+    const q = params.search.toLowerCase();
+    consultants = consultants.filter(
+      (c) =>
+        c.firstName.toLowerCase().includes(q) ||
+        c.lastName.toLowerCase().includes(q)  ||
+        c.specialty.toLowerCase().includes(q),
+    );
+  }
+ 
+  return { consultants, total: count ?? consultants.length };
+}
+ 
+// ─── New: available time slots for the booking calendar ──────────────────────
+ 
+export async function getConsultantAvailability(
+  consultantId: string,
+  date: Date,
+  sessionType: "online" | "in_person" | null,
+) {
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+ 
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+ 
+  let query = supabase
+    .from("sessions")
+    .select("scheduled_at, status")
+    .eq("provider_id",   consultantId)
+    .eq("provider_type", "consultant")
+    .gte("scheduled_at", startOfDay.toISOString())
+    .lte("scheduled_at", endOfDay.toISOString())
+    .in("status", ["pending", "confirmed"]);
+ 
+  if (sessionType) query = query.eq("location_type", sessionType);
+ 
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+ 
+  const bookedSlots = (data || []).map((s) => {
+    const h = new Date(s.scheduled_at).getHours();
+    return `${String(h).padStart(2, "0")}:00`;
+  });
+ 
+  // Working hours 08:00 – 18:00
+  const allSlots = Array.from({ length: 11 }, (_, i) =>
+    `${String(i + 8).padStart(2, "0")}:00`,
+  );
+  const availableSlots = allSlots.filter((s) => !bookedSlots.includes(s));
+ 
+  return { availableSlots, bookedSlots };
+}
+ 
+// ─── New: insert session rows ─────────────────────────────────────────────────
+ 
+export async function bookConsultantSessions(
+  sessions: Record<string, unknown>[],
+) {
+  const { error } = await supabase.from("sessions").insert(sessions);
+  if (error) throw new Error(error.message);
 }
