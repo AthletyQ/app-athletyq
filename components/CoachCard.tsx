@@ -27,19 +27,37 @@ export default function CoachCard({ coach }: { coach: Coach }) {
 
   // --- SIDE EFFECTS ---
   /**
-   * Prevents the background page from scrolling when the booking modal is active
+   * Prevents the background page from scrolling when the booking modal is active.
+   * Also applies a scaling effect to the background layout for a modern UI feel.
    */
   useEffect(() => {
     if (isBooking) {
+      // Disable body scroll when modal is open
       document.body.style.overflow = "hidden";
+      // Add class to trigger the background scaling effect (defined in globals.css)
+      document.documentElement.classList.add("modal-open-scale");
     } else {
+      // Re-enable body scroll
       document.body.style.overflow = "unset";
+      // Remove scaling effect
+      document.documentElement.classList.remove("modal-open-scale");
     }
-    return () => { document.body.style.overflow = "unset"; };
+    // Cleanup on unmount to prevent stale styles
+    return () => {
+      document.body.style.overflow = "unset";
+      document.documentElement.classList.remove("modal-open-scale");
+    };
   }, [isBooking]);
 
   // --- HANDLERS ---
+  /**
+   * Opens the booking modal and triggers the layout scale-down
+   */
   const handleOpenBooking = () => setIsBooking(true);
+
+  /**
+   * Closes the booking modal and restores the layout scale
+   */
   const handleCloseBooking = () => setIsBooking(false);
 
   return (
@@ -121,9 +139,11 @@ export default function CoachCard({ coach }: { coach: Coach }) {
 
         {/* Actions */}
         <div className="flex gap-2 mt-auto">
+          {/* View Profile Button - Currently placeholder */}
           <button className="flex-1 bg-blue-600 text-white text-xs font-medium py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors">
             View Profile
           </button>
+          {/* Book Session Button - Opens the scaled booking experience */}
           <button 
             onClick={handleOpenBooking}
             className="flex-1 border border-gray-300 text-gray-700 text-xs font-medium py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors"
@@ -135,8 +155,9 @@ export default function CoachCard({ coach }: { coach: Coach }) {
 
       {/* 
           LOAD SESSION MODAL
-          The SessionCard itself now contains the backdrop and blur logic
-          to prevent redundant visual effects.
+          The SessionCard handles the actual booking flow.
+          It is rendered inside the same container but isn't scaled itself 
+          because of how fixed positioning interacts with parents.
       */}
       {isBooking && (
         <SessionCard 

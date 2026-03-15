@@ -15,6 +15,17 @@ interface SessionCardProps {
   onClose: () => void
 }
 
+/**
+ * SessionCard Component
+ * Handles the multi-step booking process including:
+ * 1. Session Type Selection (Online/In-person)
+ * 2. Team Selection (Individual/Group)
+ * 3. Date & Time Selection (Calendar & Slots)
+ * 4. Final Confirmation
+ * 
+ * Note: This component is rendered as a modal while the background layout 
+ * is scaled down (via 'modal-open-scale' class on document root).
+ */
 export function SessionCard({ coach, onClose }: SessionCardProps) {
   const [step, setStep] = useState(0)
   const [sessionType, setSessionType] = useState<'online' | 'in_person' | null>(null)
@@ -164,52 +175,54 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300 pointer-events-auto">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto" onClick={onClose} />
 
-      <div className="relative bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 slide-in-from-bottom-10 duration-500">
+      <div className="relative bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 slide-in-from-bottom-10 duration-500 max-h-[90vh] pointer-events-auto">
         
-        {/* HEADER */}
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-4">
+        {/* HEADER - Compacted */}
+        <div className="p-5 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-               <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                  <CalendarIcon size={20} />
+               <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                  <CalendarIcon size={16} />
                </div>
                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Session with {coach.firstName} {coach.lastName}</h2>
-                  <p className="text-xs text-gray-500">Book one or more slots</p>
+                  <h2 className="text-lg font-bold text-gray-900 leading-tight">{coach.firstName} {coach.lastName}</h2>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Book Session</p>
                </div>
             </div>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400"><X size={20} /></button>
+            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 transition-colors"><X size={18} /></button>
           </div>
-          <Breadcrumb steps={steps} currentStep={step} className="px-1" />
+          <Breadcrumb steps={steps} currentStep={step} className="px-0" />
         </div>
 
-        {/* CONTENT */}
-        <div className="flex-1 p-6 min-h-[400px]">
+        {/* CONTENT - Optimized for 'Small' feel */}
+        <div className="flex-1 p-5 overflow-y-auto">
           {bookingStatus === 'success' ? (
-            <div className="flex flex-col items-center justify-center text-center space-y-6 py-10 animate-in zoom-in-95 duration-500">
-              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-green-600"><Check size={40} strokeWidth={3} /></div>
+            <div className="flex flex-col items-center justify-center text-center space-y-4 py-8 animate-in zoom-in-95 duration-500">
+              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-green-600"><Check size={32} strokeWidth={3} /></div>
               <div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Booking Successful!</h3>
-                <p className="text-sm text-gray-500 max-w-xs mx-auto">Your sessions have been requested. You can view them in your dashboard.</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Booking Successful!</h3>
+                <p className="text-xs text-gray-500 max-w-[200px] mx-auto">Your sessions have been requested successfully.</p>
               </div>
             </div>
           ) : (
             <>
               {step === 0 && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
-                  <h3 className="text-lg font-bold text-gray-900">Where will you meet?</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <h3 className="text-base font-bold text-gray-900">Where will you meet?</h3>
+                  <div className="grid grid-cols-1 gap-3">
                     {[
                       { id: 'online', label: 'Online Session', icon: Video, desc: 'Via Zoom or Google Meet' },
                       { id: 'in_person', label: 'In-person', icon: MapPin, desc: 'At the local sports facility' }
                     ].map((item) => (
-                      <button key={item.id} onClick={() => setSessionType(item.id as any)} className={cn("p-6 rounded-3xl border-2 text-left transition-all group", sessionType === item.id ? "border-blue-600 bg-blue-50/50 shadow-md shadow-blue-50" : "border-gray-100 hover:border-blue-200")}>
-                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors", sessionType === item.id ? "bg-blue-600 text-white" : "bg-gray-50 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600")}><item.icon size={24} /></div>
-                        <p className="font-bold text-gray-900 mb-1">{item.label}</p>
-                        <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
+                      <button key={item.id} onClick={() => setSessionType(item.id as any)} className={cn("p-4 rounded-2xl border-2 text-left transition-all group flex items-center gap-4", sessionType === item.id ? "border-blue-600 bg-blue-50/50" : "border-gray-50 hover:border-blue-100")}>
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors", sessionType === item.id ? "bg-blue-600 text-white" : "bg-gray-50 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600")}><item.icon size={20} /></div>
+                        <div>
+                          <p className="font-bold text-gray-900 text-sm">{item.label}</p>
+                          <p className="text-[11px] text-gray-500">{item.desc}</p>
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -218,16 +231,18 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
 
               {step === 1 && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
-                  <h3 className="text-lg font-bold text-gray-900">Choose your team size</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <h3 className="text-base font-bold text-gray-900">Choose your team size</h3>
+                  <div className="grid grid-cols-1 gap-3">
                     {[
                       { id: 'individual', label: '1-on-1 Session', icon: Users, desc: 'Personalized focus just for you' },
                       { id: 'group', label: 'Group Session', icon: Users, desc: 'Train with your teammates (max 5)' }
                     ].map((item) => (
-                      <button key={item.id} onClick={() => setTeamType(item.id as any)} className={cn("p-6 rounded-3xl border-2 text-left transition-all group", teamType === item.id ? "border-blue-600 bg-blue-50/50 shadow-md shadow-blue-50" : "border-gray-100 hover:border-blue-200")}>
-                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors", teamType === item.id ? "bg-blue-600 text-white" : "bg-gray-50 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600")}><item.icon size={24} /></div>
-                        <p className="font-bold text-gray-900 mb-1">{item.label}</p>
-                        <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
+                      <button key={item.id} onClick={() => setTeamType(item.id as any)} className={cn("p-4 rounded-2xl border-2 text-left transition-all group flex items-center gap-4", teamType === item.id ? "border-blue-600 bg-blue-50/50" : "border-gray-50 hover:border-blue-100")}>
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors", teamType === item.id ? "bg-blue-600 text-white" : "bg-gray-50 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600")}><item.icon size={20} /></div>
+                        <div>
+                          <p className="font-bold text-gray-900 text-sm">{item.label}</p>
+                          <p className="text-[11px] text-gray-500">{item.desc}</p>
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -238,7 +253,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                 <div className="animate-in fade-in slide-in-from-right-4 relative">
                    {loadingAvailability && (
                      <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-[1px]">
-                       <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                       <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
                      </div>
                    )}
                    <Calendar 
@@ -250,38 +265,35 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                       availableSlots={availableSlots}
                       className="border-0 p-0 shadow-none bg-transparent"
                    />
-                   {!loadingAvailability && date && availableSlots.length === 0 && (
-                     <p className="text-center text-sm text-gray-500 mt-4 italic">No availability found for this date. Try another day.</p>
-                   )}
                 </div>
               )}
 
               {step === 3 && (
-                <div className="flex flex-col items-center justify-center text-center space-y-6 py-10 animate-in zoom-in-95 duration-500">
-                  <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-green-600"><Check size={40} strokeWidth={3} /></div>
+                <div className="flex flex-col items-center justify-center text-center space-y-4 py-4 animate-in zoom-in-95 duration-500">
+                  <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><Check size={32} strokeWidth={3} /></div>
                   <div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Ready to Book!</h3>
-                    <p className="text-sm text-gray-500 max-w-xs mx-auto">Review your session details for your training with {coach.firstName} {coach.lastName}.</p>
+                    <h3 className="text-xl font-bold text-gray-900 mb-1">Confirm Booking</h3>
+                    <p className="text-[11px] text-gray-500">Review your training details</p>
                   </div>
                   
-                  <div className="w-full bg-gray-50 rounded-[24px] p-6 space-y-3 text-left">
-                    <div className="flex justify-between text-sm"><span className="text-gray-400">Type:</span><span className="font-bold text-gray-900 capitalize">{sessionType?.replace('_', ' ')}</span></div>
-                    <div className="flex justify-between text-sm"><span className="text-gray-400">Attendees:</span><span className="font-bold text-gray-900 capitalize">{teamType}</span></div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Scheduled:</span>
+                  <div className="w-full bg-gray-50/80 rounded-3xl p-5 space-y-3 text-left border border-gray-100">
+                    <div className="flex justify-between text-[13px]"><span className="text-gray-400">Type</span><span className="font-bold text-gray-900 capitalize">{sessionType?.replace('_', ' ')}</span></div>
+                    <div className="flex justify-between text-[13px]"><span className="text-gray-400">Attendees</span><span className="font-bold text-gray-900 capitalize">{teamType}</span></div>
+                    <div className="flex justify-between text-[13px]">
+                      <span className="text-gray-400">Scheduled</span>
                       <div className="text-right">
-                        <p className="font-bold text-gray-900">{date?.toDateString()}</p>
-                        <p className="text-xs text-blue-600 font-bold">{selectedTimes.join(', ')}</p>
+                        <p className="font-bold text-gray-900">{date?.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                        <p className="text-[11px] text-blue-600 font-bold">{selectedTimes.join(', ')}</p>
                       </div>
                     </div>
-                    <div className="flex justify-between text-sm border-t border-gray-200 pt-3 mt-3">
-                      <span className="text-gray-400">Total Price:</span>
-                      <span className="font-bold text-gray-900">${(coach.hourlyRate || 0) * selectedTimes.length}</span>
+                    <div className="flex justify-between text-sm border-t border-gray-200/60 pt-3 mt-3">
+                      <span className="text-gray-500 font-medium">Total Price</span>
+                      <span className="font-extrabold text-blue-600 text-lg">${(coach.hourlyRate || 0) * selectedTimes.length}</span>
                     </div>
                   </div>
 
                   {bookingStatus === 'error' && (
-                    <p className="text-red-500 text-sm font-medium">{errorMessage}</p>
+                    <p className="text-red-500 text-[11px] font-semibold bg-red-50 px-3 py-1.5 rounded-full">{errorMessage}</p>
                   )}
                 </div>
               )}
@@ -289,20 +301,20 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
           )}
         </div>
 
-        {/* FOOTER */}
+        {/* FOOTER - Compact */}
         {bookingStatus !== 'success' && (
-          <div className="p-6 bg-gray-50/80 border-t border-gray-100 flex items-center justify-between">
+          <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between gap-3">
             <button 
               onClick={handlePrevStep} 
               disabled={isSubmitting}
-              className={cn("flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-colors", step === 0 ? "opacity-0 pointer-events-none" : "text-gray-600 hover:bg-gray-100 disabled:opacity-50")}
+              className={cn("flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-colors", step === 0 ? "opacity-0 pointer-events-none" : "text-gray-500 hover:bg-white hover:text-gray-700 disabled:opacity-50")}
             >
-              <ChevronLeft size={18} />Back
+              <ChevronLeft size={16} />Back
             </button>
             <button 
               onClick={step === 3 ? handleCompleteBooking : handleNextStep} 
               disabled={!isStepValid() || isSubmitting} 
-              className={cn("flex items-center gap-2 px-8 py-2.5 rounded-xl font-bold transition-all shadow-lg", step === 3 ? "bg-green-600 hover:bg-green-700 text-white shadow-green-100" : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100 disabled:shadow-none disabled:bg-gray-200 disabled:text-gray-400")}
+              className={cn("flex-1 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md", step === 3 ? "bg-green-600 hover:bg-green-700 text-white shadow-green-100" : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100 disabled:shadow-none disabled:bg-gray-100 disabled:text-gray-300")}
             >
               {isSubmitting ? (
                 <>
@@ -312,7 +324,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
               ) : (
                 <>
                   {step === 3 ? "Complete Booking" : "Continue"}
-                  {step < 3 && <ArrowRight size={18} />}
+                  {step < 3 && <ArrowRight size={16} />}
                 </>
               )}
             </button>
