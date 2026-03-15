@@ -52,8 +52,8 @@ export async function PATCH(
     await supabase.from('notifications').insert({
       user_id:     session.athlete_id,
       type:        'session_confirmed',
-      title:       'Session Confirmed!',
-      message:     `Your ${sport?.name ?? 'coaching'} session on ${sessionDate} at ${sessionTime} has been confirmed by your coach.`,
+      title:       'Session Confirmed! 🎉',
+      message:     `Great news! Your ${sport?.name ?? 'coaching'} session on ${sessionDate} at ${sessionTime} has been confirmed by your coach. See you there!`,
       session_id:  session.id,
       action_url:  '/dashboard/athlete/sessions',
       action_text: 'View Session',
@@ -65,35 +65,30 @@ export async function PATCH(
     return NextResponse.json({ success: true, action: 'approved' })
   }
 
-  // ─── RESCHEDULE ───────────────────────────────────────────────────────────
+  // ─── RESCHEDULE — notify only, no date change ──────────────────────────────
   if (action === 'reschedule') {
-    if (!scheduledAt) return NextResponse.json({ error: 'scheduledAt required' }, { status: 400 })
-
-    const newStatus = previousStatus === 'confirmed' ? 'confirmed' : 'pending'
-
     const { error: updateError } = await supabase
       .from('sessions')
       .update({
-        scheduled_at: scheduledAt,
-        status:       newStatus,
-        updated_at:   new Date().toISOString(),
+        status:     'confirmed',   // ✅ stays confirmed
+        updated_at: new Date().toISOString(),
       })
       .eq('id', sessionId)
 
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
 
-    const newDate = new Date(scheduledAt).toLocaleDateString('en-US', {
+    const sessionDate = new Date(session.scheduled_at).toLocaleDateString('en-US', {
       weekday: 'long', month: 'long', day: 'numeric',
     })
-    const newTime = new Date(scheduledAt).toLocaleTimeString('en-US', {
+    const sessionTime = new Date(session.scheduled_at).toLocaleTimeString('en-US', {
       hour: 'numeric', minute: '2-digit',
     })
 
     await supabase.from('notifications').insert({
       user_id:     session.athlete_id,
-      type:        'session_rescheduled',
-      title:       'Session Rescheduled',
-      message:     `Your ${sport?.name ?? 'coaching'} session has been rescheduled to ${newDate} at ${newTime}.`,
+      type:        'session_reschedule_requested',
+      title:       'Session Reschedule Requested',
+      message:     `Your coach has requested to reschedule your ${sport?.name ?? 'coaching'} session originally on ${sessionDate} at ${sessionTime}. Please contact your coach to confirm a new time.`,
       session_id:  session.id,
       action_url:  '/dashboard/athlete/sessions',
       action_text: 'View Session',
@@ -102,7 +97,7 @@ export async function PATCH(
       sent_push:   false,
     })
 
-    return NextResponse.json({ success: true, action: 'rescheduled', newStatus, scheduledAt })
+    return NextResponse.json({ success: true, action: 'rescheduled' })
   }
 
   // ─── CANCEL ───────────────────────────────────────────────────────────────
@@ -112,7 +107,7 @@ export async function PATCH(
       .update({
         status:       'cancelled',
         cancelled_at: new Date().toISOString(),
-        cancelled_by: session.provider_id,  // ✅ uuid not string 'coach'
+        cancelled_by: session.provider_id,
         updated_at:   new Date().toISOString(),
       })
       .eq('id', sessionId)

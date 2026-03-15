@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
       )
     `)
     .eq('provider_id', coachId)
-    .gte('scheduled_at', new Date().toISOString())
+    .eq('status', 'confirmed')                        // ✅ confirmed only
+    .gte('scheduled_at', new Date().toISOString())    // ✅ upcoming only
     .order('scheduled_at', { ascending: true })
     .limit(5)
 
@@ -49,21 +50,22 @@ export async function GET(request: NextRequest) {
     const profile   = Array.isArray(athlete?.profiles) ? athlete.profiles[0] : athlete?.profiles
     const sport     = Array.isArray(s.sports) ? s.sports[0] : s.sports
 
+    console.log('athlete join:', JSON.stringify(s.athletes, null, 2))
+
     const firstName = profile?.first_name ?? ''
     const lastName  = profile?.last_name  ?? ''
-    const fullName  = `${firstName} ${lastName}`.trim() || 'Unknown Athlete'
     const date      = new Date(s.scheduled_at)
     const isOnline  = s.location_type === 'online' || s.session_type === 'online'
 
     return {
       id:       s.id,
-      name:     fullName,
-      type:     sport?.name ?? 'General',
+      client:   `${firstName} ${lastName}`.trim() || 'Unknown Athlete', // ✅ was 'name'
+      sport:    sport?.name ?? 'General',                                // ✅ was 'type'
       mode:     isOnline ? 'Online' : 'In-person',
       time:     date.toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }),
       duration: `${s.duration_minutes ?? 0} min`,
       location: s.location_details ?? (isOnline ? 'Online Session' : 'In-person'),
-      status:   s.status ?? 'pending',
+      status:   s.status ?? 'confirmed',
     }
   })
 
