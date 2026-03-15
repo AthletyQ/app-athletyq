@@ -51,8 +51,9 @@ export default function LoginPage() {
       }
 
       router.replace(typeof dashboardPath === 'string' && dashboardPath ? dashboardPath : '/');
-    } catch (err: any) {
-      setError(err?.message || 'Something went wrong. Please try again.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setError(message);
     } finally {
       setIsLoading(false);
     }

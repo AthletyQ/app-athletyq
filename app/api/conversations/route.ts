@@ -35,7 +35,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const conversations = (data ?? []).map((row: any) => {
+  interface ConversationRow {
+    id: string;
+    last_message: string | null;
+    last_message_at: string;
+    unread_count: number;
+    contact: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      role: string;
+    } | null;
+  }
+
+  const conversations = ((data as unknown as ConversationRow[]) ?? []).map((row) => {
     const contact = row.contact;
     const firstName = contact?.first_name ?? "";
     const lastName  = contact?.last_name  ?? "";

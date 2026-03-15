@@ -3,9 +3,8 @@
 import CoachListPage from "@/components/coach/CoachListPage";
 
 /**
- * Coaches page for Athletes.
- * Now uses the shared CoachListPage component to ensure consistency
- * across all user roles.
+ * Coaches page for Consultants.
+ * Allows consultants to browse coaches and book sessions.
  */
 export default function CoachesPage() {
   return <CoachListPage />;

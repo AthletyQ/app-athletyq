@@ -2,8 +2,20 @@
 
 import { useState, useEffect } from 'react';
 
+interface AthleteData {
+  user_id: string;
+  age: number;
+  sports?: {
+    name: string;
+  };
+}
+
+interface ConsultantDashboardData {
+  athletes: AthleteData[];
+}
+
 export default function ConsultantDashboard() {
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<ConsultantDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,7 +55,7 @@ export default function ConsultantDashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold mb-4">Athletes</h2>
           <div className="space-y-3">
-            {dashboardData?.athletes?.map((athlete: any) => (
+            {dashboardData?.athletes?.map((athlete: AthleteData) => (
               <div key={athlete.user_id} className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                 <p className="font-semibold text-gray-900">Athlete #{athlete.user_id.slice(0, 8)}</p>
                 <p className="text-sm text-gray-600">{athlete.sports?.name || 'No sport'}</p>

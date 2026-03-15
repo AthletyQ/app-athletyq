@@ -27,7 +27,7 @@ export const coachService = {
       const specificDateEntries = availabilityData?.filter(a => a.specific_date === dateString) || [];
       const dayOfWeekEntries = availabilityData?.filter(a => a.day_of_week === dayOfWeek && !a.specific_date) || [];
 
-      let relevantAvailability = specificDateEntries.length > 0 ? specificDateEntries : dayOfWeekEntries;
+      const relevantAvailability = specificDateEntries.length > 0 ? specificDateEntries : dayOfWeekEntries;
 
       // 2. Fetch existing sessions
       const startOfDay = new Date(date);
@@ -37,7 +37,7 @@ export const coachService = {
 
       const { data: sessionsData, error: sessionsError } = await supabase
         .from("sessions")
-        .select("scheduled_at")
+        .select("scheduled_at, duration_minutes")
         .eq("provider_id", coachId)
         .gte("scheduled_at", startOfDay.toISOString())
         .lte("scheduled_at", endOfDay.toISOString())
@@ -72,10 +72,19 @@ export const coachService = {
       // 4. Identify booked and PAST slots
       const bookedSlotsSet = new Set<string>();
       
-      // Add existing bookings from DB
-      sessionsData?.forEach((session: any) => {
-        const d = new Date(session.scheduled_at);
-        bookedSlotsSet.add(`${d.getHours().toString().padStart(2, '0')}:00`);
+      // Add existing bookings from DB, accounting for duration
+      sessionsData?.forEach((session: { scheduled_at: string; duration_minutes: number }) => {
+        const startTime = new Date(session.scheduled_at);
+        const duration = session.duration_minutes || 60;
+        const startHour = startTime.getHours();
+        const slotsCount = Math.ceil(duration / 60);
+
+        for (let i = 0; i < slotsCount; i++) {
+          const slotHour = startHour + i;
+          if (slotHour < 24) {
+            bookedSlotsSet.add(`${slotHour.toString().padStart(2, '0')}:00`);
+          }
+        }
       });
 
       // --- DEACTIVATE PAST SLOTS ---
@@ -100,9 +109,10 @@ export const coachService = {
         },
         error: null,
       };
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An unknown error occurred";
       console.error("Error fetching availability:", error);
-      return { data: null, error: error.message };
+      return { data: null, error: message };
     }
   },
 
@@ -124,9 +134,10 @@ export const coachService = {
       }
 
       return { data, error: null };
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An unknown error occurred during booking";
       console.error("Detailed booking error:", JSON.stringify(error, null, 2));
-      return { data: null, error: error.message || "An error occurred during booking" };
+      return { data: null, error: message };
     }
   },
 };

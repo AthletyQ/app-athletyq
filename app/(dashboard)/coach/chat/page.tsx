@@ -269,7 +269,6 @@ function ChatWindow({ conv }: { conv: Conversation }) {
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { setMessages(conv.messages) }, [conv.id])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   function sendMessage() {
@@ -424,7 +423,7 @@ export default function ChatsPage() {
         </div>
 
         {activeTab === 'Chats' ? (
-          <ChatWindow conv={selected} />
+          <ChatWindow key={selected.id} conv={selected} />
         ) : selectedCall ? (
           <CallDetailPanel call={selectedCall} />
         ) : (

@@ -235,7 +235,7 @@ export default function DashboardPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Welcome back, <span className="font-semibold text-gray-700">Coach Nathan</span>! Here's what's happening with your coaching today.
+            Welcome back, <span className="font-semibold text-gray-700">Coach Nathan</span>! Here&apos;s what&apos;s happening with your coaching today.
           </p>
         </div>
         <ProfileCard />

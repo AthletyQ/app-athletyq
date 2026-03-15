@@ -47,7 +47,11 @@ export default function ChatsPage() {
           filter: `athlete_id=eq.${currentUserId}`,
         },
         (payload) => {
-          const updated = payload.new as any;
+          const updated = payload.new as {
+            id: string;
+            last_message: string | null;
+            last_message_at: string;
+          };
           setConversations((prev) =>
             prev.map((c) =>
               c.id === updated.id
@@ -74,6 +78,7 @@ export default function ChatsPage() {
 
       {selectedConversation && currentUserId ? (
         <ChatWindow
+          key={selectedConversation.id}
           conversation={selectedConversation}
           currentUserId={currentUserId}
         />

@@ -94,10 +94,11 @@ function ConfirmPageContent() {
             throw new Error("Missing confirmation tokens");
           }
         }
-      } catch (error: any) {
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to confirm email";
         console.error("Confirmation error:", error);
         setStatus("error");
-        setErrorMessage(error.message || "Failed to confirm email");
+        setErrorMessage(message);
       }
     }
 

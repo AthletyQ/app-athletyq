@@ -242,11 +242,14 @@ export default function PoseDetector() {
     if (currentTime !== lastVideoTimeRef.current) {
       lastVideoTimeRef.current = currentTime;
 
+      // eslint-disable-next-line react-hooks/purity
       const detectStart = performance.now();
 
       // Detect pose
+      // eslint-disable-next-line react-hooks/purity
       const results = poseLandmarkerRef.current.detectForVideo(video, performance.now());
 
+      // eslint-disable-next-line react-hooks/purity
       const detectEnd = performance.now();
       const detectTime = detectEnd - detectStart;
 
@@ -431,6 +434,7 @@ export default function PoseDetector() {
 
       // Calculate FPS
       fpsCounterRef.current++;
+      // eslint-disable-next-line react-hooks/purity
       const now = performance.now();
       if (now - fpsTimestampRef.current >= 1000) {
         const currentFps = fpsCounterRef.current;

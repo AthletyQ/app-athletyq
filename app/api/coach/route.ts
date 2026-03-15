@@ -69,7 +69,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch coaches" }, { status: 500 });
   }
 
-  const coaches = (data ?? []).map((row: any) => {
+  interface CoachQueryResult {
+    user_id: string;
+    coaching_sport_id: number | null;
+    specialization: string | null;
+    bio: string | null;
+    years_of_experience: number | null;
+    hourly_rate: number | null;
+    certifications: string[] | null;
+    is_available: boolean;
+    rating: number;
+    total_sessions: number;
+    sports: { id: number; name: string } | null;
+    profiles: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+      phone_number: string | null;
+      profile_image_url: string | null;
+    } | null;
+  }
+
+  const coaches = ((data as unknown as CoachQueryResult[]) ?? []).map((row) => {
     const profile   = row.profiles;
     const firstName = profile?.first_name ?? "";
     const lastName  = profile?.last_name  ?? "";
