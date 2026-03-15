@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import {
   Bell, User, Video, MapPin, Clock, ChevronLeft, ChevronRight,
   Filter, MoreVertical, CheckCircle, XCircle, AlertCircle,
-  CalendarCheck, X, Calendar, ChevronDown, Trash2,
+  CalendarCheck, X, Calendar, Trash2,
 } from 'lucide-react'
 import { getCoachProfile, getBookedSessions, updateSession } from '@/services/api'
 
@@ -151,113 +151,7 @@ function WeekStrip({
   )
 }
 
-// ─── RESCHEDULE MODAL ─────────────────────────────────────────────────────────
-
-function RescheduleModal({
-  session, onClose, onConfirm,
-}: {
-  session:   Session
-  onClose:   () => void
-  onConfirm: (isoString: string) => void
-}) {
-  const [date,   setDate]   = useState('')
-  const [time,   setTime]   = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error,  setError]  = useState<string | null>(null)
-
-  async function handleConfirm() {
-    if (!date || !time) { setError('Please select both date and time.'); return }
-    setSaving(true)
-    await onConfirm(new Date(`${date}T${time}`).toISOString())
-    setSaving(false)
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-600" />
-            <h2 className="text-base font-bold text-gray-900">Reschedule Session</h2>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${session.color}`}>
-              {session.initials}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{session.client}</p>
-              <p className="text-xs text-gray-500">{session.sport} · {session.duration}</p>
-            </div>
-          </div>
-          <div className="mt-3 flex items-center gap-2 text-xs text-gray-500 bg-white rounded-xl border border-gray-100 px-3 py-2">
-            <Clock className="w-3.5 h-3.5 text-gray-400" />
-            <span>Current: <span className="font-medium text-gray-700">{session.date} at {session.time}</span></span>
-          </div>
-        </div>
-
-        <div className="px-6 py-5 space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">New Date</label>
-            <div className="relative">
-              <input
-                type="date" value={date}
-                min={new Date().toISOString().split('T')[0]}
-                onChange={(e) => { setDate(e.target.value); setError(null) }}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
-              />
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">New Time</label>
-            <div className="relative">
-              <input
-                type="time" value={time}
-                onChange={(e) => { setTime(e.target.value); setError(null) }}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
-              />
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
-          </div>
-          {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
-          {date && time && (
-            <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span>New time: <span className="font-semibold">
-                {new Date(`${date}T${time}`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                {' '}at{' '}
-                {new Date(`${date}T${time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-              </span></span>
-            </div>
-          )}
-        </div>
-
-        <div className="px-6 pb-6 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={saving || !date || !time}
-            className={`flex-1 py-2.5 text-white text-sm font-semibold rounded-xl transition-colors ${
-              saving || !date || !time ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-            }`}
-          >
-            {saving ? 'Saving...' : 'Confirm Reschedule'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── CANCEL CONFIRM MODAL ─────────────────────────────────────────────────────
+// ─── CANCEL MODAL ─────────────────────────────────────────────────────────────
 
 function CancelModal({
   session, onClose, onConfirm,
@@ -286,7 +180,6 @@ function CancelModal({
             <X className="w-4 h-4" />
           </button>
         </div>
-
         <div className="px-6 py-5">
           <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${session.color}`}>
@@ -301,7 +194,6 @@ function CancelModal({
             Are you sure you want to cancel this session? The athlete will be notified immediately.
           </p>
         </div>
-
         <div className="px-6 pb-6 flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">
             Keep Session
@@ -322,18 +214,20 @@ function CancelModal({
 }
 
 // ─── THREE DOT MENU ───────────────────────────────────────────────────────────
+// confirmed → Reschedule only
+// pending   → hidden
+// cancelled → hidden
 
 function SessionMenu({
   session,
-  onCancel,
+  onReschedule,
 }: {
-  session:  Session
-  onCancel: () => void
+  session:      Session
+  onReschedule: () => void
 }) {
   const [open, setOpen] = useState(false)
   const ref             = useRef<HTMLDivElement>(null)
 
-  // close on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
@@ -342,7 +236,8 @@ function SessionMenu({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  if (session.status === 'cancelled') return null
+  // ✅ only show for confirmed
+  if (session.status !== 'confirmed') return null
 
   return (
     <div className="relative" ref={ref}>
@@ -353,13 +248,13 @@ function SessionMenu({
         <MoreVertical className="w-4 h-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-9 z-20 bg-white border border-gray-100 rounded-xl shadow-lg py-1 w-44">
+        <div className="absolute right-0 top-9 z-20 bg-white border border-gray-100 rounded-xl shadow-lg py-1 w-48">
           <button
-            onClick={() => { setOpen(false); onCancel() }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 font-medium"
+            onClick={() => { setOpen(false); onReschedule() }}
+            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
           >
-            <Trash2 className="w-4 h-4" />
-            Cancel Session
+            <Calendar className="w-4 h-4 text-gray-400" />
+            Reschedule
           </button>
         </div>
       )}
@@ -371,14 +266,14 @@ function SessionMenu({
 
 function SessionCard({
   session,
-  onApprove,
+  onConfirm,
   onReschedule,
   onCancel,
 }: {
-  session:     Session
-  onApprove:   (id: string) => void
-  onReschedule:(id: string) => void
-  onCancel:    (id: string) => void
+  session:      Session
+  onConfirm:    (id: string) => void
+  onReschedule: (id: string) => void
+  onCancel:     (id: string) => void
 }) {
   const { label, classes, icon: StatusIcon } = STATUS_CONFIG[session.status]
 
@@ -402,10 +297,10 @@ function SessionCard({
           <span className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium ${classes}`}>
             <StatusIcon className="w-3 h-3" />{label}
           </span>
-          {/* ✅ three dot menu with cancel */}
+          {/* ✅ three dot menu — confirmed only */}
           <SessionMenu
             session={session}
-            onCancel={() => onCancel(session.id)}
+            onReschedule={() => onReschedule(session.id)}
           />
         </div>
       </div>
@@ -431,40 +326,32 @@ function SessionCard({
         </span>
 
         <div className="flex gap-2">
+          {/* ✅ pending → Cancel + Confirm side by side */}
           {session.status === 'pending' && (
             <>
               <button
-                onClick={() => onApprove(session.id)}
+                onClick={() => onCancel(session.id)}
+                className="px-3 py-1.5 border border-red-200 text-red-500 text-xs font-semibold rounded-lg hover:bg-red-50 flex items-center gap-1"
+              >
+                <XCircle className="w-3 h-3" /> Cancel
+              </button>
+              <button
+                onClick={() => onConfirm(session.id)}
                 className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 flex items-center gap-1"
               >
-                <CheckCircle className="w-3 h-3" /> Approve
-              </button>
-              <button
-                onClick={() => onReschedule(session.id)}
-                className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50"
-              >
-                Reschedule
+                <CheckCircle className="w-3 h-3" /> Confirm
               </button>
             </>
           )}
 
-          {session.status === 'confirmed' && (
-            <>
-              {session.mode === 'Online' && (
-                <button className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">
-                  Join
-                </button>
-              )}
-              {/* ✅ no Approve button for confirmed — only Reschedule */}
-              <button
-                onClick={() => onReschedule(session.id)}
-                className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50"
-              >
-                Reschedule
-              </button>
-            </>
+          {/* ✅ confirmed → Join for online only */}
+          {session.status === 'confirmed' && session.mode === 'Online' && (
+            <button className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">
+              Join
+            </button>
           )}
 
+          {/* ✅ cancelled → Rebook */}
           {session.status === 'cancelled' && (
             <button className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50">
               Rebook
@@ -485,8 +372,8 @@ export default function BookedSessionsPage() {
   const [activeDay,     setActiveDay]     = useState(formatDate(new Date()))
   const [weekOffset,    setWeekOffset]    = useState(0)
   const [filterStatus,  setFilterStatus]  = useState<'all' | SessionStatus>('all')
-  const [rescheduleFor, setRescheduleFor] = useState<Session | null>(null)
   const [cancelFor,     setCancelFor]     = useState<Session | null>(null)
+  const [rescheduling,  setRescheduling]  = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [toast,         setToast]         = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
 
@@ -515,52 +402,36 @@ export default function BookedSessionsPage() {
     load()
   }, [])
 
-  // ─── APPROVE ──────────────────────────────────────────────────────────────
+  // ─── CONFIRM ──────────────────────────────────────────────────────────────
 
-  async function handleApprove(sessionId: string) {
+  async function handleConfirm(sessionId: string) {
     setActionLoading(sessionId)
     try {
       const res = await updateSession(sessionId, 'approve')
-      if (!res) { showToast('Failed to approve session.', 'error'); return }
+      if (!res) { showToast('Failed to confirm session.', 'error'); return }
       setSessions(prev => prev.map(s =>
         s.id === sessionId ? { ...s, status: 'confirmed' } : s
       ))
-      showToast('Session approved! Athlete has been notified.', 'success')
+      showToast('Session confirmed! Athlete has been notified.', 'success')
     } catch {
-      showToast('Failed to approve session.', 'error')
+      showToast('Failed to confirm session.', 'error')
     } finally {
       setActionLoading(null)
     }
   }
 
-  // ─── RESCHEDULE ───────────────────────────────────────────────────────────
+  // ─── RESCHEDULE — no modal, just notify ───────────────────────────────────
 
-  async function handleRescheduleConfirm(isoString: string) {
-    if (!rescheduleFor) return
-    setActionLoading(rescheduleFor.id)
+  async function handleReschedule(sessionId: string) {
+    setRescheduling(sessionId)
     try {
-      // ✅ pass previousStatus so confirmed sessions stay confirmed
-      const res = await updateSession(rescheduleFor.id, 'reschedule', isoString, rescheduleFor.status)
-      if (!res) { showToast('Failed to reschedule session.', 'error'); return }
-
-      const newDate = new Date(isoString)
-      setSessions(prev => prev.map(s =>
-        s.id === rescheduleFor.id
-          ? {
-              ...s,
-              // ✅ keep confirmed if was confirmed, else pending
-              status: rescheduleFor.status === 'confirmed' ? 'confirmed' : 'pending',
-              date:   formatDate(newDate),
-              time:   newDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-            }
-          : s
-      ))
-      showToast('Session rescheduled! Athlete has been notified.', 'success')
-      setRescheduleFor(null)
+      const res = await updateSession(sessionId, 'reschedule')
+      if (!res) { showToast('Failed to send reschedule notification.', 'error'); return }
+      showToast('Athlete has been notified to reschedule.', 'success')
     } catch {
-      showToast('Failed to reschedule session.', 'error')
+      showToast('Failed to send reschedule notification.', 'error')
     } finally {
-      setActionLoading(null)
+      setRescheduling(null)
     }
   }
 
@@ -602,15 +473,6 @@ export default function BookedSessionsPage() {
           {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
           {toast.msg}
         </div>
-      )}
-
-      {/* Reschedule Modal */}
-      {rescheduleFor && (
-        <RescheduleModal
-          session={rescheduleFor}
-          onClose={() => setRescheduleFor(null)}
-          onConfirm={handleRescheduleConfirm}
-        />
       )}
 
       {/* Cancel Modal */}
@@ -691,8 +553,8 @@ export default function BookedSessionsPage() {
               <SessionCard
                 key={session.id}
                 session={session}
-                onApprove={handleApprove}
-                onReschedule={(id) => setRescheduleFor(sessions.find(s => s.id === id) ?? null)}
+                onConfirm={handleConfirm}
+                onReschedule={(id) => handleReschedule(id)}
                 onCancel={(id) => setCancelFor(sessions.find(s => s.id === id) ?? null)}
               />
             ))}
