@@ -140,4 +140,45 @@ export const coachService = {
       return { data: null, error: message };
     }
   },
+
+  /**
+   * Fetches real-time stats for a coach: 
+   * - Count of sessions from start until current time
+   * - Average rating (currently from coaches table as a fallback)
+   */
+  async getCoachStats(coachId: string): Promise<ServiceResponse<{ totalSessions: number; averageRating: number }>> {
+    try {
+      const now = new Date().toISOString();
+      
+      // 1. Fetch session count (from start to now), excluding cancelled sessions
+      const { count, error: sessionError } = await supabase
+        .from("sessions")
+        .select("*", { count: "exact", head: true })
+        .eq("provider_id", coachId)
+        .lte("scheduled_at", now)
+        .not("status", "eq", "cancelled");
+
+      if (sessionError) throw sessionError;
+
+      // 2. Fetch rating from coaches table
+      const { data: coachData, error: coachError } = await supabase
+        .from("coaches")
+        .select("rating")
+        .eq("user_id", coachId)
+        .single();
+
+      if (coachError) throw coachError;
+
+      return {
+        data: {
+          totalSessions: count || 0,
+          averageRating: coachData?.rating || 0,
+        },
+        error: null,
+      };
+    } catch (error) {
+      console.error("Error fetching coach stats:", error);
+      return { data: null, error: "Failed to fetch coach stats" };
+    }
+  },
 };

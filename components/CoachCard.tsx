@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { Coach } from "@/types/coach";
-import { Star, Clock, DollarSign, CheckCircle } from "lucide-react";
+import { Star, Clock, DollarSign, CheckCircle, Loader2 } from "lucide-react";
 import { SessionCard } from "@/components/SessionCard"; // Import the multi-step SessionCard
+import { coachService } from "@/services/coach/coach.service";
 
 const AVATAR_COLORS = [
   "#3B82F6", "#8B5CF6", "#10B981",
@@ -21,9 +22,24 @@ function getAvatarColor(id: string) {
 export default function CoachCard({ coach }: { coach: Coach }) {
   // --- STATE MANAGEMENT ---
   const [isBooking, setIsBooking] = useState(false); // Controls the visibility of the booking popup
+  const [stats, setStats] = useState<{ totalSessions: number; averageRating: number } | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   const fullName = `${coach.firstName} ${coach.lastName}`;
   const avatarColor = getAvatarColor(coach.id);
+
+  // --- FETCH STATS ---
+  useEffect(() => {
+    async function fetchStats() {
+      setLoadingStats(true);
+      const { data, error } = await coachService.getCoachStats(coach.id);
+      if (!error && data) {
+        setStats(data);
+      }
+      setLoadingStats(false);
+    }
+    fetchStats();
+  }, [coach.id]);
 
   // --- SIDE EFFECTS ---
   /**
@@ -96,15 +112,23 @@ export default function CoachCard({ coach }: { coach: Coach }) {
 
         {/* Stats */}
         <div className="space-y-1.5">
-          {coach.rating !== null && (
+          {loadingStats ? (
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <Loader2 size={12} className="animate-spin" />
+              <span>Loading stats...</span>
+            </div>
+          ) : (
             <div className="flex items-center gap-1.5">
               <Star size={13} className="text-yellow-400 fill-yellow-400" />
-              <span className="text-sm font-semibold text-gray-800">{coach.rating}</span>
-              {coach.totalSessions !== null && (
-                <span className="text-xs text-gray-400">({coach.totalSessions} sessions)</span>
-              )}
+              <span className="text-sm font-semibold text-gray-800">
+                {stats?.averageRating ?? coach.rating ?? "0.0"}
+              </span>
+              <span className="text-xs text-gray-400">
+                ({stats?.totalSessions ?? 0} sessions)
+              </span>
             </div>
           )}
+          
           {coach.yearsOfExperience !== null && (
             <div className="flex items-center gap-1.5 text-xs text-gray-600">
               <Clock size={13} className="text-gray-400" />
