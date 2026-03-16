@@ -8,7 +8,7 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
     <SidebarProvider
       style={{ "--sidebar-background": "hsl(221 83% 53%)" } as React.CSSProperties}
     >
-      <div className="min-h-screen flex w-full">
+      <div id="main-layout-wrapper" className="min-h-screen flex w-full">
         <Sidebar />
         <SidebarInset className="flex flex-col flex-1 h-screen overflow-hidden">
           <main className="flex-1 bg-gray-50 overflow-y-auto">

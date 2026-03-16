@@ -8,7 +8,7 @@ export default function AthleteLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-gray-50 antialiased text-gray-900 w-full">
+    <div id="main-layout-wrapper" className="flex min-h-screen bg-gray-50 antialiased text-gray-900 w-full">
       {/* Sidebar */}
       <Sidebar />
 
