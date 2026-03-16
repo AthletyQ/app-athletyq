@@ -309,7 +309,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                     </div>
                     <div className="flex justify-between text-sm border-t border-gray-200/60 pt-3 mt-3">
                       <span className="text-gray-500 font-medium">Total Price</span>
-                      <span className="font-extrabold text-blue-600 text-lg">${(coach.hourlyRate || 0) * selectedTimes.length}</span>
+                      <span className="font-extrabold text-blue-600 text-lg">LKR {(coach.hourlyRate || 0) * selectedTimes.length}</span>
                     </div>
                   </div>
 
