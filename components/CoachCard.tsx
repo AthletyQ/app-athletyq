@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { Coach } from "@/types/coach";
-import { Star, Clock, DollarSign, CheckCircle } from "lucide-react";
+import { Star, Clock, DollarSign, CheckCircle, Loader2 } from "lucide-react";
 import { SessionCard } from "@/components/SessionCard"; // Import the multi-step SessionCard
+import { coachService } from "@/services/coach/coach.service";
 
 const AVATAR_COLORS = [
   "#3B82F6", "#8B5CF6", "#10B981",
@@ -21,25 +22,58 @@ function getAvatarColor(id: string) {
 export default function CoachCard({ coach }: { coach: Coach }) {
   // --- STATE MANAGEMENT ---
   const [isBooking, setIsBooking] = useState(false); // Controls the visibility of the booking popup
+  const [stats, setStats] = useState<{ totalSessions: number; averageRating: number } | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   const fullName = `${coach.firstName} ${coach.lastName}`;
   const avatarColor = getAvatarColor(coach.id);
 
+  // --- FETCH STATS ---
+  useEffect(() => {
+    async function fetchStats() {
+      setLoadingStats(true);
+      const { data, error } = await coachService.getCoachStats(coach.id);
+      if (!error && data) {
+        setStats(data);
+      }
+      setLoadingStats(false);
+    }
+    fetchStats();
+  }, [coach.id]);
+
   // --- SIDE EFFECTS ---
   /**
-   * Prevents the background page from scrolling when the booking modal is active
+   * Prevents the background page from scrolling when the booking modal is active.
+   * Also applies a scaling effect to the background layout for a modern UI feel.
    */
   useEffect(() => {
     if (isBooking) {
+      // Disable body scroll when modal is open
       document.body.style.overflow = "hidden";
+      // Add class to trigger the background scaling effect (defined in globals.css)
+      document.documentElement.classList.add("modal-open-scale");
     } else {
+      // Re-enable body scroll
       document.body.style.overflow = "unset";
+      // Remove scaling effect
+      document.documentElement.classList.remove("modal-open-scale");
     }
-    return () => { document.body.style.overflow = "unset"; };
+    // Cleanup on unmount to prevent stale styles
+    return () => {
+      document.body.style.overflow = "unset";
+      document.documentElement.classList.remove("modal-open-scale");
+    };
   }, [isBooking]);
 
   // --- HANDLERS ---
+  /**
+   * Opens the booking modal and triggers the layout scale-down
+   */
   const handleOpenBooking = () => setIsBooking(true);
+
+  /**
+   * Closes the booking modal and restores the layout scale
+   */
   const handleCloseBooking = () => setIsBooking(false);
 
   return (
@@ -78,15 +112,23 @@ export default function CoachCard({ coach }: { coach: Coach }) {
 
         {/* Stats */}
         <div className="space-y-1.5">
-          {coach.rating !== null && (
+          {loadingStats ? (
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <Loader2 size={12} className="animate-spin" />
+              <span>Loading stats...</span>
+            </div>
+          ) : (
             <div className="flex items-center gap-1.5">
               <Star size={13} className="text-yellow-400 fill-yellow-400" />
-              <span className="text-sm font-semibold text-gray-800">{coach.rating}</span>
-              {coach.totalSessions !== null && (
-                <span className="text-xs text-gray-400">({coach.totalSessions} sessions)</span>
-              )}
+              <span className="text-sm font-semibold text-gray-800">
+                {stats?.averageRating ?? coach.rating ?? "0.0"}
+              </span>
+              <span className="text-xs text-gray-400">
+                ({stats?.totalSessions ?? 0} sessions)
+              </span>
             </div>
           )}
+          
           {coach.yearsOfExperience !== null && (
             <div className="flex items-center gap-1.5 text-xs text-gray-600">
               <Clock size={13} className="text-gray-400" />
@@ -95,8 +137,8 @@ export default function CoachCard({ coach }: { coach: Coach }) {
           )}
           {coach.hourlyRate !== null && (
             <div className="flex items-center gap-1.5 text-xs text-gray-600">
-              <DollarSign size={13} className="text-gray-400" />
-              <span>${coach.hourlyRate} / hour</span>
+              {/*<DollarSign size={13} className="text-gray-400" />*/}
+              <span>LKR {coach.hourlyRate} / hour</span>
             </div>
           )}
         </div>
@@ -121,9 +163,11 @@ export default function CoachCard({ coach }: { coach: Coach }) {
 
         {/* Actions */}
         <div className="flex gap-2 mt-auto">
+          {/* View Profile Button - Currently placeholder */}
           <button className="flex-1 bg-blue-600 text-white text-xs font-medium py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors">
             View Profile
           </button>
+          {/* Book Session Button - Opens the scaled booking experience */}
           <button 
             onClick={handleOpenBooking}
             className="flex-1 border border-gray-300 text-gray-700 text-xs font-medium py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors"
@@ -135,8 +179,9 @@ export default function CoachCard({ coach }: { coach: Coach }) {
 
       {/* 
           LOAD SESSION MODAL
-          The SessionCard itself now contains the backdrop and blur logic
-          to prevent redundant visual effects.
+          The SessionCard handles the actual booking flow.
+          It is rendered inside the same container but isn't scaled itself 
+          because of how fixed positioning interacts with parents.
       */}
       {isBooking && (
         <SessionCard 

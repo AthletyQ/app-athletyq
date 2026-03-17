@@ -15,6 +15,14 @@ interface Props {
   currentUserId: string;
 }
 
+interface MessageRow {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+}
+
 export default function ChatWindow({ conversation, currentUserId }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput]       = useState("");
@@ -24,12 +32,11 @@ export default function ChatWindow({ conversation, currentUserId }: Props) {
 
   // Fetch messages on conversation change
   useEffect(() => {
-    setLoading(true);
     fetch(`/api/messages?conversationId=${conversation.id}`)
       .then((r) => r.json())
       .then(({ messages: rows }) => {
         setMessages(
-          (rows ?? []).map((m: any) => ({
+          ((rows as MessageRow[]) ?? []).map((m) => ({
             id:             m.id,
             conversationId: m.conversation_id,
             senderId:       m.sender_id,
@@ -55,7 +62,7 @@ export default function ChatWindow({ conversation, currentUserId }: Props) {
           filter: `conversation_id=eq.${conversation.id}`,
         },
         (payload) => {
-          const m = payload.new as any;
+          const m = payload.new as MessageRow;
           setMessages((prev) => [
             ...prev,
             {
