@@ -181,10 +181,6 @@ export async function getAthleteActivity(consultantId: string) {
   return data || [];
 }
 
-// ─── New: fetch all consultants ───────────────────────────────────────────────
-// Strategy: fetch consultants + profiles in two separate queries to avoid
-// FK join ambiguity. This is more reliable than nested select across tables.
- 
 export async function getConsultants(params?: {
   search?:    string;
   specialty?: string;
@@ -218,13 +214,10 @@ export async function getConsultants(params?: {
  
   if (profileError) throw new Error(profileError.message);
  
-  // 3. Build a lookup map: profile.id → profile
   const profileMap = new Map(
     (profileRows || []).map((p) => [p.id, p])
   );
  
-  // 4. Merge and shape
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let consultants = consultantRows.map((row: any) => {
     const profile   = profileMap.get(row.user_id);
     const firstName = profile?.first_name ?? "";
@@ -235,7 +228,6 @@ export async function getConsultants(params?: {
       firstName,
       lastName,
       initials:       `${firstName[0] ?? "?"}${lastName[0] ?? ""}`.toUpperCase(),
-     // avatarUrl:      profile?.profile_picture_url ?? null,
       specialty:      row.specialty    ?? "",
       bio:            row.bio          ?? null,
       hourlyRate:     row.hourly_rate  !== null ? Number(row.hourly_rate) : null,
@@ -243,7 +235,6 @@ export async function getConsultants(params?: {
     };
   });
  
-  // 5. Name/specialty search in JS (name lives in profiles, not consultants)
   if (params?.search) {
     const q = params.search.toLowerCase();
     consultants = consultants.filter(
@@ -256,8 +247,6 @@ export async function getConsultants(params?: {
  
   return { consultants, total: count ?? consultants.length };
 }
- 
-// ─── New: available time slots for the booking calendar ──────────────────────
  
 export async function getConsultantAvailability(
   consultantId: string,
@@ -289,7 +278,6 @@ export async function getConsultantAvailability(
     return `${String(h).padStart(2, "0")}:00`;
   });
  
-  // Working hours 08:00 – 18:00
   const allSlots = Array.from({ length: 11 }, (_, i) =>
     `${String(i + 8).padStart(2, "0")}:00`,
   );
@@ -298,11 +286,90 @@ export async function getConsultantAvailability(
   return { availableSlots, bookedSlots };
 }
  
-// ─── New: insert session rows ─────────────────────────────────────────────────
- 
 export async function bookConsultantSessions(
   sessions: Record<string, unknown>[],
 ) {
   const { error } = await supabase.from("sessions").insert(sessions);
   if (error) throw new Error(error.message);
+}
+
+export async function getConsultantClients(consultantId: string) {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select(`
+      status,
+      scheduled_at,
+      athletes (
+        user_id,
+        age,
+        created_at,
+        sports ( name ),
+        profiles ( first_name, last_name, role )
+      )
+    `)
+    .eq('provider_id', consultantId)
+    .eq('provider_type', 'consultant');
+
+  if (error) throw new Error(error.message);
+
+  const clientMap = new Map();
+
+  (data || []).forEach((s: any) => {
+    const athlete = s.athletes;
+    if (!athlete) return;
+
+    const id = athlete.user_id;
+    if (!clientMap.has(id)) {
+      clientMap.set(id, {
+        ...athlete,
+        totalSessions: 0,
+        upcomingSessions: 0,
+        completedSessions: 0,
+      });
+    }
+
+    const client = clientMap.get(id);
+    client.totalSessions += 1;
+    if (new Date(s.scheduled_at) > new Date() && s.status === 'confirmed') {
+      client.upcomingSessions += 1;
+    }
+    if (s.status === 'completed') {
+      client.completedSessions += 1;
+    }
+  });
+
+  return Array.from(clientMap.values());
+}
+
+export async function updateConsultantSession(sessionId: string, action: 'approve' | 'cancel' | 'reschedule') {
+  if (action === 'approve') {
+    const { data, error } = await supabase
+      .from('sessions')
+      .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
+      .eq('id', sessionId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  if (action === 'cancel') {
+    const { data, error } = await supabase
+      .from('sessions')
+      .update({ 
+        status: 'cancelled', 
+        cancelled_at: new Date().toISOString() 
+      })
+      .eq('id', sessionId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  if (action === 'reschedule') {
+    return { id: sessionId, action: 'reschedule' };
+  }
 }
