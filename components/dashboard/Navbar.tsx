@@ -65,14 +65,14 @@ export function Navbar() {
             {open && (
               <div className="absolute right-0 top-12 w-82 bg-white border border-gray-100 rounded-2xl shadow-lg py-2 z-50">
                 {/* User info inside dropdown */}
-                <div className="px-4 py-2 border-b border-gray-100 mb-1">
+                <div className="px-4 py-5 border-b border-gray-100 mb-1">
                   <p className="text-sm font-bold text-gray-900 capitalize">{fullName}</p>
                   <p className="text-xs text-gray-400 capitalize">{role}</p>
                 </div>
 
                 <button
                   onClick={() => { setOpen(false); router.push("/dashboard/profile"); }}
-                  className="w-full flex items-center gap-3 px-4 py-6 text-sm text-gray-700 hover:bg-gray-50 font-medium"
+                  className="w-full flex items-center gap-3 px-4 py-5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
                 >
                   <User className="w-4 h-4 text-gray-400" />
                   View Profile
@@ -80,7 +80,7 @@ export function Navbar() {
 
                 <button
                   onClick={() => { setOpen(false); router.push("/dashboard/settings"); }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
+                  className="w-full flex items-center gap-3 px-4 py-5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
                 >
                   <Settings className="w-4 h-4 text-gray-400" />
                   Settings
@@ -89,7 +89,7 @@ export function Navbar() {
                 <div className="border-t border-gray-100 mt-1 pt-1">
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 font-medium"
+                    className="w-full flex items-center gap-3 px-4 py-5 text-sm text-red-500 hover:bg-red-50 font-medium"
                   >
                     <LogOut className="w-4 h-4" />
                     Logout
