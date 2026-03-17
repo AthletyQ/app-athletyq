@@ -19,7 +19,9 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
     SidebarRail,
+    SidebarFooter,
 } from "@/components/ui/sidebar";
+import { SignOutButton } from "./SignOutButton";
 
 const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/consultant/dashboard" },
@@ -69,6 +71,9 @@ export function Sidebar({ ...props }: React.ComponentProps<typeof BaseSidebar>) 
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>
+            <SidebarFooter className="px-2 mb-4">
+                <SignOutButton />
+            </SidebarFooter>
             <SidebarRail className="hover:after:bg-white/20" />
         </BaseSidebar>
     );
