@@ -531,9 +531,6 @@ export default function ChatsPage() {
 
         {/* Right Panel */}
         {activeTab === 'Chats' ? (
-<<<<<<< HEAD
-          <ChatWindow key={selected.id} conv={selected} />
-=======
           selected ? (
             <ChatWindow conv={selected} coachId={coachId} />
           ) : (
@@ -544,7 +541,6 @@ export default function ChatsPage() {
               </div>
             </div>
           )
->>>>>>> origin/dev
         ) : selectedCall ? (
           <CallDetailPanel call={selectedCall} />
         ) : (
