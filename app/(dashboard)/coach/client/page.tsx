@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { Search, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Search, Clock, CheckCircle, XCircle, MessageSquare } from 'lucide-react'
 import { getCoachProfile, getClients, updateClientStatus } from '@/services/api'
 
 const supabase = createClient(
@@ -27,8 +28,20 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
   onAccept?: (id: string) => void
   onDecline?:(id: string) => void
 }) {
+  const router = useRouter()
+
+  // ✅ completed sessions = totalSessions - upcoming (sessions already passed)
+  const completedSessions = Math.max(0, client.totalSessions - client.upcoming)
+
+  // ✅ progress = completed / total * 100
+  const progressPct = client.totalSessions > 0
+    ? Math.min(Math.round((completedSessions / client.totalSessions) * 100), 100)
+    : 0
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
+
+      {/* Avatar + Name */}
       <div className="flex items-center gap-3">
         {client.profileImageUrl ? (
           <img src={client.profileImageUrl} alt={client.name} className="w-11 h-11 rounded-full object-cover flex-shrink-0" />
@@ -48,30 +61,44 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
         </div>
       </div>
 
+      {/* Stats — active only */}
       {!pending && (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-400 mb-1">Total Sessions</p>
+              <p className="text-xs text-gray-400 mb-1">Total</p>
               <p className="text-lg font-bold text-gray-900">{client.totalSessions}</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs text-gray-400 mb-1">Upcoming</p>
-              <p className="text-lg font-bold text-gray-900">{client.upcoming}</p>
+              <p className="text-lg font-bold text-blue-600">{client.upcoming}</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-xs text-gray-400 mb-1">Completed</p>
+              <p className="text-lg font-bold text-green-600">{completedSessions}</p>
             </div>
           </div>
+
+          {/* ✅ progress = completed sessions */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <p className="text-xs text-gray-500">Sessions Progress</p>
-              <p className="text-xs font-semibold text-blue-600">{client.progress}%</p>
+              <p className="text-xs text-gray-500">Session Progress</p>
+              <p className="text-xs font-semibold text-blue-600">{progressPct}%</p>
             </div>
             <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${client.progress}%` }} />
+              <div
+                className="h-full bg-blue-600 rounded-full transition-all"
+                style={{ width: `${progressPct}%` }}
+              />
             </div>
+            <p className="text-xs text-gray-400 mt-1">
+              {completedSessions} of {client.totalSessions} sessions completed
+            </p>
           </div>
         </>
       )}
 
+      {/* Pending info */}
       {pending && (
         <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
           <p className="text-xs text-amber-700 font-medium">Awaiting your confirmation</p>
@@ -81,11 +108,13 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
         </div>
       )}
 
+      {/* Last active */}
       <div className="flex items-center justify-between text-xs text-gray-400">
         <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{client.lastActive}</span>
         <span>Joined {client.joined}</span>
       </div>
 
+      {/* Action buttons */}
       <div className="flex gap-2">
         {pending ? (
           <>
@@ -104,8 +133,16 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
           </>
         ) : (
           <>
-            <button className="flex-1 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">View Details</button>
-            <button className="flex-1 py-2 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50">Message</button>
+            <button className="flex-1 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">
+              View Details
+            </button>
+            {/* ✅ Message navigates to chats page */}
+            <button
+              onClick={() => router.push('/coach/chat')}
+              className="flex-1 py-2 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1"
+            >
+              <MessageSquare className="w-3.5 h-3.5" /> Message
+            </button>
           </>
         )}
       </div>
@@ -177,14 +214,13 @@ export default function ClientsPage() {
 
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
-      {/* ✅ Topbar removed — now global in layout */}
       <main className="flex-1 p-6">
-
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">My Clients</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage your athletes and view their progress.</p>
         </div>
 
+        {/* Tabs */}
         <div className="flex gap-6 border-b border-gray-200 mb-5">
           <button
             onClick={() => setActiveTab('active')}
@@ -204,6 +240,7 @@ export default function ClientsPage() {
           </button>
         </div>
 
+        {/* Search */}
         <div className="relative mb-6 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -215,12 +252,10 @@ export default function ClientsPage() {
           />
         </div>
 
+        {/* Content */}
         {!coachId && !error ? (
           <div className="flex items-center justify-center h-40">
-            <div className="text-center">
-              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-sm text-gray-400">Loading profile...</p>
-            </div>
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : error ? (
           <div className="flex items-center justify-center h-40">
@@ -228,10 +263,7 @@ export default function ClientsPage() {
           </div>
         ) : loading ? (
           <div className="flex items-center justify-center h-40">
-            <div className="text-center">
-              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-sm text-gray-400">Loading clients...</p>
-            </div>
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length > 0 ? (
           <div className="grid grid-cols-3 gap-5">

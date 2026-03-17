@@ -18,10 +18,8 @@ export async function GET(request: NextRequest) {
     'bg-rose-100 text-rose-700',    'bg-green-100 text-green-700',
   ]
 
-  const sessionStatus = status === 'pending' ? 'pending' : 'confirmed'
-
-  // ✅ fetch all sessions for this coach with the right status
-  const { data, error } = await supabase
+  // ✅ fetch ALL sessions for this coach (all statuses)
+  const { data: allSessions, error } = await supabase
     .from('sessions')
     .select(`
       id,
@@ -37,12 +35,9 @@ export async function GET(request: NextRequest) {
           created_at
         )
       ),
-      sports (
-        name
-      )
+      sports ( name )
     `)
     .eq('provider_id', coachId)
-    .eq('status', sessionStatus)
     .order('scheduled_at', { ascending: false })
 
   if (error) {
@@ -50,49 +45,100 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // ✅ deduplicate by athlete_id, count sessions per athlete
-  const athleteMap = new Map<string, any>()
+  // ✅ group all sessions by athlete
+  const athleteMap = new Map<string, {
+    sessions: any[]
+    profile:  any
+    sport:    any
+    joined:   string
+  }>()
 
-  ;(data ?? []).forEach((row: any, i: number) => {
+  ;(allSessions ?? []).forEach((row: any) => {
     const athleteId = row.athlete_id
     const athlete   = Array.isArray(row.athletes) ? row.athletes[0] : row.athletes
     const profile   = Array.isArray(athlete?.profiles) ? athlete.profiles[0] : athlete?.profiles
     const sport     = Array.isArray(row.sports) ? row.sports[0] : row.sports
 
     if (!athleteMap.has(athleteId)) {
-      const firstName = profile?.first_name ?? ''
-      const lastName  = profile?.last_name  ?? ''
-
       athleteMap.set(athleteId, {
-        id:              athleteId,
-        initials:        `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '??',
-        name:            `${firstName} ${lastName}`.trim() || 'Unknown Athlete',
-        sport:           sport?.name ?? 'General',
-        level:           'Athlete',
-        profileImageUrl: profile?.profile_image_url ?? null,
-        totalSessions:   1,
-        upcoming:        new Date(row.scheduled_at) > new Date() ? 1 : 0,
-        progress:        0,
-        lastActive:      status === 'pending' ? 'Requested recently' : 'Recently active',
-        joined:          profile?.created_at
+        sessions: [],
+        profile,
+        sport,
+        joined: profile?.created_at
           ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
           : '—',
-        color: COLORS[athleteMap.size % COLORS.length],
       })
-    } else {
-      // ✅ accumulate session counts per athlete
-      const existing = athleteMap.get(athleteId)
-      existing.totalSessions += 1
-      if (new Date(row.scheduled_at) > new Date()) {
-        existing.upcoming += 1
-      }
-      // progress = upcoming / total * 100 capped at 100
-      existing.progress = Math.min(
-        Math.round((existing.upcoming / existing.totalSessions) * 100),
-        100
-      )
     }
+    athleteMap.get(athleteId)!.sessions.push(row)
   })
 
-  return NextResponse.json(Array.from(athleteMap.values()))
+  // ✅ classify athletes:
+  // active  = has at least one confirmed session
+  // pending = has NO confirmed sessions (only pending/reschedule_requested)
+  const clients: any[] = []
+  let colorIndex = 0
+
+  athleteMap.forEach((data, athleteId) => {
+    const { sessions, profile, sport, joined } = data
+
+    const hasConfirmed = sessions.some(s =>
+      s.status === 'confirmed' || s.status === 'reschedule_requested' || s.status === 'completed'
+    )
+    const onlyPending  = sessions.every(s =>
+      s.status === 'pending' || s.status === 'cancelled'
+    )
+
+    const isActive  = hasConfirmed
+    const isPending = !hasConfirmed && sessions.some(s => s.status === 'pending')
+
+    // filter based on requested tab
+    if (status === 'active'  && !isActive)  return
+    if (status === 'pending' && !isPending) return
+
+    const firstName = profile?.first_name ?? ''
+    const lastName  = profile?.last_name  ?? ''
+
+    const totalSessions = sessions.filter(s =>
+      s.status === 'confirmed' || s.status === 'completed' || s.status === 'reschedule_requested'
+    ).length
+
+    const upcoming = sessions.filter(s =>
+      (s.status === 'confirmed' || s.status === 'reschedule_requested') &&
+      new Date(s.scheduled_at) > new Date()
+    ).length
+
+    const pendingCount = sessions.filter(s => s.status === 'pending').length
+
+    clients.push({
+      id:              athleteId,
+      initials:        `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '??',
+      name:            `${firstName} ${lastName}`.trim() || 'Unknown Athlete',
+      sport:           sport?.name ?? 'General',
+      level:           'Athlete',
+      profileImageUrl: profile?.profile_image_url ?? null,
+      totalSessions,
+      upcoming,
+      pendingCount,
+      progress:        totalSessions > 0
+        ? Math.min(Math.round((upcoming / totalSessions) * 100), 100)
+        : 0,
+      lastActive:      status === 'pending' ? 'Requested recently' : 'Recently active',
+      joined,
+      color: COLORS[colorIndex++ % COLORS.length],
+    })
+    const completedSessions = sessions.filter(s => s.status === 'completed').length
+
+    clients.push({
+          
+        totalSessions,
+        upcoming,
+        completedSessions,
+        progress: totalSessions > 0
+          ? Math.min(Math.round((completedSessions / totalSessions) * 100), 100)
+          : 0,
+          
+})
+  })
+
+  return NextResponse.json(clients)
 }
