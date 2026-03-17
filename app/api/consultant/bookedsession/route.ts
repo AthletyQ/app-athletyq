@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionStats } from "@/services/consultant/consultant.services";
+import { getSessionStats, getConsultantSessions } from "@/services/consultant/consultant.services";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,9 +12,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const stats = await getSessionStats(consultantId);
+    const [stats, sessions] = await Promise.all([
+      getSessionStats(consultantId),
+      getConsultantSessions(consultantId),
+    ]);
 
-    return NextResponse.json({ ok: true, data: stats });
+    return NextResponse.json({
+      ok: true,
+      data: {
+        ...stats,
+        sessions,
+      }
+    });
 
   } catch (error: any) {
     return NextResponse.json(

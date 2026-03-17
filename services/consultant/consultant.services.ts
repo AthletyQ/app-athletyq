@@ -340,3 +340,36 @@ export async function getConsultantClients(consultantId: string) {
 
   return Array.from(clientMap.values());
 }
+
+export async function updateConsultantSession(sessionId: string, action: 'approve' | 'cancel' | 'reschedule') {
+  if (action === 'approve') {
+    const { data, error } = await supabase
+      .from('sessions')
+      .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
+      .eq('id', sessionId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  if (action === 'cancel') {
+    const { data, error } = await supabase
+      .from('sessions')
+      .update({ 
+        status: 'cancelled', 
+        cancelled_at: new Date().toISOString() 
+      })
+      .eq('id', sessionId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  if (action === 'reschedule') {
+    return { id: sessionId, action: 'reschedule' };
+  }
+}

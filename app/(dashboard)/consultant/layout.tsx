@@ -10,7 +10,7 @@ export default function ConsultantLayout({ children }: { children: React.ReactNo
             {/* Consultant Sidebar */}
             <Sidebar />
 
-            {/* Right side */}
+            {/* Right side */}ebar
             <SidebarInset className="flex flex-col flex-1">
                 <Navbar />
                 <main className="flex-1 bg-gray-50 p-6">
