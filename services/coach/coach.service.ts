@@ -7,8 +7,7 @@ export const coachService = {
    */
   async getAvailability(
     coachId: string,
-    date: Date,
-    sessionType: 'online' | 'in_person' | null = 'online'
+    date: Date
   ): Promise<ServiceResponse<{ availableSlots: string[]; bookedSlots: string[] }>> {
     try {
       const dayOfWeek = date.getDay(); // 0 is Sunday, 6 is Saturday
@@ -51,8 +50,8 @@ export const coachService = {
       if (relevantAvailability.length === 0) {
         // --- DYNAMIC FALLBACK LOGIC ---
         let currentHour = 8;
-        // 8 AM to 8 PM for online (20:00), 8 AM to 4 PM for in-person (16:00)
-        const endHour = sessionType === 'in_person' ? 16 : 20;
+        // 8 AM to 8 PM for online (20:00)
+        const endHour = 20;
 
         while (currentHour < endHour) {
           allPossibleSlots.push(`${currentHour.toString().padStart(2, '0')}:00`);

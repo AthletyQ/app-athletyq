@@ -28,7 +28,6 @@ interface SessionCardProps {
  */
 export function SessionCard({ coach, onClose }: SessionCardProps) {
   const [step, setStep] = useState(0)
-  const [sessionType, setSessionType] = useState<'online' | 'in_person' | null>(null)
   const [teamType, setTeamType] = useState<'individual' | 'group' | null>(null)
   const [date, setDate] = useState<Date | null>(null)
   const [selectedTimes, setSelectedTimes] = useState<string[]>([])
@@ -40,12 +39,12 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
-  const steps = ["Session Type", "Team", "Time & Date", "Confirmation"]
+  const steps = ["Team", "Time & Date", "Confirmation"]
 
   // --- FETCH AVAILABILITY ---
   const fetchAvailability = useCallback(async (selectedDate: Date) => {
     setLoadingAvailability(true)
-    const { data, error } = await coachService.getAvailability(coach.id, selectedDate, sessionType)
+    const { data, error } = await coachService.getAvailability(coach.id, selectedDate)
     if (error) {
       console.error("Failed to fetch availability:", error)
     } else if (data) {
@@ -55,21 +54,14 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
       setBookedSlots(data.bookedSlots)
     }
     setLoadingAvailability(false)
-  }, [coach.id, sessionType])
+  }, [coach.id])
 
   useEffect(() => {
     if (date) {
       fetchAvailability(date)
-      setSelectedTimes([]) // Reset selected times when date or sessionType changes
+      setSelectedTimes([]) // Reset selected times when date changes
     }
   }, [date, fetchAvailability])
-
-  // Re-fetch availability if user switches between Online and In-person while date is already selected
-  useEffect(() => {
-    if (date && step === 2) {
-       fetchAvailability(date)
-    }
-  }, [sessionType, date, step, fetchAvailability])
 
   // --- HANDLERS ---
   const handleNextStep = () => { if (step < steps.length - 1) setStep(step + 1) }
@@ -99,14 +91,13 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
   }
 
   const isStepValid = () => {
-    if (step === 0) return !!sessionType
-    if (step === 1) return !!teamType
-    if (step === 2) return !!date && selectedTimes.length >= 1
+    if (step === 0) return !!teamType
+    if (step === 1) return !!date && selectedTimes.length >= 1
     return true
   }
 
   const handleCompleteBooking = async () => {
-    if (!date || selectedTimes.length === 0 || !sessionType) return
+    if (!date || selectedTimes.length === 0) return
 
     setIsSubmitting(true)
     setBookingStatus('idle')
@@ -163,7 +154,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         price: (Number(coach.hourlyRate) || 0) * durationHours,
         currency: 'USD',
         payment_status: 'unpaid',
-        location_type: sessionType === 'online' ? 'online' : 'in_person',
+        location_type: 'online',
       }
 
       // Check if scheduled time is in the past
@@ -225,26 +216,6 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
             <>
               {step === 0 && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
-                  <h3 className="text-base font-bold text-gray-900">Where will you meet?</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    {[
-                      { id: 'online', label: 'Online', icon: Video, desc: 'Zoom / G-Meet' },
-                      { id: 'in_person', label: 'In-person', icon: MapPin, desc: 'Local Facility' }
-                    ].map((item) => (
-                      <button key={item.id} onClick={() => setSessionType(item.id as 'online' | 'in_person')} className={cn("p-4 rounded-2xl border-2 text-left transition-all group flex items-center gap-4", sessionType === item.id ? "border-blue-600 bg-blue-50/50" : "border-gray-50 hover:border-blue-100")}>
-                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors", sessionType === item.id ? "bg-blue-600 text-white" : "bg-gray-50 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600")}><item.icon size={20} /></div>
-                        <div>
-                          <p className="font-bold text-gray-900 text-sm">{item.label}</p>
-                          <p className="text-[11px] text-gray-500">{item.desc}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {step === 1 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
                   <h3 className="text-base font-bold text-gray-900">Choose your team size</h3>
                   <div className="grid grid-cols-1 gap-3">
                     {[
@@ -263,7 +234,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                 </div>
               )}
 
-              {step === 2 && (
+              {step === 1 && (
                 <div className="animate-in fade-in slide-in-from-right-4 relative scale-95 origin-top">
                    {loadingAvailability && (
                      <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-[1px]">
@@ -289,7 +260,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                 </div>
               )}
 
-              {step === 3 && (
+              {step === 2 && (
                 <div className="flex flex-col items-center justify-center text-center space-y-4 py-4 animate-in zoom-in-95 duration-500">
                   <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><Check size={32} strokeWidth={3} /></div>
                   <div>
@@ -298,7 +269,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                   </div>
                   
                   <div className="w-full bg-gray-50/80 rounded-3xl p-5 space-y-3 text-left border border-gray-100">
-                    <div className="flex justify-between text-[13px]"><span className="text-gray-400">Type</span><span className="font-bold text-gray-900 capitalize">{sessionType?.replace('_', ' ')}</span></div>
+                    <div className="flex justify-between text-[13px]"><span className="text-gray-400">Type</span><span className="font-bold text-gray-900 capitalize">Online</span></div>
                     <div className="flex justify-between text-[13px]"><span className="text-gray-400">Attendees</span><span className="font-bold text-gray-900 capitalize">{teamType}</span></div>
                     <div className="flex justify-between text-[13px]">
                       <span className="text-gray-400">Scheduled</span>
@@ -333,9 +304,9 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
               <ChevronLeft size={16} />Back
             </button>
             <button 
-              onClick={step === 3 ? handleCompleteBooking : handleNextStep} 
+              onClick={step === 2 ? handleCompleteBooking : handleNextStep} 
               disabled={!isStepValid() || isSubmitting} 
-              className={cn("flex-1 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md", step === 3 ? "bg-green-600 hover:bg-green-700 text-white shadow-green-100" : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100 disabled:shadow-none disabled:bg-gray-100 disabled:text-gray-300")}
+              className={cn("flex-1 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md", step === 2 ? "bg-green-600 hover:bg-green-700 text-white shadow-green-100" : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100 disabled:shadow-none disabled:bg-gray-100 disabled:text-gray-300")}
             >
               {isSubmitting ? (
                 <>
@@ -344,8 +315,8 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                 </>
               ) : (
                 <>
-                  {step === 3 ? "Complete Booking" : "Continue"}
-                  {step < 3 && <ArrowRight size={16} />}
+                  {step === 2 ? "Complete Booking" : "Continue"}
+                  {step < 2 && <ArrowRight size={16} />}
                 </>
               )}
             </button>
