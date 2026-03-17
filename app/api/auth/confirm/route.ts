@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     // Verify the email confirmation token
     const { data, error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
-      type: type as "signup" | "email",
+      type: type as "signup" | "email" | "recovery",
     });
 
     if (error) {
