@@ -28,7 +28,6 @@ interface SessionCardProps {
  */
 export function SessionCard({ coach, onClose }: SessionCardProps) {
   const [step, setStep] = useState(0)
-  const [teamType, setTeamType] = useState<'individual' | 'group' | null>(null)
   const [date, setDate] = useState<Date | null>(null)
   const [selectedTimes, setSelectedTimes] = useState<string[]>([])
   
@@ -39,7 +38,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
-  const steps = ["Team", "Time & Date", "Confirmation"]
+  const steps = ["Time & Date", "Confirmation"]
 
   // --- FETCH AVAILABILITY ---
   const fetchAvailability = useCallback(async (selectedDate: Date) => {
@@ -91,8 +90,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
   }
 
   const isStepValid = () => {
-    if (step === 0) return !!teamType
-    if (step === 1) return !!date && selectedTimes.length >= 1
+    if (step === 0) return !!date && selectedTimes.length >= 1
     return true
   }
 
@@ -132,10 +130,6 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
       const endHour = parseInt(endStr.split(':')[0])
       
       // If only one slot is selected, duration is 60.
-      // If two slots (e.g., 08:00 and 11:00) are selected, duration is (11-8+1)*60 = 240 mins?
-      // Wait, if the user means "From 8 to 11", do they mean it ends at 11 or ends at 12?
-      // Usually, if you click the "11:00" button, you mean the 11:00-12:00 slot.
-      // So "08:00 to 11:00" inclusive of the 11:00 slot is 4 hours.
       const durationHours = endHour - startHour + 1
       const durationMinutes = durationHours * 60
 
@@ -147,7 +141,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         provider_id: coach.id,
         provider_type: 'coach',
         sport_id: coach.sportId,
-        session_type: teamType === 'group' ? 'group' : 'one-on-one',
+        session_type: 'one-on-one',
         scheduled_at: scheduledAt.toISOString(),
         duration_minutes: durationMinutes,
         status: 'pending',
@@ -215,26 +209,6 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
           ) : (
             <>
               {step === 0 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
-                  <h3 className="text-base font-bold text-gray-900">Choose your team size</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    {[
-                      { id: 'individual', label: '1-on-1', icon: Users, desc: 'Personalized focus' },
-                      { id: 'group', label: 'Group (max 5)', icon: Users, desc: 'Train with teammates' }
-                    ].map((item) => (
-                      <button key={item.id} onClick={() => setTeamType(item.id as 'individual' | 'group')} className={cn("p-4 rounded-2xl border-2 text-left transition-all group flex items-center gap-4", teamType === item.id ? "border-blue-600 bg-blue-50/50" : "border-gray-50 hover:border-blue-100")}>
-                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors", teamType === item.id ? "bg-blue-600 text-white" : "bg-gray-50 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600")}><item.icon size={20} /></div>
-                        <div>
-                          <p className="font-bold text-gray-900 text-sm">{item.label}</p>
-                          <p className="text-[11px] text-gray-500">{item.desc}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {step === 1 && (
                 <div className="animate-in fade-in slide-in-from-right-4 relative scale-95 origin-top">
                    {loadingAvailability && (
                      <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-[1px]">
@@ -260,7 +234,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                 </div>
               )}
 
-              {step === 2 && (
+              {step === 1 && (
                 <div className="flex flex-col items-center justify-center text-center space-y-4 py-4 animate-in zoom-in-95 duration-500">
                   <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><Check size={32} strokeWidth={3} /></div>
                   <div>
@@ -269,8 +243,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                   </div>
                   
                   <div className="w-full bg-gray-50/80 rounded-3xl p-5 space-y-3 text-left border border-gray-100">
-                    <div className="flex justify-between text-[13px]"><span className="text-gray-400">Type</span><span className="font-bold text-gray-900 capitalize">Online</span></div>
-                    <div className="flex justify-between text-[13px]"><span className="text-gray-400">Attendees</span><span className="font-bold text-gray-900 capitalize">{teamType}</span></div>
+                    <div className="flex justify-between text-[13px]"><span className="text-gray-400">Type</span><span className="font-bold text-gray-900 capitalize">Online 1-on-1</span></div>
                     <div className="flex justify-between text-[13px]">
                       <span className="text-gray-400">Scheduled</span>
                       <div className="text-right">
@@ -304,9 +277,9 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
               <ChevronLeft size={16} />Back
             </button>
             <button 
-              onClick={step === 2 ? handleCompleteBooking : handleNextStep} 
+              onClick={step === 1 ? handleCompleteBooking : handleNextStep} 
               disabled={!isStepValid() || isSubmitting} 
-              className={cn("flex-1 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md", step === 2 ? "bg-green-600 hover:bg-green-700 text-white shadow-green-100" : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100 disabled:shadow-none disabled:bg-gray-100 disabled:text-gray-300")}
+              className={cn("flex-1 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md", step === 1 ? "bg-green-600 hover:bg-green-700 text-white shadow-green-100" : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100 disabled:shadow-none disabled:bg-gray-100 disabled:text-gray-300")}
             >
               {isSubmitting ? (
                 <>
@@ -315,8 +288,8 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                 </>
               ) : (
                 <>
-                  {step === 2 ? "Complete Booking" : "Continue"}
-                  {step < 2 && <ArrowRight size={16} />}
+                  {step === 1 ? "Complete Booking" : "Continue"}
+                  {step < 1 && <ArrowRight size={16} />}
                 </>
               )}
             </button>
