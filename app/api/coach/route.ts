@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from("coaches")
     .select(
-      `
+      ` 
       user_id,
       coaching_sport_id,
       specialization,

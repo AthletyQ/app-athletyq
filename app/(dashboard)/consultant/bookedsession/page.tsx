@@ -1,34 +1,52 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { createClient } from '@supabase/supabase-js'
 import {
-  Bell, User, Video, MapPin, Clock, ChevronLeft, ChevronRight,
+  Video, MapPin, Clock, ChevronLeft, ChevronRight,
   Filter, MoreVertical, CheckCircle, XCircle, AlertCircle,
   CalendarCheck, X, Calendar, Trash2,
 } from 'lucide-react'
-import { getCoachProfile, getBookedSessions, updateSession } from '@/services/api'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-)
+import { supabase } from '@/lib/supabase/client'
+import { updateConsultantSession } from '@/services/consultant/consultant.services'
 
 type SessionStatus = 'confirmed' | 'pending' | 'cancelled'
 
 type Session = {
-  id:         string
-  client:     string
-  initials:   string
-  color:      string
-  sport:      string
-  sportColor: string
-  mode:       'Online' | 'In-person'
-  location:   string
-  date:       string
-  time:       string
-  duration:   string
-  status:     SessionStatus
+  id: number
+  scheduled_at: string
+  duration_minutes: number
+  status: SessionStatus
+  price: number
+  location_type: 'online' | 'in_person'
+  location_details: string
+  athletes: {
+    user_id: string
+    sports: { name: string }
+    profiles: { first_name: string; last_name: string }
+  }
+}
+
+const STATUS_CONFIG: Record<SessionStatus, { label: string; classes: string; icon: typeof CheckCircle }> = {
+  confirmed: { label: 'Confirmed', classes: 'bg-green-50 text-green-600', icon: CheckCircle },
+  pending:   { label: 'Pending',   classes: 'bg-amber-50 text-amber-600', icon: AlertCircle },
+  cancelled: { label: 'Cancelled', classes: 'bg-red-50 text-red-500',     icon: XCircle     },
+}
+
+function getInitials(firstName: string, lastName: string) {
+  return `${firstName?.[0] || ''}${lastName?.[0] || ''}`
+}
+
+const AVATAR_COLORS = [
+  'bg-blue-100 text-blue-700',
+  'bg-indigo-100 text-indigo-700',
+  'bg-purple-100 text-purple-700',
+  'bg-amber-100 text-amber-700',
+  'bg-pink-100 text-pink-700',
+  'bg-green-100 text-green-700',
+]
+
+function getAvatarColor(name: string) {
+  return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length]
 }
 
 function formatDate(date: Date): string {
@@ -58,29 +76,105 @@ function getWeekDays(monday: Date) {
   })
 }
 
-const STATUS_CONFIG: Record<SessionStatus, {
-  label:   string
-  classes: string
-  icon:    typeof CheckCircle
-}> = {
-  confirmed: { label: 'Confirmed', classes: 'bg-green-50 text-green-600', icon: CheckCircle },
-  pending:   { label: 'Pending',   classes: 'bg-amber-50 text-amber-600', icon: AlertCircle },
-  cancelled: { label: 'Cancelled', classes: 'bg-red-50 text-red-500',     icon: XCircle     },
+// ─── CANCEL MODAL ─────────────────────────────────────────────────────────────
+
+function CancelModal({
+  session, onClose, onConfirm,
+}: {
+  session:   Session
+  onClose:   () => void
+  onConfirm: () => void
+}) {
+  const [saving, setSaving] = useState(false)
+  const firstName = session.athletes?.profiles?.first_name || ''
+  const lastName  = session.athletes?.profiles?.last_name  || ''
+  const sport     = session.athletes?.sports?.name          || ''
+
+  async function handleConfirm() {
+    setSaving(true)
+    await onConfirm()
+    setSaving(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <Trash2 className="w-5 h-5 text-red-500" />
+            <h2 className="text-base font-bold text-gray-900">Cancel Session</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="px-6 py-5">
+          <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${getAvatarColor(firstName)}`}>
+              {getInitials(firstName, lastName)}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{firstName} {lastName}</p>
+              <p className="text-xs text-gray-500">{sport} · {new Date(session.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+            </div>
+          </div>
+          <p className="text-sm text-gray-600">
+            Are you sure you want to cancel this session? The athlete will be notified immediately.
+          </p>
+        </div>
+        <div className="px-6 pb-6 flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">
+            Keep Session
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={saving}
+            className={`flex-1 py-2.5 text-white text-sm font-semibold rounded-xl transition-colors ${saving ? 'bg-red-300 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'}`}
+          >
+            {saving ? 'Cancelling...' : 'Yes, Cancel'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-// ─── TOPBAR ──────────────────────────────────────────────────────────────────
+// ─── SESSION MENU ─────────────────────────────────────────────────────────────
 
-function Topbar() {
+function SessionMenu({ session, onReschedule }: { session: Session; onReschedule: () => void }) {
+  const [open, setOpen] = useState(false)
+  const ref             = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  if (session.status !== 'confirmed') return null
+
   return (
-    <header className="flex items-center justify-end gap-3 px-6 py-4 bg-white border-b border-gray-100 flex-shrink-0">
-      <button className="relative w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">
-        <Bell className="w-4 h-4" />
-        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-blue-600" />
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+      >
+        <MoreVertical className="w-4 h-4" />
       </button>
-      <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">
-        <User className="w-4 h-4" />
-      </button>
-    </header>
+      {open && (
+        <div className="absolute right-0 top-9 z-20 bg-white border border-gray-100 rounded-xl shadow-lg py-1 w-48">
+          <button
+            onClick={() => { setOpen(false); onReschedule() }}
+            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
+          >
+            <Calendar className="w-4 h-4 text-gray-400" />
+            Reschedule
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -123,7 +217,7 @@ function WeekStrip({
       <div className="flex gap-1">
         {week.map((day) => {
           const isActive    = activeDay === day.full
-          const hasSessions = sessions.some((s) => s.date === day.full)
+          const hasSessions = sessions.some((s) => formatDate(new Date(s.scheduled_at)) === day.full)
           return (
             <button
               key={day.full}
@@ -135,14 +229,10 @@ function WeekStrip({
               <span className={`text-xs font-medium mb-1 ${isActive ? 'text-blue-100' : 'text-gray-400'}`}>
                 {day.short}
               </span>
-              <span className={`text-sm font-bold ${
-                isActive ? 'text-white' : day.isToday ? 'text-blue-600' : 'text-gray-700'
-              }`}>
+              <span className={`text-sm font-bold ${isActive ? 'text-white' : day.isToday ? 'text-blue-600' : 'text-gray-700'}`}>
                 {day.date}
               </span>
-              <span className={`mt-1.5 w-1.5 h-1.5 rounded-full ${
-                hasSessions ? (isActive ? 'bg-blue-200' : 'bg-blue-400') : 'bg-transparent'
-              }`} />
+              <span className={`mt-1.5 w-1.5 h-1.5 rounded-full ${hasSessions ? (isActive ? 'bg-blue-200' : 'bg-blue-400') : 'bg-transparent'}`} />
             </button>
           )
         })}
@@ -151,145 +241,38 @@ function WeekStrip({
   )
 }
 
-// ─── CANCEL MODAL ─────────────────────────────────────────────────────────────
-
-function CancelModal({
-  session, onClose, onConfirm,
-}: {
-  session:   Session
-  onClose:   () => void
-  onConfirm: () => void
-}) {
-  const [saving, setSaving] = useState(false)
-
-  async function handleConfirm() {
-    setSaving(true)
-    await onConfirm()
-    setSaving(false)
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <Trash2 className="w-5 h-5 text-red-500" />
-            <h2 className="text-base font-bold text-gray-900">Cancel Session</h2>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="px-6 py-5">
-          <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${session.color}`}>
-              {session.initials}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{session.client}</p>
-              <p className="text-xs text-gray-500">{session.sport} · {session.date} at {session.time}</p>
-            </div>
-          </div>
-          <p className="text-sm text-gray-600">
-            Are you sure you want to cancel this session? The athlete will be notified immediately.
-          </p>
-        </div>
-        <div className="px-6 pb-6 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">
-            Keep Session
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={saving}
-            className={`flex-1 py-2.5 text-white text-sm font-semibold rounded-xl transition-colors ${
-              saving ? 'bg-red-300 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'
-            }`}
-          >
-            {saving ? 'Cancelling...' : 'Yes, Cancel'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── THREE DOT MENU ───────────────────────────────────────────────────────────
-// confirmed → Reschedule only
-// pending   → hidden
-// cancelled → hidden
-
-function SessionMenu({
-  session,
-  onReschedule,
-}: {
-  session:      Session
-  onReschedule: () => void
-}) {
-  const [open, setOpen] = useState(false)
-  const ref             = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  // ✅ only show for confirmed
-  if (session.status !== 'confirmed') return null
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
-      >
-        <MoreVertical className="w-4 h-4" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-9 z-20 bg-white border border-gray-100 rounded-xl shadow-lg py-1 w-48">
-          <button
-            onClick={() => { setOpen(false); onReschedule() }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
-          >
-            <Calendar className="w-4 h-4 text-gray-400" />
-            Reschedule
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ─── SESSION CARD ─────────────────────────────────────────────────────────────
 
 function SessionCard({
-  session,
-  onConfirm,
-  onReschedule,
-  onCancel,
+  session, onConfirm, onReschedule, onCancel,
 }: {
   session:      Session
-  onConfirm:    (id: string) => void
-  onReschedule: (id: string) => void
-  onCancel:     (id: string) => void
+  onConfirm:    (id: number) => void
+  onReschedule: (id: number) => void
+  onCancel:     (session: Session) => void
 }) {
-  const { label, classes, icon: StatusIcon } = STATUS_CONFIG[session.status]
+  const { label, classes, icon: StatusIcon } = STATUS_CONFIG[session.status] ?? STATUS_CONFIG['pending']
+  const firstName  = session.athletes?.profiles?.first_name || ''
+  const lastName   = session.athletes?.profiles?.last_name  || ''
+  const fullName   = `${firstName} ${lastName}`
+  const initials   = getInitials(firstName, lastName)
+  const avatarColor = getAvatarColor(fullName)
+  const sportName  = session.athletes?.sports?.name || 'Sport'
+  const isOnline   = session.location_type === 'online'
 
   return (
-    <div className={`bg-white rounded-xl border shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow ${
-      session.status === 'cancelled' ? 'opacity-60 border-gray-100' : 'border-gray-100'
-    }`}>
+    <div className={`bg-white rounded-xl border shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow ${session.status === 'cancelled' ? 'opacity-60 border-gray-100' : 'border-gray-100'}`}>
+
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${session.color}`}>
-            {session.initials}
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${avatarColor}`}>
+            {initials}
           </div>
           <div>
-            <p className="text-sm font-bold text-gray-900">{session.client}</p>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${session.sportColor}`}>
-              {session.sport}
+            <p className="text-sm font-bold text-gray-900">{fullName}</p>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-600">
+              {sportName}
             </span>
           </div>
         </div>
@@ -297,40 +280,38 @@ function SessionCard({
           <span className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium ${classes}`}>
             <StatusIcon className="w-3 h-3" />{label}
           </span>
-          {/* ✅ three dot menu — confirmed only */}
-          <SessionMenu
-            session={session}
-            onReschedule={() => onReschedule(session.id)}
-          />
+          <SessionMenu session={session} onReschedule={() => onReschedule(session.id)} />
         </div>
       </div>
 
+      {/* Details */}
       <div className="grid grid-cols-2 gap-2">
         <div className="flex items-center gap-2 text-xs text-gray-500">
           <Clock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-          <span>{session.time} · {session.duration}</span>
+          <span>
+            {new Date(session.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {' · '}{session.duration_minutes} min
+          </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-500">
-          {session.mode === 'Online'
+          {isOnline
             ? <Video  className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
             : <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />}
-          <span className="truncate">{session.location}</span>
+          <span className="truncate">{session.location_details || (isOnline ? 'Online' : 'In-person')}</span>
         </div>
       </div>
 
+      {/* Mode badge + Actions */}
       <div className="flex items-center justify-between">
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-          session.mode === 'Online' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'
-        }`}>
-          {session.mode}
+        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isOnline ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
+          {isOnline ? 'Online' : 'In-person'}
         </span>
-
         <div className="flex gap-2">
-          {/* ✅ pending → Cancel + Confirm side by side */}
+          {/* Pending → Cancel + Confirm */}
           {session.status === 'pending' && (
             <>
               <button
-                onClick={() => onCancel(session.id)}
+                onClick={() => onCancel(session)}
                 className="px-3 py-1.5 border border-red-200 text-red-500 text-xs font-semibold rounded-lg hover:bg-red-50 flex items-center gap-1"
               >
                 <XCircle className="w-3 h-3" /> Cancel
@@ -343,15 +324,13 @@ function SessionCard({
               </button>
             </>
           )}
-
-          {/* ✅ confirmed → Join for online only */}
-          {session.status === 'confirmed' && session.mode === 'Online' && (
+          {/* Confirmed online → Join */}
+          {session.status === 'confirmed' && isOnline && (
             <button className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">
               Join
             </button>
           )}
-
-          {/* ✅ cancelled → Rebook */}
+          {/* Cancelled → Rebook */}
           {session.status === 'cancelled' && (
             <button className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50">
               Rebook
@@ -368,12 +347,11 @@ function SessionCard({
 export default function BookedSessionsPage() {
   const [sessions,      setSessions]      = useState<Session[]>([])
   const [loading,       setLoading]       = useState(true)
-  const [error,         setError]         = useState<string | null>(null)
+  const [consultantId,  setConsultantId]  = useState<string | null>(null)
   const [activeDay,     setActiveDay]     = useState(formatDate(new Date()))
-  const [weekOffset,    setWeekOffset]    = useState(0)
   const [filterStatus,  setFilterStatus]  = useState<'all' | SessionStatus>('all')
+  const [weekOffset,    setWeekOffset]    = useState(0)
   const [cancelFor,     setCancelFor]     = useState<Session | null>(null)
-  const [rescheduling,  setRescheduling]  = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [toast,         setToast]         = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
 
@@ -382,36 +360,31 @@ export default function BookedSessionsPage() {
     setTimeout(() => setToast(null), 3500)
   }
 
+  // Get logged in consultant
   useEffect(() => {
-    async function load() {
-      try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) { setError('Not logged in.'); setLoading(false); return }
-
-        const profileData = await getCoachProfile(user.id)
-        if (!profileData || profileData.error) { setError('No coach profile found.'); setLoading(false); return }
-
-        const data = await getBookedSessions(profileData.id)
-        setSessions(Array.isArray(data) ? data : [])
-      } catch (err: any) {
-        setError(err.message ?? 'Failed to load sessions.')
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setConsultantId(data.user.id)
+      else setLoading(false)
+    })
   }, [])
 
-  // ─── CONFIRM ──────────────────────────────────────────────────────────────
+  // Fetch sessions
+  useEffect(() => {
+    if (!consultantId) return
+    fetch(`/api/consultant/bookedsession?consultant_id=${consultantId}`)
+      .then(res => res.json())
+      .then(result => {
+        if (result.ok) setSessions(result.data.sessions || [])
+      })
+      .finally(() => setLoading(false))
+  }, [consultantId])
 
-  async function handleConfirm(sessionId: string) {
-    setActionLoading(sessionId)
+  // Confirm session
+  async function handleConfirm(sessionId: number) {
+    setActionLoading(String(sessionId))
     try {
-      const res = await updateSession(sessionId, 'approve')
-      if (!res) { showToast('Failed to confirm session.', 'error'); return }
-      setSessions(prev => prev.map(s =>
-        s.id === sessionId ? { ...s, status: 'confirmed' } : s
-      ))
+      await updateConsultantSession(String(sessionId), 'approve')
+      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'confirmed' } : s))
       showToast('Session confirmed! Athlete has been notified.', 'success')
     } catch {
       showToast('Failed to confirm session.', 'error')
@@ -420,32 +393,23 @@ export default function BookedSessionsPage() {
     }
   }
 
-  // ─── RESCHEDULE — no modal, just notify ───────────────────────────────────
-
-  async function handleReschedule(sessionId: string) {
-    setRescheduling(sessionId)
+  // Reschedule session
+  async function handleReschedule(sessionId: number) {
     try {
-      const res = await updateSession(sessionId, 'reschedule')
-      if (!res) { showToast('Failed to send reschedule notification.', 'error'); return }
+      await updateConsultantSession(String(sessionId), 'reschedule')
       showToast('Athlete has been notified to reschedule.', 'success')
     } catch {
       showToast('Failed to send reschedule notification.', 'error')
-    } finally {
-      setRescheduling(null)
     }
   }
 
-  // ─── CANCEL ───────────────────────────────────────────────────────────────
-
+  // Cancel session
   async function handleCancelConfirm() {
     if (!cancelFor) return
-    setActionLoading(cancelFor.id)
+    setActionLoading(String(cancelFor.id))
     try {
-      const res = await updateSession(cancelFor.id, 'cancel')
-      if (!res) { showToast('Failed to cancel session.', 'error'); return }
-      setSessions(prev => prev.map(s =>
-        s.id === cancelFor.id ? { ...s, status: 'cancelled' } : s
-      ))
+      await updateConsultantSession(String(cancelFor.id), 'cancel')
+      setSessions(prev => prev.map(s => s.id === cancelFor.id ? { ...s, status: 'cancelled' } : s))
       showToast('Session cancelled. Athlete has been notified.', 'success')
       setCancelFor(null)
     } catch {
@@ -455,15 +419,25 @@ export default function BookedSessionsPage() {
     }
   }
 
-  const daySessions    = sessions.filter((s) => s.date === activeDay)
+  const daySessions    = sessions.filter((s) => formatDate(new Date(s.scheduled_at)) === activeDay)
   const filtered       = filterStatus === 'all' ? daySessions : daySessions.filter((s) => s.status === filterStatus)
   const totalAll       = sessions.length
   const totalConfirmed = sessions.filter((s) => s.status === 'confirmed').length
   const totalPending   = sessions.filter((s) => s.status === 'pending').length
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-400">Loading sessions...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
-      <Topbar />
 
       {/* Toast */}
       {toast && (
@@ -484,12 +458,17 @@ export default function BookedSessionsPage() {
         />
       )}
 
-      <main className="flex-1 overflow-y-auto p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Booked Sessions</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage and track all your coaching sessions.</p>
+      <main className="flex-1 p-6">
+
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Booked Sessions</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Manage and track all your coaching sessions.</p>
+          </div>
         </div>
 
+        {/* Stat Cards */}
         <div className="grid grid-cols-3 gap-4 mb-5">
           {[
             { label: 'Total Sessions', value: totalAll,       color: 'text-gray-900'  },
@@ -498,19 +477,21 @@ export default function BookedSessionsPage() {
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between">
               <p className="text-sm text-gray-500 font-medium">{label}</p>
-              <p className={`text-2xl font-bold ${color}`}>{loading ? '—' : value}</p>
+              <p className={`text-2xl font-bold ${color}`}>{value}</p>
             </div>
           ))}
         </div>
 
+        {/* Week Strip */}
         <WeekStrip
           activeDay={activeDay}
           setActiveDay={setActiveDay}
+          sessions={sessions}
           weekOffset={weekOffset}
           setWeekOffset={setWeekOffset}
-          sessions={sessions}
         />
 
+        {/* Filter + count row */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm font-semibold text-gray-700">
             {activeDay} —{' '}
@@ -536,26 +517,16 @@ export default function BookedSessionsPage() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center h-48 bg-white rounded-2xl border border-gray-100">
-            <div className="text-center">
-              <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-sm text-gray-400">Loading sessions...</p>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-48 bg-white rounded-2xl border border-gray-100">
-            <p className="text-sm text-red-400">{error}</p>
-          </div>
-        ) : filtered.length > 0 ? (
+        {/* Session Cards */}
+        {filtered.length > 0 ? (
           <div className="grid grid-cols-2 gap-4">
             {filtered.map((session) => (
               <SessionCard
                 key={session.id}
                 session={session}
                 onConfirm={handleConfirm}
-                onReschedule={(id) => handleReschedule(id)}
-                onCancel={(id) => setCancelFor(sessions.find(s => s.id === id) ?? null)}
+                onReschedule={handleReschedule}
+                onCancel={(s) => setCancelFor(s)}
               />
             ))}
           </div>
