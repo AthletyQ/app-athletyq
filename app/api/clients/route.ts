@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
     'bg-rose-100 text-rose-700',    'bg-green-100 text-green-700',
   ]
 
-  // ✅ fetch ALL sessions for this coach (all statuses)
   const { data: allSessions, error } = await supabase
     .from('sessions')
     .select(`
@@ -45,7 +44,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // ✅ group all sessions by athlete
+  // group all sessions by athlete
   const athleteMap = new Map<string, {
     sessions: any[]
     profile:  any
@@ -72,9 +71,6 @@ export async function GET(request: NextRequest) {
     athleteMap.get(athleteId)!.sessions.push(row)
   })
 
-  // ✅ classify athletes:
-  // active  = has at least one confirmed session
-  // pending = has NO confirmed sessions (only pending/reschedule_requested)
   const clients: any[] = []
   let colorIndex = 0
 
@@ -82,62 +78,61 @@ export async function GET(request: NextRequest) {
     const { sessions, profile, sport, joined } = data
 
     const hasConfirmed = sessions.some(s =>
-      s.status === 'confirmed' || s.status === 'reschedule_requested' || s.status === 'completed'
+      s.status === 'confirmed' ||
+      s.status === 'reschedule_requested' ||
+      s.status === 'completed'
     )
-    const onlyPending  = sessions.every(s =>
-      s.status === 'pending' || s.status === 'cancelled'
-    )
-
-    const isActive  = hasConfirmed
     const isPending = !hasConfirmed && sessions.some(s => s.status === 'pending')
 
-    // filter based on requested tab
-    if (status === 'active'  && !isActive)  return
-    if (status === 'pending' && !isPending) return
+    if (status === 'active'  && !hasConfirmed) return
+    if (status === 'pending' && !isPending)    return
 
     const firstName = profile?.first_name ?? ''
     const lastName  = profile?.last_name  ?? ''
 
+    // ✅ total = confirmed + completed + reschedule_requested
     const totalSessions = sessions.filter(s =>
-      s.status === 'confirmed' || s.status === 'completed' || s.status === 'reschedule_requested'
+      s.status === 'confirmed' ||
+      s.status === 'completed' ||
+      s.status === 'reschedule_requested'
     ).length
 
+    // ✅ upcoming = confirmed/reschedule_requested sessions in the future
+    const now = new Date()
     const upcoming = sessions.filter(s =>
       (s.status === 'confirmed' || s.status === 'reschedule_requested') &&
-      new Date(s.scheduled_at) > new Date()
+      new Date(s.scheduled_at) > now
     ).length
+
+    // ✅ completed = sessions with status 'completed' OR confirmed sessions in the past
+    const completedSessions = sessions.filter(s =>
+      s.status === 'completed' ||
+      (s.status === 'confirmed' && new Date(s.scheduled_at) <= now)
+    ).length
+
+    // ✅ progress = completed / total * 100
+    const progress = totalSessions > 0
+      ? Math.min(Math.round((completedSessions / totalSessions) * 100), 100)
+      : 0
 
     const pendingCount = sessions.filter(s => s.status === 'pending').length
 
     clients.push({
-      id:              athleteId,
-      initials:        `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '??',
-      name:            `${firstName} ${lastName}`.trim() || 'Unknown Athlete',
-      sport:           sport?.name ?? 'General',
-      level:           'Athlete',
-      profileImageUrl: profile?.profile_image_url ?? null,
+      id:                athleteId,
+      initials:          `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '??',
+      name:              `${firstName} ${lastName}`.trim() || 'Unknown Athlete',
+      sport:             sport?.name ?? 'General',
+      level:             'Athlete',
+      profileImageUrl:   profile?.profile_image_url ?? null,
       totalSessions,
       upcoming,
+      completedSessions, // ✅ now sent from API
       pendingCount,
-      progress:        totalSessions > 0
-        ? Math.min(Math.round((upcoming / totalSessions) * 100), 100)
-        : 0,
-      lastActive:      status === 'pending' ? 'Requested recently' : 'Recently active',
+      progress,
+      lastActive:        status === 'pending' ? 'Requested recently' : 'Recently active',
       joined,
       color: COLORS[colorIndex++ % COLORS.length],
     })
-    const completedSessions = sessions.filter(s => s.status === 'completed').length
-
-    clients.push({
-          
-        totalSessions,
-        upcoming,
-        completedSessions,
-        progress: totalSessions > 0
-          ? Math.min(Math.round((completedSessions / totalSessions) * 100), 100)
-          : 0,
-          
-})
   })
 
   return NextResponse.json(clients)

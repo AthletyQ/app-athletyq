@@ -30,13 +30,9 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
 }) {
   const router = useRouter()
 
-  // ✅ completed sessions = totalSessions - upcoming (sessions already passed)
-  const completedSessions = Math.max(0, client.totalSessions - client.upcoming)
-
-  // ✅ progress = completed / total * 100
-  const progressPct = client.totalSessions > 0
-    ? Math.min(Math.round((completedSessions / client.totalSessions) * 100), 100)
-    : 0
+  // ✅ use values directly from API
+  const completedSessions = client.completedSessions ?? 0
+  const progressPct       = client.progress          ?? 0
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
@@ -44,7 +40,11 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
       {/* Avatar + Name */}
       <div className="flex items-center gap-3">
         {client.profileImageUrl ? (
-          <img src={client.profileImageUrl} alt={client.name} className="w-11 h-11 rounded-full object-cover flex-shrink-0" />
+          <img
+            src={client.profileImageUrl}
+            alt={client.name}
+            className="w-11 h-11 rounded-full object-cover flex-shrink-0"
+          />
         ) : (
           <div className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${client.color}`}>
             {client.initials}
@@ -53,7 +53,9 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
         <div>
           <p className="text-sm font-bold text-gray-900">{client.name}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${SPORT_COLORS[client.sport] ?? 'bg-gray-100 text-gray-600'}`}>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              SPORT_COLORS[client.sport] ?? 'bg-gray-100 text-gray-600'
+            }`}>
               {client.sport}
             </span>
             <span className="text-xs text-gray-400">{client.level}</span>
@@ -64,6 +66,7 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
       {/* Stats — active only */}
       {!pending && (
         <>
+          {/* ✅ 3 stat boxes: Total, Upcoming, Completed */}
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs text-gray-400 mb-1">Total</p>
@@ -79,7 +82,7 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
             </div>
           </div>
 
-          {/* ✅ progress = completed sessions */}
+          {/* ✅ progress bar = completed / total */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-xs text-gray-500">Session Progress</p>
@@ -110,7 +113,9 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
 
       {/* Last active */}
       <div className="flex items-center justify-between text-xs text-gray-400">
-        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{client.lastActive}</span>
+        <span className="flex items-center gap-1">
+          <Clock className="w-3 h-3" />{client.lastActive}
+        </span>
         <span>Joined {client.joined}</span>
       </div>
 
@@ -136,7 +141,7 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
             <button className="flex-1 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">
               View Details
             </button>
-            {/* ✅ Message navigates to chats page */}
+            {/* ✅ navigates to chats page */}
             <button
               onClick={() => router.push('/coach/chat')}
               className="flex-1 py-2 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1"
@@ -215,6 +220,7 @@ export default function ClientsPage() {
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
       <main className="flex-1 p-6">
+
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">My Clients</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage your athletes and view their progress.</p>
@@ -225,7 +231,9 @@ export default function ClientsPage() {
           <button
             onClick={() => setActiveTab('active')}
             className={`pb-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-              activeTab === 'active' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-gray-600'
+              activeTab === 'active'
+                ? 'text-blue-600 border-blue-600'
+                : 'text-gray-400 border-transparent hover:text-gray-600'
             }`}
           >
             Active Clients ({activeList.length})
@@ -233,7 +241,9 @@ export default function ClientsPage() {
           <button
             onClick={() => setActiveTab('pending')}
             className={`pb-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-              activeTab === 'pending' ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-gray-600'
+              activeTab === 'pending'
+                ? 'text-blue-600 border-blue-600'
+                : 'text-gray-400 border-transparent hover:text-gray-600'
             }`}
           >
             Pending Clients ({pendingList.length})
@@ -281,10 +291,13 @@ export default function ClientsPage() {
           <div className="flex flex-col items-center justify-center h-40 text-center">
             <p className="text-sm font-medium text-gray-400">No {activeTab} clients found</p>
             <p className="text-xs text-gray-300 mt-1">
-              {activeTab === 'pending' ? 'New session requests will appear here' : 'Confirmed clients will appear here'}
+              {activeTab === 'pending'
+                ? 'New session requests will appear here'
+                : 'Confirmed clients will appear here'}
             </p>
           </div>
         )}
+
       </main>
     </div>
   )
