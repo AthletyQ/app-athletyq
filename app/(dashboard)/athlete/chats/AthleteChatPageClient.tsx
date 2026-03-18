@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient, RealtimeChannel } from '@supabase/supabase-js'
 import { Send, Search, MessageSquare, Loader2, ArrowLeft } from 'lucide-react'
+import { MessageTicks } from '@/components/MessageTicks'
 import { useSearchParams, useRouter } from 'next/navigation'
 
 const supabase = createClient(
@@ -15,6 +16,7 @@ const supabase = createClient(
 interface Profile {
   first_name: string
   last_name: string
+  role: string
 }
 
 interface Conversation {
@@ -67,7 +69,7 @@ function formatTime(iso: string | null) {
 export default function AthleteChatPageClient() {
   const searchParams = useSearchParams()
   const router       = useRouter()
-  const openWith     = searchParams.get('consultantId')
+  const openWith     = searchParams.get('contactId') ?? searchParams.get('consultantId')
 
   const [currentUserId,  setCurrentUserId]  = useState<string | null>(null)
   const [conversations,  setConversations]  = useState<Conversation[]>([])
@@ -109,7 +111,8 @@ export default function AthleteChatPageClient() {
         contact_unread_count,
         contact:profiles!conversations_contact_id_fkey (
           first_name,
-          last_name
+          last_name,
+          role
         )
       `)
       .eq('athlete_id', userId)
@@ -353,7 +356,9 @@ export default function AthleteChatPageClient() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-900">{fullName(activeConv.contact)}</p>
-                <p className="text-xs text-green-500 font-medium">Consultant</p>
+                <p className="text-xs text-green-500 font-medium capitalize">
+                  {activeConv.contact?.role?.replace(/_/g, ' ') ?? 'Contact'}
+                </p>
               </div>
             </div>
 
@@ -386,7 +391,7 @@ export default function AthleteChatPageClient() {
                         </div>
                         <span className="text-[10px] text-gray-400 px-1">
                           {formatTime(msg.created_at)}
-                          {isMine && <span className="ml-1">{msg.is_read ? '✓✓' : '✓'}</span>}
+                          {isMine && <MessageTicks status={msg.is_read ? 'read' : 'delivered'} className="ml-1" />}
                         </span>
                       </div>
                     </div>
