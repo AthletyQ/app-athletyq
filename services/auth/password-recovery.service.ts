@@ -9,7 +9,7 @@ export type ResetPasswordResult =
   | { ok: true; data: null }
   | { ok: false; error: { message: string; code?: string; status?: number } };
 
-function toError(error: AuthError | Error) {
+function toError(error: AuthError | Error): { ok: false; error: { message: string; code?: string; status?: number } } {
   const status = (error as { status?: number }).status;
   const code = (error as { code?: string }).code;
 

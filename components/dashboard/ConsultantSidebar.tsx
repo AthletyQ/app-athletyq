@@ -23,7 +23,7 @@ import {
 
 const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/consultant/dashboard" },
-    { icon: Users, label: "Coaches", href: "/consultant/coaches" },
+    //{ icon: Users, label: "Coaches", href: "/consultant/coaches" },
     { icon: Users, label: "Clients", href: "/consultant/clients" },
     { icon: Calendar, label: "Booked Sessions", href: "/consultant/bookedsession" },
     { icon: MessageSquare, label: "Chats", href: "/consultant/chats" },
