@@ -51,8 +51,9 @@ export default function LoginPage() {
       }
 
       router.replace(typeof dashboardPath === 'string' && dashboardPath ? dashboardPath : '/');
-    } catch (err: any) {
-      setError(err?.message || 'Something went wrong. Please try again.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +110,7 @@ export default function LoginPage() {
                     Password
                   </label>
                   <a
-                    href="#"
+                    href="/forgot-password"
                     className="text-xs text-blue-400 hover:text-cyan-300 font-medium"
                   >
                     Forgot password?

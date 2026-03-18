@@ -1,70 +1,79 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Users, Video, TrendingUp, DollarSign, Calendar, CheckCircle, MapPin, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { 
+  Users, 
+  Calendar, 
+  DollarSign, 
+  TrendingUp, 
+  MapPin, 
+  User,
+  Video,
+  CheckCircle,
+  MessageSquare
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 
-function initials(firstName: string, lastName: string) {
-  return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
-}
-
-const AVATAR_COLORS = [
-  'bg-purple-100 text-purple-700',
-  'bg-pink-100 text-pink-700',
-  'bg-amber-100 text-amber-700',
-  'bg-blue-100 text-blue-700',
-  'bg-green-100 text-green-700',
-];
-
-function getColor(name: string) {
-  return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
-}
-
 export default function ConsultantDashboard() {
+  const [profile, setProfile] = useState<any>(null);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [consultantId, setConsultantId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
-        setConsultantId(data.user.id);
-      } else {
+    async function fetchDashboard() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Fetch basic profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*, consultants(*)')
+          .eq('id', user.id)
+          .single();
+        
+        setProfile(profileData);
+
+        // Fetch dashboard summary from our API
+        const response = await fetch('/api/consultant/dashboard');
+        const data = await response.json();
+        setDashboardData(data);
+      } catch (error) {
+        console.error('Error loading dashboard:', error);
+      } finally {
         setLoading(false);
       }
-    });
+    }
+
+    fetchDashboard();
   }, []);
 
-  useEffect(() => {
-    if (!consultantId) return;
+  const getColor = (name: string) => {
+    const colors = [
+      'bg-blue-100 text-blue-600',
+      'bg-purple-100 text-purple-600',
+      'bg-amber-100 text-amber-600',
+      'bg-emerald-100 text-emerald-600',
+      'bg-pink-100 text-pink-600',
+    ];
+    let sum = 0;
+    for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i);
+    return colors[sum % colors.length];
+  };
 
-    fetch(`/api/consultant/dashboard?consultant_id=${consultantId}`)
-      .then((r) => r.json())
-      .then((result) => {
-        if (result.ok) setDashboardData(result.data);
-      })
-      .finally(() => setLoading(false));
-  }, [consultantId]);
+  const initials = (f: string, l: string) => (f[0] || '') + (l[0] || '');
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-gray-600">Loading dashboard...</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
-  if (!consultantId) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-red-500">Not logged in. Please login first.</p>
-      </div>
-    );
-  }
-
-  const profile = dashboardData?.profile;
-  const firstName = profile?.first_name || '';
+  const firstName = profile?.first_name || 'Consultant';
   const lastName = profile?.last_name || '';
+  const consultantId = profile?.id || '';
   const specialty = profile?.consultants?.specialty || 'Consultant';
 
   const stats = [
