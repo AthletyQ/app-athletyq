@@ -4,7 +4,6 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient, RealtimeChannel } from '@supabase/supabase-js'
 import { Send, Search, MessageSquare, Loader2, ArrowLeft } from 'lucide-react'
 import { MessageTicks } from '@/components/chat/MessageTicks'
-import { useSearchParams, useRouter } from 'next/navigation'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,7 +15,6 @@ const supabase = createClient(
 interface Profile {
   first_name: string
   last_name: string
-  role: string
 }
 
 interface Conversation {
@@ -25,9 +23,9 @@ interface Conversation {
   contact_id: string
   last_message: string | null
   last_message_at: string | null
-  unread_count: number
-  contact_unread_count: number
-  contact: Profile | null
+  unread_count: number          // athlete's unread
+  contact_unread_count: number  // coach's unread
+  athlete: Profile | null
 }
 
 interface Message {
@@ -41,7 +39,7 @@ interface Message {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const AVATAR_COLORS = ['#6366F1', '#8B5CF6', '#0EA5E9', '#10B981', '#F59E0B', '#EC4899']
+const AVATAR_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#6366F1']
 
 function avatarColor(id: string) {
   return AVATAR_COLORS[id.charCodeAt(0) % AVATAR_COLORS.length]
@@ -66,11 +64,7 @@ function formatTime(iso: string | null) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function AthleteChatPageClient() {
-  const searchParams = useSearchParams()
-  const router       = useRouter()
-  const openWith     = searchParams.get('contactId') ?? searchParams.get('consultantId')
-
+export default function CoachChatPageClient() {
   const [currentUserId,  setCurrentUserId]  = useState<string | null>(null)
   const [conversations,  setConversations]  = useState<Conversation[]>([])
   const [filtered,       setFiltered]       = useState<Conversation[]>([])
@@ -82,21 +76,20 @@ export default function AthleteChatPageClient() {
   const [loadingConvs,   setLoadingConvs]   = useState(true)
   const [loadingMsgs,    setLoadingMsgs]    = useState(false)
   const [showList,       setShowList]       = useState(true)
-  const [autoOpenDone,   setAutoOpenDone]   = useState(false)
 
   const bottomRef      = useRef<HTMLDivElement>(null)
   const msgChannelRef  = useRef<RealtimeChannel | null>(null)
   const convChannelRef = useRef<RealtimeChannel | null>(null)
   const inputRef       = useRef<HTMLInputElement>(null)
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  // ── Auth ────────────────────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setCurrentUserId(user.id)
     })
   }, [])
 
-  // ── Fetch conversations ───────────────────────────────────────────────────
+  // ── Fetch conversations (contact_id = me, same as consultant) ────────────
   const fetchConversations = useCallback(async (userId: string) => {
     setLoadingConvs(true)
     const { data, error } = await supabase
@@ -109,20 +102,19 @@ export default function AthleteChatPageClient() {
         last_message_at,
         unread_count,
         contact_unread_count,
-        contact:profiles!conversations_contact_id_fkey (
+        athlete:profiles!conversations_athlete_id_fkey (
           first_name,
-          last_name,
-          role
+          last_name
         )
       `)
-      .eq('athlete_id', userId)
+      .eq('contact_id', userId)
       .order('last_message_at', { ascending: false })
 
     if (!error && data) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const shaped = data.map((c: any) => ({
         ...c,
-        contact: Array.isArray(c.contact) ? c.contact[0] ?? null : c.contact,
+        athlete: Array.isArray(c.athlete) ? c.athlete[0] ?? null : c.athlete,
       })) as Conversation[]
       setConversations(shaped)
       setFiltered(shaped)
@@ -134,48 +126,36 @@ export default function AthleteChatPageClient() {
     if (currentUserId) fetchConversations(currentUserId)
   }, [currentUserId, fetchConversations])
 
-  // ── Auto-open conversation when navigating from ConsultantCard ────────────
-  useEffect(() => {
-    if (!openWith || !currentUserId || autoOpenDone || loadingConvs) return
-
-    const existing = conversations.find((c) => c.contact_id === openWith)
-    if (existing) {
-      openConversation(existing)
-      setAutoOpenDone(true)
-      router.replace('/athlete/chats')
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openWith, currentUserId, conversations, loadingConvs, autoOpenDone])
-
-  // ── Realtime: conversation list ───────────────────────────────────────────
+  // ── Realtime: conversation list ──────────────────────────────────────────
   useEffect(() => {
     if (!currentUserId) return
     convChannelRef.current?.unsubscribe()
     convChannelRef.current = supabase
-      .channel(`athlete-convs-${currentUserId}`)
+      .channel(`coach-convs-${currentUserId}`)
       .on('postgres_changes', {
-        event: '*', schema: 'public',
+        event: '*',
+        schema: 'public',
         table: 'conversations',
-        filter: `athlete_id=eq.${currentUserId}`,
+        filter: `contact_id=eq.${currentUserId}`,
       }, () => fetchConversations(currentUserId))
       .subscribe()
     return () => { convChannelRef.current?.unsubscribe() }
   }, [currentUserId, fetchConversations])
 
-  // ── Search filter ─────────────────────────────────────────────────────────
+  // ── Search filter ────────────────────────────────────────────────────────
   useEffect(() => {
     const q = search.toLowerCase()
     setFiltered(
       q
         ? conversations.filter((c) =>
-            fullName(c.contact).toLowerCase().includes(q) ||
+            fullName(c.athlete).toLowerCase().includes(q) ||
             (c.last_message ?? '').toLowerCase().includes(q),
           )
         : conversations,
     )
   }, [search, conversations])
 
-  // ── Fetch messages ────────────────────────────────────────────────────────
+  // ── Fetch messages ───────────────────────────────────────────────────────
   const fetchMessages = useCallback(async (convId: string) => {
     setLoadingMsgs(true)
     const { data, error } = await supabase
@@ -187,7 +167,7 @@ export default function AthleteChatPageClient() {
     setLoadingMsgs(false)
   }, [])
 
-  // ── Mark messages read ────────────────────────────────────────────────────
+  // ── Mark messages read (coach side resets contact_unread_count) ──────────
   const markAsRead = useCallback(async (convId: string, userId: string) => {
     await supabase
       .from('messages')
@@ -197,11 +177,11 @@ export default function AthleteChatPageClient() {
       .eq('is_read', false)
     await supabase
       .from('conversations')
-      .update({ unread_count: 0 })
+      .update({ contact_unread_count: 0 })
       .eq('id', convId)
   }, [])
 
-  // ── Open conversation ─────────────────────────────────────────────────────
+  // ── Open conversation ────────────────────────────────────────────────────
   const openConversation = useCallback(async (conv: Conversation) => {
     setActiveConv(conv)
     setShowList(false)
@@ -209,14 +189,15 @@ export default function AthleteChatPageClient() {
     if (currentUserId) await markAsRead(conv.id, currentUserId)
   }, [fetchMessages, markAsRead, currentUserId])
 
-  // ── Realtime: new messages ────────────────────────────────────────────────
+  // ── Realtime: new messages ───────────────────────────────────────────────
   useEffect(() => {
     if (!activeConv) return
     msgChannelRef.current?.unsubscribe()
     msgChannelRef.current = supabase
-      .channel(`athlete-msgs-${activeConv.id}`)
+      .channel(`coach-msgs-${activeConv.id}`)
       .on('postgres_changes', {
-        event: 'INSERT', schema: 'public',
+        event: 'INSERT',
+        schema: 'public',
         table: 'messages',
         filter: `conversation_id=eq.${activeConv.id}`,
       }, (payload) => {
@@ -230,12 +211,12 @@ export default function AthleteChatPageClient() {
     return () => { msgChannelRef.current?.unsubscribe() }
   }, [activeConv, currentUserId, markAsRead])
 
-  // ── Scroll to bottom ──────────────────────────────────────────────────────
+  // ── Scroll to bottom ─────────────────────────────────────────────────────
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // ── Send message ──────────────────────────────────────────────────────────
+  // ── Send message ─────────────────────────────────────────────────────────
   const sendMessage = async () => {
     const content = newMessage.trim()
     if (!content || !activeConv || !currentUserId || sending) return
@@ -250,12 +231,13 @@ export default function AthleteChatPageClient() {
     })
 
     if (!error) {
+      // Increment athlete's unread counter when coach sends a message
       await supabase
         .from('conversations')
         .update({
-          last_message:         content,
-          last_message_at:      new Date().toISOString(),
-          contact_unread_count: (activeConv.contact_unread_count ?? 0) + 1,
+          last_message:    content,
+          last_message_at: new Date().toISOString(),
+          unread_count:    (activeConv.unread_count ?? 0) + 1,
         })
         .eq('id', activeConv.id)
     }
@@ -297,12 +279,11 @@ export default function AthleteChatPageClient() {
             <div className="flex flex-col items-center justify-center h-48 gap-2 px-6 text-center">
               <MessageSquare size={32} className="text-gray-200" />
               <p className="text-sm text-gray-400">No conversations yet</p>
-              <p className="text-xs text-gray-300">Visit Consultants to start a chat</p>
             </div>
           ) : (
             filtered.map((conv) => {
               const isActive = activeConv?.id === conv.id
-              const unread   = conv.unread_count ?? 0
+              const unread   = conv.contact_unread_count ?? 0
               return (
                 <button
                   key={conv.id}
@@ -311,14 +292,14 @@ export default function AthleteChatPageClient() {
                 >
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                    style={{ backgroundColor: avatarColor(conv.contact_id) }}
+                    style={{ backgroundColor: avatarColor(conv.athlete_id) }}
                   >
-                    {initials(conv.contact)}
+                    {initials(conv.athlete)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <span className={`text-sm truncate ${unread > 0 ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
-                        {fullName(conv.contact)}
+                        {fullName(conv.athlete)}
                       </span>
                       <span className="text-xs text-gray-400 flex-shrink-0">{formatTime(conv.last_message_at)}</span>
                     </div>
@@ -350,15 +331,13 @@ export default function AthleteChatPageClient() {
               </button>
               <div
                 className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                style={{ backgroundColor: avatarColor(activeConv.contact_id) }}
+                style={{ backgroundColor: avatarColor(activeConv.athlete_id) }}
               >
-                {initials(activeConv.contact)}
+                {initials(activeConv.athlete)}
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900">{fullName(activeConv.contact)}</p>
-                <p className="text-xs text-green-500 font-medium capitalize">
-                  {activeConv.contact?.role?.replace(/_/g, ' ') ?? 'Contact'}
-                </p>
+                <p className="text-sm font-semibold text-gray-900">{fullName(activeConv.athlete)}</p>
+                <p className="text-xs text-green-500 font-medium">Athlete</p>
               </div>
             </div>
 
@@ -380,9 +359,9 @@ export default function AthleteChatPageClient() {
                       {!isMine && (
                         <div
                           className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 mr-2 mt-1"
-                          style={{ backgroundColor: avatarColor(activeConv.contact_id) }}
+                          style={{ backgroundColor: avatarColor(activeConv.athlete_id) }}
                         >
-                          {initials(activeConv.contact)}
+                          {initials(activeConv.athlete)}
                         </div>
                       )}
                       <div className={`max-w-[70%] ${isMine ? 'items-end' : 'items-start'} flex flex-col gap-0.5`}>

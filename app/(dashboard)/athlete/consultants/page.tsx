@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search } from "lucide-react";
 import { Consultant, ConsultantFilters, ConsultantsResponse } from "@/types/consultant";
-import ConsultantCard from "@/components/ConsultantCard";
-import ConsultantFiltersBar from "@/components/ConsultantFiltersBar";
+import ConsultantCard from "@/components/Cards/ConsultantCard";
+import ConsultantFiltersBar from "@/components/Cards/ConsultantFiltersBar";
 
 export default function ConsultantsPage() {
   const [consultants, setConsultants] = useState<Consultant[]>([]);

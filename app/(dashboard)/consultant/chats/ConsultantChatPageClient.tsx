@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { Send, Search, MessageSquare, Loader2, ArrowLeft } from 'lucide-react'
+import { MessageTicks } from '@/components/chat/MessageTicks'
 import { RealtimeChannel } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -437,11 +438,7 @@ export default function ConsultantChatPageClient() {
                         </div>
                         <span className="text-[10px] text-gray-400 px-1">
                           {formatTime(msg.created_at)}
-                          {isMine && (
-                            <span className="ml-1">
-                              {msg.is_read ? '✓✓' : '✓'}
-                            </span>
-                          )}
+                          {isMine && <MessageTicks status={msg.is_read ? 'read' : 'delivered'} className="ml-1" />}
                         </span>
                       </div>
                     </div>
