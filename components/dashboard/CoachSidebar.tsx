@@ -21,12 +21,11 @@ import {
 } from "@/components/ui/sidebar";
 
 const menuItems = [
-    { icon: LayoutDashboard, label: "Dashboard", href: "/coach/dashboard" },
-    //{ icon: Users, label: "Coaches", href: "/coach/coaches" },
-    { icon: Users, label: "Clients", href: "/coach/client" },
-    { icon: MessageSquare, label: "Chats", href: "/coach/chat" },
-    { icon: CalendarCheck, label: "Booked Sessions", href: "/coach/bookedsessions" },
-];
+  { icon: LayoutDashboard, label: "Dashboard",       href: "/coach/dashboard"      },
+  { icon: Users,           label: "Clients",         href: "/coach/client"         },
+  { icon: CalendarCheck,   label: "Booked Sessions", href: "/coach/bookedsessions" },
+  { icon: MessageSquare,   label: "Chats",           href: "/coach/chat"           },
+]
 
 export function Sidebar({ ...props }: React.ComponentProps<typeof BaseSidebar>) {
     const pathname = usePathname();
