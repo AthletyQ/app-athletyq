@@ -65,17 +65,20 @@ export async function PATCH(
     return NextResponse.json({ success: true, action: 'approved' })
   }
 
-  // ─── RESCHEDULE — notify only, no date change ──────────────────────────────
+  // ─── RESCHEDULE ───────────────────────────────────────────────────────────
   if (action === 'reschedule') {
     const { error: updateError } = await supabase
       .from('sessions')
       .update({
-        status:     'confirmed',   // ✅ stays confirmed
+        status:     'reschedule_requested',  // ✅ save to DB so it persists on refresh
         updated_at: new Date().toISOString(),
       })
       .eq('id', sessionId)
 
-    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+    if (updateError) {
+      console.error('Reschedule error:', updateError.message)
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
 
     const sessionDate = new Date(session.scheduled_at).toLocaleDateString('en-US', {
       weekday: 'long', month: 'long', day: 'numeric',

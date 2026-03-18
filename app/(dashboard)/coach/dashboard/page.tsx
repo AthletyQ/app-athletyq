@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import {
-  Users, Bell, User, Video, TrendingUp, DollarSign, Calendar, CheckCircle,
+  Users, User, Video, TrendingUp, DollarSign, Calendar, CheckCircle,
 } from 'lucide-react'
 import { createClient } from '@supabase/supabase-js'
 import {
@@ -18,30 +18,6 @@ const supabase = createClient(
 function initials(name: string) {
   return name.split(' ').filter(Boolean).map((n) => n[0]).join('')
 }
-
-// ─── TOPBAR ──────────────────────────────────────────────────────────────────
-
-function Topbar({ name }: { name: string }) {
-  return (
-    <header className="flex items-center justify-end gap-3 px-6 py-4 bg-white border-b border-gray-100">
-      <button className="relative w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">
-        <Bell className="w-4 h-4" />
-        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-blue-600" />
-      </button>
-      <div className="flex items-center gap-2">
-        <div className="text-right">
-          <p className="text-sm font-semibold text-gray-900 leading-tight">{name}</p>
-          <p className="text-xs text-gray-400">Coach</p>
-        </div>
-        <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">
-          <User className="w-4 h-4" />
-        </button>
-      </div>
-    </header>
-  )
-}
-
-// ─── PROFILE CARD ─────────────────────────────────────────────────────────────
 
 function ProfileCard({ profile }: { profile: any }) {
   if (!profile) return null
@@ -59,7 +35,6 @@ function ProfileCard({ profile }: { profile: any }) {
           <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white" />
         )}
       </div>
-
       <div className="flex-1 min-w-0">
         <h2 className="text-2xl font-bold text-gray-900 mb-1">{profile.fullName}</h2>
         <div className="flex items-center gap-3 mb-3">
@@ -90,7 +65,6 @@ function ProfileCard({ profile }: { profile: any }) {
           </div>
         </div>
       </div>
-
       <div className="flex-shrink-0 bg-gray-900 text-white rounded-xl px-4 py-3 text-right">
         <p className="text-xs text-gray-400 font-medium mb-0.5">COACH ID:</p>
         <p className="text-sm font-bold tracking-widest">{profile.id?.slice(0, 8).toUpperCase() ?? '——'}</p>
@@ -100,34 +74,25 @@ function ProfileCard({ profile }: { profile: any }) {
   )
 }
 
-// ─── STAT CARDS ───────────────────────────────────────────────────────────────
-
 function StatCards({ stats }: { stats: any }) {
   const STATS = [
     {
       label:    'Total Clients',
       value:    String(stats?.totalClients ?? '—'),
-      // ✅ real pending count
-      sub:      stats?.pendingClients > 0
-                  ? `+${stats.pendingClients} pending`
-                  : 'No pending clients',
+      sub:      stats?.pendingClients > 0 ? `+${stats.pendingClients} pending` : 'No pending clients',
       subColor: stats?.pendingClients > 0 ? 'text-blue-500' : 'text-gray-400',
       icon:     Users,
     },
     {
       label:    'Sessions This Week',
       value:    String(stats?.sessionsThisWeek ?? '—'),
-      // ✅ real today count
-      sub:      stats?.sessionsToday > 0
-                  ? `${stats.sessionsToday} today`
-                  : 'None today',
+      sub:      stats?.sessionsToday > 0 ? `${stats.sessionsToday} today` : 'None today',
       subColor: stats?.sessionsToday > 0 ? 'text-blue-500' : 'text-gray-400',
       icon:     Calendar,
     },
     {
       label:    'This Month',
       value:    stats?.monthlyEarnings ?? '—',
-      // ✅ real % change vs last month
       sub:      stats?.earningsChange ?? '—',
       subColor: stats?.earningsChange?.startsWith('+') ? 'text-green-500'
               : stats?.earningsChange?.startsWith('-') ? 'text-red-400'
@@ -142,7 +107,6 @@ function StatCards({ stats }: { stats: any }) {
       icon:     TrendingUp,
     },
   ]
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {STATS.map(({ label, value, sub, subColor, icon: Icon }) => (
@@ -159,8 +123,6 @@ function StatCards({ stats }: { stats: any }) {
   )
 }
 
-// ─── UPCOMING SESSIONS ────────────────────────────────────────────────────────
-
 function UpcomingSessions({ sessions }: { sessions: any[] }) {
   if (!sessions.length) {
     return (
@@ -170,7 +132,6 @@ function UpcomingSessions({ sessions }: { sessions: any[] }) {
       </div>
     )
   }
-
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5">
       <div className="flex items-center justify-between mb-4">
@@ -184,7 +145,6 @@ function UpcomingSessions({ sessions }: { sessions: any[] }) {
               <Video className="w-4 h-4 text-blue-400" />
             </div>
             <div className="flex-1 min-w-0">
-              {/* ✅ correct field names from API */}
               <p className="text-sm font-semibold text-gray-900">{s.client}</p>
               <p className="text-xs text-gray-400">{s.sport} • {s.mode}</p>
             </div>
@@ -209,8 +169,6 @@ function UpcomingSessions({ sessions }: { sessions: any[] }) {
   )
 }
 
-// ─── EARNINGS SUMMARY ─────────────────────────────────────────────────────────
-
 function EarningsSummary({ earnings }: { earnings: string }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
@@ -228,8 +186,6 @@ function EarningsSummary({ earnings }: { earnings: string }) {
     </div>
   )
 }
-
-// ─── NEW MESSAGES ─────────────────────────────────────────────────────────────
 
 function NewMessages({ messages }: { messages: any[] }) {
   return (
@@ -267,8 +223,6 @@ function NewMessages({ messages }: { messages: any[] }) {
   )
 }
 
-// ─── ATHLETE ACTIVITY ─────────────────────────────────────────────────────────
-
 function AthleteActivity() {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
@@ -280,8 +234,6 @@ function AthleteActivity() {
     </div>
   )
 }
-
-// ─── PAGE ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const [profile,  setProfile]  = useState<any>(null)
@@ -295,18 +247,10 @@ export default function DashboardPage() {
     async function load() {
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) {
-          setError('Not logged in. Please sign in to continue.')
-          setLoading(false)
-          return
-        }
+        if (authError || !user) { setError('Not logged in.'); setLoading(false); return }
 
         const profileData = await getCoachProfile(user.id)
-        if (!profileData || profileData.error) {
-          setError('No coach profile found for this account.')
-          setLoading(false)
-          return
-        }
+        if (!profileData || profileData.error) { setError('No coach profile found.'); setLoading(false); return }
 
         const [statsResult, sessionsResult, messagesResult] = await Promise.allSettled([
           getDashboardStats(profileData.id),
@@ -318,10 +262,8 @@ export default function DashboardPage() {
         setStats(   statsResult.status    === 'fulfilled' ? statsResult.value    : null)
         setSessions(sessionsResult.status === 'fulfilled' ? sessionsResult.value : [])
         setMessages(messagesResult.status === 'fulfilled' ? messagesResult.value : [])
-
       } catch (err: any) {
-        console.error('Dashboard load error:', err)
-        setError(err.message ?? 'Something went wrong loading the dashboard.')
+        setError(err.message ?? 'Something went wrong.')
       } finally {
         setLoading(false)
       }
@@ -352,22 +294,15 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
-      <Topbar name={profile?.fullName ?? 'Coach'} />
       <main className="flex-1 p-6">
-
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Welcome{' '}
-            <span className="font-semibold text-gray-700">
-              {profile?.fullName ?? 'Coach'}
-            </span>! Here's what's happening with your coaching today.
+            Welcome <span className="font-semibold text-gray-700">{profile?.fullName ?? 'Coach'}</span>! Here's what's happening with your coaching today.
           </p>
         </div>
-
         <ProfileCard profile={profile} />
         <StatCards   stats={stats} />
-
         <div className="grid grid-cols-3 gap-5">
           <div className="col-span-2">
             <UpcomingSessions sessions={sessions} />
@@ -378,7 +313,6 @@ export default function DashboardPage() {
             <AthleteActivity />
           </div>
         </div>
-
       </main>
     </div>
   )

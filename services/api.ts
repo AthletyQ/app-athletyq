@@ -134,3 +134,39 @@ export async function getCallRecords(coachId: string) {
   } catch (err) { console.error('getCallRecords fetch failed:', err); return [] }
 }
 
+export async function joinSession(sessionId: string) {
+  try {
+    const res  = await fetch(`/api/sessions/${sessionId}/join`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    const data = await res.json()
+    if (!res.ok) { console.error('joinSession error:', data); return null }
+    return data
+  } catch (err) {
+    console.error('joinSession fetch failed:', err)
+    return null
+  }
+}
+
+export async function completeSession(
+  sessionId:       string,
+  coachId:         string,
+  durationSeconds: number,
+  requiredSeconds: number
+) {
+  try {
+    const res  = await fetch(`/api/sessions/${sessionId}/complete`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ coachId, durationSeconds, requiredSeconds }),
+    })
+    const data = await res.json()
+    if (!res.ok) { console.error('completeSession error:', data); return null }
+    return data
+  } catch (err) {
+    console.error('completeSession fetch failed:', err)
+    return null
+  }
+}
+
