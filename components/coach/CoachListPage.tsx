@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search } from "lucide-react";
 import { Coach, CoachFilters, CoachesResponse } from "@/types/coach";
-import CoachCard from "@/components/CoachCard";
-import CoachFiltersBar from "@/components/CoachFiltersBar";
+import CoachCard from "@/components/Cards/CoachCard";
+import CoachFiltersBar from "@/components/Cards/CoachFiltersBar";
 
 /**
  * CoachListPage Component

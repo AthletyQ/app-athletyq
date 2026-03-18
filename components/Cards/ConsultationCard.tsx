@@ -7,8 +7,8 @@ import {
 } from 'lucide-react'
 import { createClient } from '@supabase/supabase-js'
 import { cn } from '@/lib/utils'
-import { Calendar } from './ui/calendar'
-import { Breadcrumb } from './ui/breadcrumb'
+import { Calendar } from '@/components/ui/calendar'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Consultant } from '@/types/consultant'
 import {
   getConsultantAvailability,
