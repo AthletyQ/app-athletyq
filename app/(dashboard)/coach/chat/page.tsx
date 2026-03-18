@@ -7,7 +7,7 @@ import {
   Paperclip, Smile, Send, PhoneIncoming, PhoneMissed, PhoneOutgoing,
   Loader2, MessageSquare, ArrowLeft,
 } from 'lucide-react'
-import { MessageTicks } from '@/components/MessageTicks'
+import { MessageTicks } from '@/components/chat/MessageTicks'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

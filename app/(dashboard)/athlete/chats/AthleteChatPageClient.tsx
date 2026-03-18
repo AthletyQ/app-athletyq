@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient, RealtimeChannel } from '@supabase/supabase-js'
 import { Send, Search, MessageSquare, Loader2, ArrowLeft } from 'lucide-react'
-import { MessageTicks } from '@/components/MessageTicks'
+import { MessageTicks } from '@/components/chat/MessageTicks'
 import { useSearchParams, useRouter } from 'next/navigation'
 
 const supabase = createClient(

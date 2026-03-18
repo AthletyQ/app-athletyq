@@ -132,7 +132,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { Consultant } from "@/types/consultant";
 import { DollarSign, CheckCircle, MessageSquare } from "lucide-react";
-import { ConsultationCard } from "@/components/ConsultationCard";
+import { ConsultationCard } from "@/components/Cards/ConsultationCard";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
