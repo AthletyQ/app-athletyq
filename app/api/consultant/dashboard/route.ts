@@ -7,6 +7,7 @@ import {
   getConsultantProfile,
   getEarningsSummary,
   getAthleteActivity,
+  getSessionsThisWeek,
 } from "@/services/consultant/consultant.services";
 
 export async function GET(request: NextRequest) {
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [athletes, totalAthletes, upcomingSessions, newMessages, profile, earnings, activity] =
+    const [athletes, totalAthletes, upcomingSessions, newMessages, profile, earnings, activity, sessionsThisWeekResult] =
       await Promise.allSettled([
         getAthletes(),
         getTotalAthletes(consultantId),
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
         getConsultantProfile(consultantId),
         getEarningsSummary(consultantId),
         getAthleteActivity(consultantId),
+        getSessionsThisWeek(consultantId),
       ]);
 
     return NextResponse.json({
@@ -40,6 +42,7 @@ export async function GET(request: NextRequest) {
         profile:          profile.status          === "fulfilled" ? profile.value          : null,
         earnings:         earnings.status         === "fulfilled" ? earnings.value         : 0,
         activity:         activity.status         === "fulfilled" ? activity.value         : [],
+        sessionsThisWeek: sessionsThisWeekResult.status === "fulfilled" ? sessionsThisWeekResult.value : 0,
       },
     });
   } catch (error: any) {
