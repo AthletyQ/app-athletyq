@@ -95,6 +95,7 @@ export async function updateSession(
     return null
   }
 }
+
 export async function getConversations(coachId: string) {
   try {
     const res  = await fetch(`${BASE}/messages/conversations?coachId=${coachId}`)
@@ -134,11 +135,13 @@ export async function getCallRecords(coachId: string) {
   } catch (err) { console.error('getCallRecords fetch failed:', err); return [] }
 }
 
+// Updated: now passes role: "coach" to the unified join route
 export async function joinSession(sessionId: string) {
   try {
-    const res  = await fetch(`/api/sessions/${sessionId}/join`, {
+    const res = await fetch(`/api/sessions/${sessionId}/join`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ role: 'coach' }),
     })
     const data = await res.json()
     if (!res.ok) { console.error('joinSession error:', data); return null }
@@ -170,3 +173,45 @@ export async function completeSession(
   }
 }
 
+// ── Athlete functions ────────────────────────────────────────────────────────
+
+export async function getAthleteSessions(athleteId: string) {
+  try {
+    const res  = await fetch(`${BASE}/sessions?athleteId=${athleteId}`)
+    const data = await res.json()
+    if (!res.ok) { console.error('getAthleteSessions error:', data); return [] }
+    return Array.isArray(data) ? data : []
+  } catch (err) { console.error('getAthleteSessions fetch failed:', err); return [] }
+}
+
+export async function joinSessionAsAthlete(sessionId: string) {
+  try {
+    const res = await fetch(`/api/sessions/${sessionId}/join`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ role: 'athlete' }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed to join session')
+    return data // { roomUrl, session }
+  } catch (err) {
+    console.error('joinSessionAsAthlete fetch failed:', err)
+    throw err
+  }
+}
+
+export async function joinSessionAsCoach(sessionId: string) {
+  try {
+    const res = await fetch(`/api/sessions/${sessionId}/join`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ role: 'coach' }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed to join session')
+    return data // { roomUrl, session }
+  } catch (err) {
+    console.error('joinSessionAsCoach fetch failed:', err)
+    throw err
+  }
+}
