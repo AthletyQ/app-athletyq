@@ -133,7 +133,9 @@ export async function getConsultantProfile(consultantId: string) {
       consultants (
         specialty,
         hourly_rate,
-        bio
+        bio,
+        years_of_experience,
+        rating
       )
     `)
     .eq('id', consultantId)
@@ -325,11 +327,15 @@ export async function getConsultantClients(consultantId: string) {
         totalSessions: 0,
         upcomingSessions: 0,
         completedSessions: 0,
+        pendingSessions: 0,
       });
     }
 
     const client = clientMap.get(id);
     client.totalSessions += 1;
+    if (s.status === 'pending') {
+      client.pendingSessions += 1;
+    }
     if (new Date(s.scheduled_at) > new Date() && s.status === 'confirmed') {
       client.upcomingSessions += 1;
     }
@@ -372,4 +378,25 @@ export async function updateConsultantSession(sessionId: string, action: 'approv
   if (action === 'reschedule') {
     return { id: sessionId, action: 'reschedule' };
   }
+}
+
+export async function getSessionsThisWeek(consultantId: string) {
+  const monday = new Date();
+  monday.setDate(monday.getDate() - (monday.getDay() === 0 ? 6 : monday.getDay() - 1));
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  const { count, error } = await supabase
+    .from('sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('provider_id', consultantId)
+    .eq('provider_type', 'consultant')
+    .gte('scheduled_at', monday.toISOString())
+    .lte('scheduled_at', sunday.toISOString());
+
+  if (error) throw new Error(error.message);
+  return count || 0;
 }
