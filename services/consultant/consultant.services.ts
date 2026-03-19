@@ -327,11 +327,15 @@ export async function getConsultantClients(consultantId: string) {
         totalSessions: 0,
         upcomingSessions: 0,
         completedSessions: 0,
+        pendingSessions: 0,
       });
     }
 
     const client = clientMap.get(id);
     client.totalSessions += 1;
+    if (s.status === 'pending') {
+      client.pendingSessions += 1;
+    }
     if (new Date(s.scheduled_at) > new Date() && s.status === 'confirmed') {
       client.upcomingSessions += 1;
     }

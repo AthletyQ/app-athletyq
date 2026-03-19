@@ -53,8 +53,8 @@ export default function ClientsPage() {
       .finally(() => setLoading(false));
   }, [consultantId]);
 
-  const activeClients = clients.filter((c) => c.totalSessions > 0);
-  const pendingClients = clients.filter((c) => c.upcomingSessions > 0 && c.completedSessions === 0);
+  const activeClients = clients.filter((c) => c.completedSessions > 0 || c.upcomingSessions > 0);
+  const pendingClients = clients.filter((c) => c.pendingSessions > 0 && c.completedSessions === 0 && c.upcomingSessions === 0);
 
   const displayClients = (activeTab === 'active' ? activeClients : pendingClients).filter((c) => {
     const name = `${c.profiles?.first_name} ${c.profiles?.last_name}`.toLowerCase();
