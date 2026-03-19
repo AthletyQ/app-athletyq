@@ -53,23 +53,25 @@ export async function GET(request: NextRequest) {
   // ─── Group all sessions by athlete ────────────────────────────────────────
 
   const athleteMap = new Map<string, {
-    sessions: any[]
-    profile:  any
-    sport:    any
-    joined:   string
+    sessions:      any[]
+    profile:       any
+    sport:         any
+    joined:        string
+    athleteUserId: string | null
   }>()
 
   ;(allSessions ?? []).forEach((row: any) => {
     const athleteId = row.athlete_id
-    const athlete   = Array.isArray(row.athletes)          ? row.athletes[0]         : row.athletes
-    const profile   = Array.isArray(athlete?.profiles)     ? athlete.profiles[0]     : athlete?.profiles
-    const sport     = Array.isArray(row.sports)            ? row.sports[0]           : row.sports
+    const athlete   = Array.isArray(row.athletes)      ? row.athletes[0]     : row.athletes
+    const profile   = Array.isArray(athlete?.profiles) ? athlete.profiles[0] : athlete?.profiles
+    const sport     = Array.isArray(row.sports)        ? row.sports[0]       : row.sports
 
     if (!athleteMap.has(athleteId)) {
       athleteMap.set(athleteId, {
-        sessions: [],
+        sessions:      [],
         profile,
         sport,
+        athleteUserId: athlete?.user_id ?? null,
         joined: profile?.created_at
           ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
           : '—',
@@ -84,9 +86,8 @@ export async function GET(request: NextRequest) {
   let colorIndex = 0
 
   athleteMap.forEach((data, athleteId) => {
-    const { sessions, profile, sport, joined } = data
+    const { sessions, profile, sport, joined, athleteUserId } = data
 
-    // Determine whether this athlete belongs in active or pending tab
     const hasConfirmed = sessions.some(s =>
       s.status === 'confirmed' ||
       s.status === 'reschedule_requested' ||
@@ -101,26 +102,21 @@ export async function GET(request: NextRequest) {
     const lastName  = profile?.last_name  ?? ''
     const now       = new Date()
 
-    // ✅ total = confirmed + completed + reschedule_requested (excludes pending/cancelled)
     const totalSessions = sessions.filter(s =>
       s.status === 'confirmed' ||
       s.status === 'completed' ||
       s.status === 'reschedule_requested'
     ).length
 
-    // ✅ upcoming = confirmed future sessions ONLY (not reschedule_requested, not past)
     const upcoming = sessions.filter(s =>
       s.status === 'confirmed' &&
       new Date(s.scheduled_at) > now
     ).length
 
-    // ✅ completed = ONLY sessions explicitly marked 'completed' in the DB
-    //    confirmed sessions (past or future) are NOT counted as completed
     const completedSessions = sessions.filter(s =>
       s.status === 'completed'
     ).length
 
-    // ✅ progress = completed / total — confirmed sessions do NOT contribute
     const progress = totalSessions > 0
       ? Math.min(Math.round((completedSessions / totalSessions) * 100), 100)
       : 0
@@ -129,6 +125,7 @@ export async function GET(request: NextRequest) {
 
     clients.push({
       id:              athleteId,
+      athleteUserId,
       initials:        `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '??',
       name:            `${firstName} ${lastName}`.trim() || 'Unknown Athlete',
       sport:           sport?.name ?? 'General',
@@ -146,24 +143,4 @@ export async function GET(request: NextRequest) {
   })
 
   return NextResponse.json(clients)
-}
-
-// ─── PATCH /api/clients/[id] — accept or decline a pending client ─────────────
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id }    = await params
-  const { action } = await request.json()
-  const newStatus  = action === 'accept' ? 'confirmed' : 'cancelled'
-
-  const { error } = await supabase
-    .from('sessions')
-    .update({ status: newStatus })
-    .eq('athlete_id', id)
-    .eq('status', 'pending')
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
 }
