@@ -4,33 +4,31 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Video, MapPin, Clock, ChevronLeft, ChevronRight,
   Filter, MoreVertical, CheckCircle, XCircle, AlertCircle,
-  CalendarCheck, X, Calendar, Trash2,
+  CalendarCheck, X, Calendar, Trash2, PhoneCall,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { updateConsultantSession } from '@/services/consultant/consultant.services'
 
-type SessionStatus = 'confirmed' | 'pending' | 'cancelled'
+// ─── TYPES ────────────────────────────────────────────────────────────────────
+
+type SessionStatus = 'confirmed' | 'pending' | 'cancelled' | 'reschedule_requested' | 'completed'
 
 type Session = {
-  id: number
-  scheduled_at: string
+  id:               number
+  scheduled_at:     string
   duration_minutes: number
-  status: SessionStatus
-  price: number
-  location_type: 'online' | 'in_person'
+  status:           SessionStatus
+  price:            number
+  location_type:    'online' | 'in_person'
   location_details: string
   athletes: {
-    user_id: string
-    sports: { name: string }
+    user_id:  string
+    sports:   { name: string }
     profiles: { first_name: string; last_name: string }
   }
 }
 
-const STATUS_CONFIG: Record<SessionStatus, { label: string; classes: string; icon: typeof CheckCircle }> = {
-  confirmed: { label: 'Confirmed', classes: 'bg-green-50 text-green-600', icon: CheckCircle },
-  pending:   { label: 'Pending',   classes: 'bg-amber-50 text-amber-600', icon: AlertCircle },
-  cancelled: { label: 'Cancelled', classes: 'bg-red-50 text-red-500',     icon: XCircle     },
-}
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 function getInitials(firstName: string, lastName: string) {
   return `${firstName?.[0] || ''}${lastName?.[0] || ''}`
@@ -76,106 +74,14 @@ function getWeekDays(monday: Date) {
   })
 }
 
-// ─── CANCEL MODAL ─────────────────────────────────────────────────────────────
+// ─── STATUS CONFIG (matches coach dashboard) ──────────────────────────────────
 
-function CancelModal({
-  session, onClose, onConfirm,
-}: {
-  session:   Session
-  onClose:   () => void
-  onConfirm: () => void
-}) {
-  const [saving, setSaving] = useState(false)
-  const firstName = session.athletes?.profiles?.first_name || ''
-  const lastName  = session.athletes?.profiles?.last_name  || ''
-  const sport     = session.athletes?.sports?.name          || ''
-
-  async function handleConfirm() {
-    setSaving(true)
-    await onConfirm()
-    setSaving(false)
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <Trash2 className="w-5 h-5 text-red-500" />
-            <h2 className="text-base font-bold text-gray-900">Cancel Session</h2>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="px-6 py-5">
-          <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${getAvatarColor(firstName)}`}>
-              {getInitials(firstName, lastName)}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{firstName} {lastName}</p>
-              <p className="text-xs text-gray-500">{sport} · {new Date(session.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-            </div>
-          </div>
-          <p className="text-sm text-gray-600">
-            Are you sure you want to cancel this session? The athlete will be notified immediately.
-          </p>
-        </div>
-        <div className="px-6 pb-6 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">
-            Keep Session
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={saving}
-            className={`flex-1 py-2.5 text-white text-sm font-semibold rounded-xl transition-colors ${saving ? 'bg-red-300 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'}`}
-          >
-            {saving ? 'Cancelling...' : 'Yes, Cancel'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── SESSION MENU ─────────────────────────────────────────────────────────────
-
-function SessionMenu({ session, onReschedule }: { session: Session; onReschedule: () => void }) {
-  const [open, setOpen] = useState(false)
-  const ref             = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  if (session.status !== 'confirmed') return null
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
-      >
-        <MoreVertical className="w-4 h-4" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-9 z-20 bg-white border border-gray-100 rounded-xl shadow-lg py-1 w-48">
-          <button
-            onClick={() => { setOpen(false); onReschedule() }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
-          >
-            <Calendar className="w-4 h-4 text-gray-400" />
-            Reschedule
-          </button>
-        </div>
-      )}
-    </div>
-  )
+const STATUS_CONFIG: Record<SessionStatus, { label: string; classes: string; icon: typeof CheckCircle }> = {
+  confirmed:            { label: 'Confirmed',           classes: 'bg-green-50 text-green-600',   icon: CheckCircle },
+  pending:              { label: 'Pending',              classes: 'bg-amber-50 text-amber-600',   icon: AlertCircle },
+  cancelled:            { label: 'Cancelled',            classes: 'bg-red-50 text-red-500',       icon: XCircle     },
+  reschedule_requested: { label: 'Reschedule Requested', classes: 'bg-purple-50 text-purple-600', icon: Calendar    },
+  completed:            { label: 'Completed',            classes: 'bg-blue-50 text-blue-600',     icon: CheckCircle },
 }
 
 // ─── WEEK STRIP ───────────────────────────────────────────────────────────────
@@ -241,6 +147,103 @@ function WeekStrip({
   )
 }
 
+// ─── CANCEL MODAL ─────────────────────────────────────────────────────────────
+
+function CancelModal({
+  session, onClose, onConfirm,
+}: {
+  session:   Session
+  onClose:   () => void
+  onConfirm: () => void
+}) {
+  const [saving, setSaving] = useState(false)
+  const firstName = session.athletes?.profiles?.first_name || ''
+  const lastName  = session.athletes?.profiles?.last_name  || ''
+  const sport     = session.athletes?.sports?.name          || ''
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <Trash2 className="w-5 h-5 text-red-500" />
+            <h2 className="text-base font-bold text-gray-900">Cancel Session</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="px-6 py-5">
+          <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${getAvatarColor(firstName)}`}>
+              {getInitials(firstName, lastName)}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{firstName} {lastName}</p>
+              <p className="text-xs text-gray-500">
+                {sport} · {new Date(session.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+          </div>
+          <p className="text-sm text-gray-600">
+            Are you sure you want to cancel this session? The athlete will be notified immediately.
+          </p>
+        </div>
+        <div className="px-6 pb-6 flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">
+            Keep Session
+          </button>
+          <button
+            onClick={async () => { setSaving(true); await onConfirm(); setSaving(false) }}
+            disabled={saving}
+            className={`flex-1 py-2.5 text-white text-sm font-semibold rounded-xl ${saving ? 'bg-red-300 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'}`}
+          >
+            {saving ? 'Cancelling...' : 'Yes, Cancel'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── SESSION MENU ─────────────────────────────────────────────────────────────
+
+function SessionMenu({ session, onReschedule }: { session: Session; onReschedule: () => void }) {
+  const [open, setOpen] = useState(false)
+  const ref             = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  if (session.status !== 'confirmed') return null
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+      >
+        <MoreVertical className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-9 z-20 bg-white border border-gray-100 rounded-xl shadow-lg py-1 w-48">
+          <button
+            onClick={() => { setOpen(false); onReschedule() }}
+            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
+          >
+            <Calendar className="w-4 h-4 text-gray-400" /> Reschedule
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── SESSION CARD ─────────────────────────────────────────────────────────────
 
 function SessionCard({
@@ -252,16 +255,19 @@ function SessionCard({
   onCancel:     (session: Session) => void
 }) {
   const { label, classes, icon: StatusIcon } = STATUS_CONFIG[session.status] ?? STATUS_CONFIG['pending']
-  const firstName  = session.athletes?.profiles?.first_name || ''
-  const lastName   = session.athletes?.profiles?.last_name  || ''
-  const fullName   = `${firstName} ${lastName}`
-  const initials   = getInitials(firstName, lastName)
+
+  const firstName   = session.athletes?.profiles?.first_name || ''
+  const lastName    = session.athletes?.profiles?.last_name  || ''
+  const fullName    = `${firstName} ${lastName}`
+  const initials    = getInitials(firstName, lastName)
   const avatarColor = getAvatarColor(fullName)
-  const sportName  = session.athletes?.sports?.name || 'Sport'
-  const isOnline   = session.location_type === 'online'
+  const sportName   = session.athletes?.sports?.name || 'Sport'
+  const isOnline    = session.location_type === 'online'
 
   return (
-    <div className={`bg-white rounded-xl border shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow ${session.status === 'cancelled' ? 'opacity-60 border-gray-100' : 'border-gray-100'}`}>
+    <div className={`bg-white rounded-xl border shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow ${
+      session.status === 'cancelled' || session.status === 'completed' ? 'opacity-70 border-gray-100' : 'border-gray-100'
+    }`}>
 
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -306,8 +312,10 @@ function SessionCard({
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isOnline ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
           {isOnline ? 'Online' : 'In-person'}
         </span>
+
         <div className="flex gap-2">
-          {/* Pending → Cancel + Confirm */}
+
+          {/* pending → Cancel + Confirm */}
           {session.status === 'pending' && (
             <>
               <button
@@ -324,18 +332,35 @@ function SessionCard({
               </button>
             </>
           )}
-          {/* Confirmed online → Join */}
+
+          {/* confirmed online → Join Call */}
           {session.status === 'confirmed' && isOnline && (
-            <button className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">
-              Join
+            <button className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 flex items-center gap-1">
+              <PhoneCall className="w-3 h-3" /> Join Call
             </button>
           )}
-          {/* Cancelled → Rebook */}
+
+          {/* reschedule requested → awaiting */}
+          {session.status === 'reschedule_requested' && (
+            <span className="px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-semibold rounded-lg flex items-center gap-1">
+              <Calendar className="w-3 h-3" /> Awaiting Response
+            </span>
+          )}
+
+          {/* completed */}
+          {session.status === 'completed' && (
+            <span className="px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-semibold rounded-lg flex items-center gap-1">
+              <CheckCircle className="w-3 h-3" /> Completed
+            </span>
+          )}
+
+          {/* cancelled → Rebook */}
           {session.status === 'cancelled' && (
             <button className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50">
               Rebook
             </button>
           )}
+
         </div>
       </div>
     </div>
@@ -357,7 +382,7 @@ export default function BookedSessionsPage() {
 
   function showToast(msg: string, type: 'success' | 'error') {
     setToast({ msg, type })
-    setTimeout(() => setToast(null), 3500)
+    setTimeout(() => setToast(null), 4000)
   }
 
   // Get logged in consultant
@@ -379,7 +404,8 @@ export default function BookedSessionsPage() {
       .finally(() => setLoading(false))
   }, [consultantId])
 
-  // Confirm session
+  // ─── CONFIRM ──────────────────────────────────────────────────────────────
+
   async function handleConfirm(sessionId: number) {
     setActionLoading(String(sessionId))
     try {
@@ -393,17 +419,22 @@ export default function BookedSessionsPage() {
     }
   }
 
-  // Reschedule session
+  // ─── RESCHEDULE ───────────────────────────────────────────────────────────
+
   async function handleReschedule(sessionId: number) {
     try {
       await updateConsultantSession(String(sessionId), 'reschedule')
+      setSessions(prev => prev.map(s =>
+        s.id === sessionId ? { ...s, status: 'reschedule_requested' } : s
+      ))
       showToast('Athlete has been notified to reschedule.', 'success')
     } catch {
       showToast('Failed to send reschedule notification.', 'error')
     }
   }
 
-  // Cancel session
+  // ─── CANCEL ───────────────────────────────────────────────────────────────
+
   async function handleCancelConfirm() {
     if (!cancelFor) return
     setActionLoading(String(cancelFor.id))
@@ -419,11 +450,15 @@ export default function BookedSessionsPage() {
     }
   }
 
-  const daySessions    = sessions.filter((s) => formatDate(new Date(s.scheduled_at)) === activeDay)
-  const filtered       = filterStatus === 'all' ? daySessions : daySessions.filter((s) => s.status === filterStatus)
-  const totalAll       = sessions.length
-  const totalConfirmed = sessions.filter((s) => s.status === 'confirmed').length
-  const totalPending   = sessions.filter((s) => s.status === 'pending').length
+  // ─── DERIVED STATE ────────────────────────────────────────────────────────
+
+  const daySessions     = sessions.filter((s) => formatDate(new Date(s.scheduled_at)) === activeDay)
+  const filtered        = filterStatus === 'all' ? daySessions : daySessions.filter((s) => s.status === filterStatus)
+  const totalAll        = sessions.length
+  const totalConfirmed  = sessions.filter((s) => s.status === 'confirmed').length
+  const totalPending    = sessions.filter((s) => s.status === 'pending').length
+  const totalReschedule = sessions.filter((s) => s.status === 'reschedule_requested').length
+  const totalCompleted  = sessions.filter((s) => s.status === 'completed').length
 
   if (loading) {
     return (
@@ -461,22 +496,22 @@ export default function BookedSessionsPage() {
       <main className="flex-1 p-6">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Booked Sessions</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Manage and track all your coaching sessions.</p>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Booked Sessions</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Manage and track all your coaching sessions.</p>
         </div>
 
-        {/* Stat Cards */}
-        <div className="grid grid-cols-3 gap-4 mb-5">
+        {/* 5 Summary Cards — matches coach dashboard */}
+        <div className="grid grid-cols-5 gap-3 mb-5">
           {[
-            { label: 'Total Sessions', value: totalAll,       color: 'text-gray-900'  },
-            { label: 'Confirmed',      value: totalConfirmed, color: 'text-green-600' },
-            { label: 'Pending',        value: totalPending,   color: 'text-amber-600' },
+            { label: 'Total',      value: totalAll,        color: 'text-gray-900'   },
+            { label: 'Confirmed',  value: totalConfirmed,  color: 'text-green-600'  },
+            { label: 'Pending',    value: totalPending,    color: 'text-amber-600'  },
+            { label: 'Reschedule', value: totalReschedule, color: 'text-purple-600' },
+            { label: 'Completed',  value: totalCompleted,  color: 'text-blue-600'   },
           ].map(({ label, value, color }) => (
-            <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between">
-              <p className="text-sm text-gray-500 font-medium">{label}</p>
+            <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-4 flex items-center justify-between">
+              <p className="text-xs text-gray-500 font-medium">{label}</p>
               <p className={`text-2xl font-bold ${color}`}>{value}</p>
             </div>
           ))}
@@ -491,7 +526,7 @@ export default function BookedSessionsPage() {
           setWeekOffset={setWeekOffset}
         />
 
-        {/* Filter + count row */}
+        {/* Filter row — matches coach dashboard */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm font-semibold text-gray-700">
             {activeDay} —{' '}
@@ -501,17 +536,18 @@ export default function BookedSessionsPage() {
           </p>
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gray-400" />
-            {(['all', 'confirmed', 'pending', 'cancelled'] as const).map((s) => (
+            {(['all', 'confirmed', 'pending', 'reschedule_requested', 'completed', 'cancelled'] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setFilterStatus(s)}
-                className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                   filterStatus === s
                     ? 'bg-blue-600 text-white'
                     : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
                 }`}
               >
-                {s}
+                {s === 'reschedule_requested' ? 'Reschedule'
+                  : s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
           </div>
@@ -537,6 +573,7 @@ export default function BookedSessionsPage() {
             <p className="text-xs text-gray-300 mt-1">Select another day to view sessions</p>
           </div>
         )}
+
       </main>
     </div>
   )
