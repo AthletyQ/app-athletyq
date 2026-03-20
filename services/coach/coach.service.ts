@@ -53,7 +53,7 @@ export const coachService = {
         // 8 AM to 8 PM for online (20:00)
         const endHour = 20;
 
-        while (currentHour < endHour) {
+        while (currentHour <= endHour) {
           allPossibleSlots.push(`${currentHour.toString().padStart(2, '0')}:00`);
           currentHour++;
         }
@@ -61,7 +61,8 @@ export const coachService = {
         relevantAvailability.forEach((avail: Availability) => {
           let currentHour = parseInt(avail.start_time.split(":")[0]);
           const endHour = parseInt(avail.end_time.split(":")[0]);
-          while (currentHour < endHour) {
+          // Include endHour if it marks the start of the last slot
+          while (currentHour <= endHour) {
             allPossibleSlots.push(`${currentHour.toString().padStart(2, '0')}:00`);
             currentHour++;
           }

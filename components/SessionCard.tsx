@@ -47,9 +47,8 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
     if (error) {
       console.error("Failed to fetch availability:", error)
     } else if (data) {
-      // Filter out booked slots entirely as requested
-      const filteredAvailable = data.availableSlots.filter(slot => !data.bookedSlots.includes(slot))
-      setAvailableSlots(filteredAvailable)
+      // Show all slots, including booked ones (Calendar component handles graying them out)
+      setAvailableSlots(data.availableSlots)
       setBookedSlots(data.bookedSlots)
     }
     setLoadingAvailability(false)
