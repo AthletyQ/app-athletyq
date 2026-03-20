@@ -34,7 +34,7 @@ const MONTHS = [
 // Default slots with 1-hour difference as requested
 const DEFAULT_SLOTS = [
   "08:00", "09:00", "10:00", "11:00", "12:00", 
-  "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"
+  "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"
 ]
 
 export function Calendar({
@@ -134,24 +134,45 @@ export function Calendar({
           ) : (
             <div className="grid grid-cols-2 gap-2 overflow-y-auto max-h-[320px] pr-2 scrollbar-thin scrollbar-thumb-gray-200">
               {availableSlots.map(time => {
-                const isSelectedTime = selectedTimes.includes(time)
-                const isBooked = bookedSlots.includes(time) // Check if already booked
+                const sorted = [...selectedTimes].sort()
+                const isStart = sorted.length > 0 && time === sorted[0]
+                const isEnd = sorted.length > 1 && time === sorted[sorted.length - 1]
+                
+                // 9 PM logic: Hide it unless it's already selected OR we are selecting a range (start is picked)
+                if (time === "21:00" && !isStart && !isEnd && sorted.length === 0) return null;
+
+                // Determine if this slot is WITHIN the selected range
+                const isInRange = sorted.length === 2 && (() => {
+                  const current = parseInt(time.split(':')[0])
+                  const start = parseInt(sorted[0].split(':')[0])
+                  const end = parseInt(sorted[1].split(':')[0])
+                  return current > start && current < end
+                })()
+
+                const isBooked = bookedSlots.includes(time)
                 
                 return (
                   <button
                     key={time}
-                    disabled={isBooked} // Unclickable if booked
+                    disabled={isBooked}
                     onClick={() => onToggleTime?.(time)}
                     className={cn(
-                      "py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center gap-2",
-                      isBooked ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed" : // Gray and unclickable
-                      isSelectedTime 
-                        ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100" 
-                        : "bg-white border-gray-100 text-gray-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                      "relative py-3 px-4 rounded-xl text-sm font-bold border transition-all flex flex-col items-center justify-center gap-0.5",
+                      isBooked ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed" :
+                      (isStart || isEnd)
+                        ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100 z-10" 
+                        : isInRange
+                          ? "bg-blue-50 border-blue-200 text-blue-600"
+                          : "bg-white border-gray-100 text-gray-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
                     )}
                   >
-                    {isSelectedTime && <Check size={14} strokeWidth={3} />}
-                    {time}
+                    <span className="text-[10px] uppercase tracking-tighter opacity-80 leading-none">
+                      {isStart ? 'Start' : isEnd ? 'End' : '\u00A0'}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      {(isStart || isEnd) && <Check size={12} strokeWidth={3} />}
+                      {time}
+                    </span>
                   </button>
                 )
               })}
