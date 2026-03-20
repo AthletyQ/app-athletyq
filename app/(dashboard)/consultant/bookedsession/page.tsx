@@ -9,8 +9,6 @@ import {
 import { supabase } from '@/lib/supabase/client'
 import { updateConsultantSession } from '@/services/consultant/consultant.services'
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
-
 type SessionStatus = 'confirmed' | 'pending' | 'cancelled' | 'reschedule_requested' | 'completed'
 
 type Session = {
@@ -21,14 +19,14 @@ type Session = {
   price:            number
   location_type:    'online' | 'in_person'
   location_details: string
+  provider_type:    string
+  sport_id:         number | null
   athletes: {
     user_id:  string
     sports:   { name: string }
     profiles: { first_name: string; last_name: string }
   }
 }
-
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 function getInitials(firstName: string, lastName: string) {
   return `${firstName?.[0] || ''}${lastName?.[0] || ''}`
@@ -74,8 +72,6 @@ function getWeekDays(monday: Date) {
   })
 }
 
-// ─── STATUS CONFIG (matches coach dashboard) ──────────────────────────────────
-
 const STATUS_CONFIG: Record<SessionStatus, { label: string; classes: string; icon: typeof CheckCircle }> = {
   confirmed:            { label: 'Confirmed',           classes: 'bg-green-50 text-green-600',   icon: CheckCircle },
   pending:              { label: 'Pending',              classes: 'bg-amber-50 text-amber-600',   icon: AlertCircle },
@@ -83,8 +79,6 @@ const STATUS_CONFIG: Record<SessionStatus, { label: string; classes: string; ico
   reschedule_requested: { label: 'Reschedule Requested', classes: 'bg-purple-50 text-purple-600', icon: Calendar    },
   completed:            { label: 'Completed',            classes: 'bg-blue-50 text-blue-600',     icon: CheckCircle },
 }
-
-// ─── WEEK STRIP ───────────────────────────────────────────────────────────────
 
 function WeekStrip({
   activeDay, setActiveDay, weekOffset, setWeekOffset, sessions,
@@ -147,8 +141,6 @@ function WeekStrip({
   )
 }
 
-// ─── CANCEL MODAL ─────────────────────────────────────────────────────────────
-
 function CancelModal({
   session, onClose, onConfirm,
 }: {
@@ -206,8 +198,6 @@ function CancelModal({
   )
 }
 
-// ─── SESSION MENU ─────────────────────────────────────────────────────────────
-
 function SessionMenu({ session, onReschedule }: { session: Session; onReschedule: () => void }) {
   const [open, setOpen] = useState(false)
   const ref             = useRef<HTMLDivElement>(null)
@@ -244,8 +234,6 @@ function SessionMenu({ session, onReschedule }: { session: Session; onReschedule
   )
 }
 
-// ─── SESSION CARD ─────────────────────────────────────────────────────────────
-
 function SessionCard({
   session, onConfirm, onReschedule, onCancel,
 }: {
@@ -255,7 +243,6 @@ function SessionCard({
   onCancel:     (session: Session) => void
 }) {
   const { label, classes, icon: StatusIcon } = STATUS_CONFIG[session.status] ?? STATUS_CONFIG['pending']
-
   const firstName   = session.athletes?.profiles?.first_name || ''
   const lastName    = session.athletes?.profiles?.last_name  || ''
   const fullName    = `${firstName} ${lastName}`
@@ -268,8 +255,6 @@ function SessionCard({
     <div className={`bg-white rounded-xl border shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow ${
       session.status === 'cancelled' || session.status === 'completed' ? 'opacity-70 border-gray-100' : 'border-gray-100'
     }`}>
-
-      {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${avatarColor}`}>
@@ -277,9 +262,7 @@ function SessionCard({
           </div>
           <div>
             <p className="text-sm font-bold text-gray-900">{fullName}</p>
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-600">
-              {sportName}
-            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-600">{sportName}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -290,7 +273,6 @@ function SessionCard({
         </div>
       </div>
 
-      {/* Details */}
       <div className="grid grid-cols-2 gap-2">
         <div className="flex items-center gap-2 text-xs text-gray-500">
           <Clock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
@@ -307,67 +289,46 @@ function SessionCard({
         </div>
       </div>
 
-      {/* Mode badge + Actions */}
       <div className="flex items-center justify-between">
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isOnline ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
           {isOnline ? 'Online' : 'In-person'}
         </span>
-
         <div className="flex gap-2">
-
-          {/* pending → Cancel + Confirm */}
           {session.status === 'pending' && (
             <>
-              <button
-                onClick={() => onCancel(session)}
-                className="px-3 py-1.5 border border-red-200 text-red-500 text-xs font-semibold rounded-lg hover:bg-red-50 flex items-center gap-1"
-              >
+              <button onClick={() => onCancel(session)} className="px-3 py-1.5 border border-red-200 text-red-500 text-xs font-semibold rounded-lg hover:bg-red-50 flex items-center gap-1">
                 <XCircle className="w-3 h-3" /> Cancel
               </button>
-              <button
-                onClick={() => onConfirm(session.id)}
-                className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 flex items-center gap-1"
-              >
+              <button onClick={() => onConfirm(session.id)} className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 flex items-center gap-1">
                 <CheckCircle className="w-3 h-3" /> Confirm
               </button>
             </>
           )}
-
-          {/* confirmed online → Join Call */}
           {session.status === 'confirmed' && isOnline && (
             <button className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 flex items-center gap-1">
               <PhoneCall className="w-3 h-3" /> Join Call
             </button>
           )}
-
-          {/* reschedule requested → awaiting */}
           {session.status === 'reschedule_requested' && (
             <span className="px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-semibold rounded-lg flex items-center gap-1">
               <Calendar className="w-3 h-3" /> Awaiting Response
             </span>
           )}
-
-          {/* completed */}
           {session.status === 'completed' && (
             <span className="px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-semibold rounded-lg flex items-center gap-1">
               <CheckCircle className="w-3 h-3" /> Completed
             </span>
           )}
-
-          {/* cancelled → Rebook */}
           {session.status === 'cancelled' && (
             <button className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-50">
               Rebook
             </button>
           )}
-
         </div>
       </div>
     </div>
   )
 }
-
-// ─── PAGE ─────────────────────────────────────────────────────────────────────
 
 export default function BookedSessionsPage() {
   const [sessions,      setSessions]      = useState<Session[]>([])
@@ -385,7 +346,6 @@ export default function BookedSessionsPage() {
     setTimeout(() => setToast(null), 4000)
   }
 
-  // Get logged in consultant
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) setConsultantId(data.user.id)
@@ -393,7 +353,6 @@ export default function BookedSessionsPage() {
     })
   }, [])
 
-  // Fetch sessions
   useEffect(() => {
     if (!consultantId) return
     fetch(`/api/consultant/bookedsession?consultant_id=${consultantId}`)
@@ -404,7 +363,50 @@ export default function BookedSessionsPage() {
       .finally(() => setLoading(false))
   }, [consultantId])
 
-  // ─── CONFIRM ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!consultantId) return
+
+    const channel = supabase
+      .channel(`consultant-sessions-${consultantId}`)
+      .on(
+        'postgres_changes',
+        {
+          event:  '*',
+          schema: 'public',
+          table:  'sessions',
+          filter: `provider_id=eq.${consultantId}`,
+        },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as any
+          if (row?.provider_type !== 'consultant') return
+
+          if (payload.eventType === 'INSERT') {
+            fetch(`/api/consultant/bookedsession?consultant_id=${consultantId}`)
+              .then(res => res.json())
+              .then(result => {
+                if (result.ok) setSessions(result.data.sessions || [])
+              })
+          }
+          if (payload.eventType === 'UPDATE') {
+            setSessions(prev =>
+              prev.map(s =>
+                s.id === (payload.new as Session).id
+                  ? { ...s, ...(payload.new as Session) }
+                  : s
+              )
+            )
+          }
+          if (payload.eventType === 'DELETE') {
+            setSessions(prev =>
+              prev.filter(s => s.id !== (payload.old as Session).id)
+            )
+          }
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [consultantId])
 
   async function handleConfirm(sessionId: number) {
     setActionLoading(String(sessionId))
@@ -419,8 +421,6 @@ export default function BookedSessionsPage() {
     }
   }
 
-  // ─── RESCHEDULE ───────────────────────────────────────────────────────────
-
   async function handleReschedule(sessionId: number) {
     try {
       await updateConsultantSession(String(sessionId), 'reschedule')
@@ -432,8 +432,6 @@ export default function BookedSessionsPage() {
       showToast('Failed to send reschedule notification.', 'error')
     }
   }
-
-  // ─── CANCEL ───────────────────────────────────────────────────────────────
 
   async function handleCancelConfirm() {
     if (!cancelFor) return
@@ -449,8 +447,6 @@ export default function BookedSessionsPage() {
       setActionLoading(null)
     }
   }
-
-  // ─── DERIVED STATE ────────────────────────────────────────────────────────
 
   const daySessions     = sessions.filter((s) => formatDate(new Date(s.scheduled_at)) === activeDay)
   const filtered        = filterStatus === 'all' ? daySessions : daySessions.filter((s) => s.status === filterStatus)
@@ -474,7 +470,6 @@ export default function BookedSessionsPage() {
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
 
-      {/* Toast */}
       {toast && (
         <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white ${
           toast.type === 'success' ? 'bg-green-600' : 'bg-red-500'
@@ -484,7 +479,6 @@ export default function BookedSessionsPage() {
         </div>
       )}
 
-      {/* Cancel Modal */}
       {cancelFor && (
         <CancelModal
           session={cancelFor}
@@ -495,13 +489,11 @@ export default function BookedSessionsPage() {
 
       <main className="flex-1 p-6">
 
-        {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Booked Sessions</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage and track all your coaching sessions.</p>
+          <p className="text-sm text-gray-500 mt-0.5">Manage and track all your consulting sessions.</p>
         </div>
 
-        {/* 5 Summary Cards — matches coach dashboard */}
         <div className="grid grid-cols-5 gap-3 mb-5">
           {[
             { label: 'Total',      value: totalAll,        color: 'text-gray-900'   },
@@ -517,7 +509,6 @@ export default function BookedSessionsPage() {
           ))}
         </div>
 
-        {/* Week Strip */}
         <WeekStrip
           activeDay={activeDay}
           setActiveDay={setActiveDay}
@@ -526,7 +517,6 @@ export default function BookedSessionsPage() {
           setWeekOffset={setWeekOffset}
         />
 
-        {/* Filter row — matches coach dashboard */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm font-semibold text-gray-700">
             {activeDay} —{' '}
@@ -546,14 +536,12 @@ export default function BookedSessionsPage() {
                     : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
                 }`}
               >
-                {s === 'reschedule_requested' ? 'Reschedule'
-                  : s.charAt(0).toUpperCase() + s.slice(1)}
+                {s === 'reschedule_requested' ? 'Reschedule' : s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Session Cards */}
         {filtered.length > 0 ? (
           <div className="grid grid-cols-2 gap-4">
             {filtered.map((session) => (
