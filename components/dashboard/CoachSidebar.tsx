@@ -6,7 +6,9 @@ import {
     LayoutDashboard,
     Users,
     MessageSquare,
-    CalendarCheck
+    CalendarCheck,
+    PanelLeftClose,
+    PanelLeftOpen,
 } from "lucide-react";
 import {
     Sidebar as BaseSidebar,
@@ -18,6 +20,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
     SidebarRail,
+    useSidebar,
 } from "@/components/ui/sidebar";
 
 const menuItems = [
@@ -27,16 +30,46 @@ const menuItems = [
   { icon: MessageSquare,   label: "Chats",           href: "/coach/chat"           },
 ]
 
-export function Sidebar({ ...props }: React.ComponentProps<typeof BaseSidebar>) {
-    const pathname = usePathname();
+function CollapseButton() {
+  const { open, toggleSidebar } = useSidebar();
+  return (
+    <button
+      onClick={toggleSidebar}
+      title={open ? "Collapse sidebar" : "Expand sidebar"}
+      className="w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+    >
+      {open
+        ? <PanelLeftClose className="w-5 h-5" />
+        : <PanelLeftOpen  className="w-5 h-5" />
+      }
+    </button>
+  );
+}
 
-    return (
-        <BaseSidebar className="border-r-0" {...props}>
-            <SidebarHeader className="h-20 flex items-center justify-start px-6">
-                <h1 className="text-2xl font-bold tracking-tight text-white hover:opacity-90 transition-opacity">
-                    <Link href="/coach/dashboard">AthletyQ</Link>
-                </h1>
-            </SidebarHeader>
+export function Sidebar({ ...props }: React.ComponentProps<typeof BaseSidebar>) {
+  const pathname = usePathname();
+  const { open } = useSidebar();
+
+  return (
+    <BaseSidebar collapsible="icon" className="border-r-0" {...props}>
+
+      {/* ── Header: logo left, collapse button right ── */}
+      <SidebarHeader className="h-20 px-4">
+        <div className="flex items-center justify-between h-full w-full">
+          {/* Logo — only visible when expanded */}
+          <div className={`transition-all duration-200 overflow-hidden ${open ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
+            <Link
+              href="/coach/dashboard"
+              className="text-2xl font-bold tracking-tight text-white hover:opacity-90 transition-opacity whitespace-nowrap"
+            >
+              AthletyQ
+            </Link>
+          </div>
+
+          {/* Collapse toggle — always visible, pushed to the right */}
+          <CollapseButton />
+        </div>
+      </SidebarHeader>
             <SidebarContent className="px-2">
                 <SidebarGroup>
                     <SidebarGroupContent>

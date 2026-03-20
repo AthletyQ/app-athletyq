@@ -42,10 +42,10 @@ export function Navbar() {
   return (
     <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-end px-8 sticky top-0 z-10">
       <div className="flex items-center gap-6">
-        <button className="text-gray-500 hover:text-blue-600 transition-colors p-2 rounded-full hover:bg-gray-50 relative">
+        {/* <button className="text-gray-500 hover:text-blue-600 transition-colors p-2 rounded-full hover:bg-gray-50 relative">
           <Bell className="w-6 h-6" />
           <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-        </button>
+        </button> */}
 
         <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
           <div className="text-right hidden sm:block">
