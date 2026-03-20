@@ -50,8 +50,8 @@ export const coachService = {
       if (relevantAvailability.length === 0) {
         // --- DYNAMIC FALLBACK LOGIC ---
         let currentHour = 8;
-        // 8 AM to 8 PM for online (20:00)
-        const endHour = 20;
+        // 8 AM to 9 PM (21:00)
+        const endHour = 21;
 
         while (currentHour <= endHour) {
           allPossibleSlots.push(`${currentHour.toString().padStart(2, '0')}:00`);
@@ -61,8 +61,9 @@ export const coachService = {
         relevantAvailability.forEach((avail: Availability) => {
           let currentHour = parseInt(avail.start_time.split(":")[0]);
           const endHour = parseInt(avail.end_time.split(":")[0]);
-          // Include endHour if it marks the start of the last slot
-          while (currentHour <= endHour) {
+          // Include up to 21:00 if the availability allows
+          const limitHour = Math.min(endHour, 21);
+          while (currentHour <= limitHour) {
             allPossibleSlots.push(`${currentHour.toString().padStart(2, '0')}:00`);
             currentHour++;
           }

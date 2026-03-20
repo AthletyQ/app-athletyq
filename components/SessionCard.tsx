@@ -73,14 +73,24 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
     setSelectedTimes(prev => {
       // If the clicked time is already selected, remove it.
       if (prev.includes(time)) {
-        return prev.filter(t => t !== time)
+        const filtered = prev.filter(t => t !== time);
+        // If only 21:00 remains, clear it because it cannot be a start time
+        if (filtered.length === 1 && filtered[0] === "21:00") return [];
+        return filtered;
       }
+      
+      // Prevent 21:00 from being selected as the FIRST/START time
+      if (prev.length === 0 && time === "21:00") {
+        return [];
+      }
+
+      // Auto-select 21:00 if 20:00 is clicked as the first selection
+      if (prev.length === 0 && time === "20:00") {
+        return ["20:00", "21:00"]
+      }
+
       // If we already have 2 times, we are replacing the second time (the to-time).
-      // This allows the user to change the end time while keeping the start time.
       if (prev.length >= 2) {
-        // We assume the first element is the "from" time and the second is the "to" time (since it's sorted).
-        // If the new time is before the first time, it becomes the new from-time, and the old from-time becomes the to-time.
-        // If the new time is after, it just replaces the second one.
         return [prev[0], time].sort()
       }
       // If we have 0 or 1 time, just add and sort.
@@ -128,8 +138,9 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
       const startHour = parseInt(startStr.split(':')[0])
       const endHour = parseInt(endStr.split(':')[0])
       
-      // If only one slot is selected, duration is 60.
-      const durationHours = endHour - startHour + 1
+      // If user picks 08:00 to 09:00, that is exactly 1 hour (9-8).
+      // If they pick only 08:00, that is also 1 hour.
+      const durationHours = endHour > startHour ? (endHour - startHour) : 1
       const durationMinutes = durationHours * 60
 
       const scheduledAt = new Date(date)
@@ -252,7 +263,15 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                     </div>
                     <div className="flex justify-between text-sm border-t border-gray-200/60 pt-3 mt-3">
                       <span className="text-gray-500 font-medium">Total Price</span>
-                      <span className="font-extrabold text-blue-600 text-lg">LKR {(coach.hourlyRate || 0) * selectedTimes.length}</span>
+                      <span className="font-extrabold text-blue-600 text-lg">
+                        LKR {(() => {
+                          const sorted = [...selectedTimes].sort();
+                          const start = parseInt(sorted[0].split(':')[0]);
+                          const end = parseInt(sorted[sorted.length - 1].split(':')[0]);
+                          const hours = end > start ? (end - start) : 1;
+                          return (coach.hourlyRate || 0) * hours;
+                        })()}
+                      </span>
                     </div>
                   </div>
 
