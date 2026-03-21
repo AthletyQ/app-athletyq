@@ -8,6 +8,11 @@ import {
   ChevronRight, Activity, Target, TrendingUp, Zap, Heart,
   Video, X, Phone,
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
+const VideoCall = dynamic(
+  () => import('@/components/dashboard/VideoCall').then(m => m.VideoCall),
+  { ssr: false }
+)
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -79,14 +84,14 @@ function formatTime(iso: string) {
 
 function SessionActionModal({
   session,
-  currentUserId,
   onClose,
   onMessage,
+  onJoinCall,
 }: {
   session: Session
-  currentUserId: string
   onClose: () => void
   onMessage: (providerId: string) => void
+  onJoinCall: (session: Session) => void
 }) {
   const providerName = `${session.provider?.first_name ?? ''} ${session.provider?.last_name ?? ''}`.trim()
   const isOnline = session.location_type === 'online'
@@ -107,57 +112,49 @@ function SessionActionModal({
               <p className="text-xs text-gray-400 capitalize">{session.provider_type}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 transition-colors"
-          >
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Session details */}
-        <div className="px-5 py-4 bg-gray-50 border-b border-gray-100">
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
-            <span>Scheduled</span>
+        <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 space-y-1.5">
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-500">Scheduled</span>
             <span className="font-semibold text-gray-700">{formatTime(session.scheduled_at)}</span>
           </div>
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
-            <span>Duration</span>
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-500">Duration</span>
             <span className="font-semibold text-gray-700">{session.duration_minutes} min</span>
           </div>
-          <div className="flex justify-between text-xs text-gray-500">
-            <span>Format</span>
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-500">Format</span>
             <span className="font-semibold text-gray-700 capitalize">
-              {session.location_type === 'online' ? 'Online' : 'In-person'}
+              {isOnline ? 'Online' : 'In-person'}
             </span>
           </div>
         </div>
 
         {/* Actions */}
         <div className="p-5 space-y-3">
-          {/* Join Call — only for online sessions */}
-          {isOnline && (
+          {isOnline ? (
             <button
               onClick={() => {
-                // Video call link would come from session data in production
-                alert('Your coach/consultant will share the meeting link via chat.')
+                onClose()
+                onJoinCall(session)
               }}
               className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition-colors shadow-sm shadow-blue-100"
             >
               <Video className="w-4 h-4" />
               Join Call
             </button>
-          )}
-
-          {/* In-person indicator */}
-          {!isOnline && (
+          ) : (
             <div className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-gray-50 border border-gray-200 text-gray-500 rounded-xl text-sm">
               <Phone className="w-4 h-4" />
               In-person session — check your location
             </div>
           )}
 
-          {/* Message */}
           <button
             onClick={() => {
               onClose()
@@ -178,14 +175,15 @@ function SessionActionModal({
 
 export default function AthleteDashboard() {
   const router = useRouter()
-  const [profile,        setProfile]        = useState<AthleteProfile | null>(null)
-  const [sessions,       setSessions]       = useState<Session[]>([])
-  const [conversations,  setConversations]  = useState<Conversation[]>([])
-  const [providers,      setProviders]      = useState<{ id: string; first_name: string; last_name: string; type: string }[]>([])
-  const [loading,        setLoading]        = useState(true)
+  const [profile,         setProfile]         = useState<AthleteProfile | null>(null)
+  const [sessions,        setSessions]        = useState<Session[]>([])
+  const [conversations,   setConversations]   = useState<Conversation[]>([])
+  const [providers,       setProviders]       = useState<{ id: string; first_name: string; last_name: string; type: string }[]>([])
+  const [loading,         setLoading]         = useState(true)
   const [selectedSession, setSelectedSession] = useState<Session | null>(null)
-  const [currentUserId,  setCurrentUserId]  = useState<string>('')
-  const [messagingLoad,  setMessagingLoad]  = useState(false)
+  const [activeCall,      setActiveCall]      = useState<Session | null>(null)
+  const [currentUserId,   setCurrentUserId]   = useState<string>('')
+  const [messagingLoad,   setMessagingLoad]   = useState(false)
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -273,13 +271,31 @@ export default function AthleteDashboard() {
 
   useEffect(() => { load() }, [load])
 
-  // ── Open or create conversation then navigate to chats ────────────────────
+  // ── Handle call end ────────────────────────────────────────────────────────
+  const handleCallEnd = useCallback(async (durationSeconds: number) => {
+    if (!activeCall) return
+
+    // If athlete attended 80%+ of session, mark as completed
+    const requiredSeconds = activeCall.duration_minutes * 60 * 0.8
+    if (durationSeconds >= requiredSeconds) {
+      await supabase
+        .from('sessions')
+        .update({ status: 'completed' })
+        .eq('id', activeCall.id)
+
+      // Refresh sessions list
+      setSessions(prev => prev.filter(s => s.id !== activeCall.id))
+    }
+
+    setActiveCall(null)
+  }, [activeCall])
+
+  // ── Open or create conversation then navigate to chats ─────────────────────
   const handleMessage = useCallback(async (providerId: string) => {
     if (!currentUserId || messagingLoad) return
     setMessagingLoad(true)
 
     try {
-      // Check if conversation already exists
       const { data: existing } = await supabase
         .from('conversations')
         .select('id')
@@ -292,18 +308,16 @@ export default function AthleteDashboard() {
         return
       }
 
-      // Create new conversation
       const { error } = await supabase
         .from('conversations')
         .insert({
-          athlete_id: currentUserId,
-          contact_id: providerId,
-          unread_count: 0,
+          athlete_id:           currentUserId,
+          contact_id:           providerId,
+          unread_count:         0,
           contact_unread_count: 0,
         })
 
       if (error) throw error
-
       router.push(`/athlete/chats?contactId=${providerId}`)
     } catch (err) {
       console.error('Failed to open conversation:', err)
@@ -361,13 +375,27 @@ export default function AthleteDashboard() {
 
   return (
     <>
+      {/* ── Video Call — renders over everything when active ── */}
+      {activeCall && (
+        <VideoCall
+          sessionId={activeCall.id}
+          coachId={activeCall.provider_id}
+          durationMinutes={activeCall.duration_minutes}
+          onEnd={handleCallEnd}
+          onClose={() => setActiveCall(null)}
+        />
+      )}
+
       {/* ── Session Action Modal ── */}
-      {selectedSession && (
+      {selectedSession && !activeCall && (
         <SessionActionModal
           session={selectedSession}
-          currentUserId={currentUserId}
           onClose={() => setSelectedSession(null)}
           onMessage={handleMessage}
+          onJoinCall={(s) => {
+            setSelectedSession(null)
+            setActiveCall(s)
+          }}
         />
       )}
 
@@ -511,14 +539,14 @@ export default function AthleteDashboard() {
                       </div>
 
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {/* Quick action icons — only on confirmed sessions */}
+                        {/* Quick icons — confirmed only */}
                         {isConfirmed && (
                           <>
                             {session.location_type === 'online' && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setSelectedSession(session)
+                                  setActiveCall(session)
                                 }}
                                 title="Join Call"
                                 className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center text-blue-600 transition-colors"
@@ -556,7 +584,6 @@ export default function AthleteDashboard() {
               </div>
             )}
 
-            {/* Legend */}
             {sessions.some(s => s.status === 'confirmed') && (
               <p className="text-[10px] text-gray-400 mt-3 text-right">
                 ✦ Click a confirmed session to join or message

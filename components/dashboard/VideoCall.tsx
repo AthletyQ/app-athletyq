@@ -2,31 +2,30 @@
 
 import { useState, useEffect, useRef } from 'react'
 import {
-  Mic, MicOff, Video, VideoOff, PhoneOff, Clock,
-  Maximize2, Minimize2, Users, AlertTriangle,
+  PhoneOff, Clock, Maximize2, Minimize2,
+  AlertCircle, Loader2,
 } from 'lucide-react'
 
 type VideoCallProps = {
   sessionId:       string
   coachId:         string
   durationMinutes: number
+  isCoach?:        boolean
   onEnd:           (durationSeconds: number) => void
   onClose:         () => void
 }
 
 export function VideoCall({
-  sessionId, coachId, durationMinutes, onEnd, onClose,
+  sessionId, durationMinutes, isCoach = false, onEnd, onClose,
 }: VideoCallProps) {
-  const localVideoRef = useRef<HTMLVideoElement>(null)
-  const streamRef     = useRef<MediaStream | null>(null)
-  const timerRef      = useRef<NodeJS.Timeout | null>(null)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  const [muted,          setMuted]          = useState(false)
-  const [videoOff,       setVideoOff]       = useState(false)
+  const [roomUrl,        setRoomUrl]        = useState<string | null>(null)
+  const [token,          setToken]          = useState<string | null>(null)
+  const [error,          setError]          = useState<string | null>(null)
+  const [loading,        setLoading]        = useState(true)
   const [elapsed,        setElapsed]        = useState(0)
   const [minimized,      setMinimized]      = useState(false)
-  const [mediaWarning,   setMediaWarning]   = useState<string | null>(null)
-  const [cameraReady,    setCameraReady]    = useState(false)
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [hasVideo,       setHasVideo]       = useState(true)
   const [hasAudio,       setHasAudio]       = useState(true)
@@ -36,105 +35,101 @@ export function VideoCall({
   const progressPct     = Math.min((elapsed / totalSeconds) * 100, 100)
   const canAutoComplete = elapsed >= requiredSeconds
 
-  function formatTime(secs: number): string {
+  function formatTime(secs: number) {
     const m = Math.floor(secs / 60).toString().padStart(2, '0')
     const s = (secs % 60).toString().padStart(2, '0')
     return `${m}:${s}`
   }
 
-  function startTimer() {
-    timerRef.current = setInterval(() => {
-      setElapsed(prev => prev + 1)
-    }, 1000)
-  }
-
-  // ── Graceful media startup ────────────────────────────────────────────────
+  // ── Get room from API ─────────────────────────────────────────────────────
   useEffect(() => {
-    async function startMedia() {
-      let stream: MediaStream | null = null
-
-      // 1. Try full video + audio
+    async function getRoom() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 1280, height: 720 },
-          audio: true,
+        const res = await fetch('/api/video/create-room', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ sessionId, isCoach }),
         })
-        setHasVideo(true)
-        setHasAudio(true)
-      } catch (err: any) {
-        // 2. Camera not found or not allowed — try audio only
-        if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError' ||
-            err.name === 'NotReadableError' || err.name === 'OverconstrainedError') {
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-            setHasVideo(false)
-            setHasAudio(true)
-            setVideoOff(true)
-            setMediaWarning('No camera detected — continuing with audio only.')
-          } catch {
-            // 3. No audio either — proceed without media (still track time)
-            setHasVideo(false)
-            setHasAudio(false)
-            setVideoOff(true)
-            setMuted(true)
-            setMediaWarning('No camera or microphone detected — session timer is running.')
-          }
-        } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setHasVideo(false)
-          setHasAudio(false)
-          setVideoOff(true)
-          setMuted(true)
-          setMediaWarning('Camera/microphone access denied — session timer is running.')
-        } else {
-          setHasVideo(false)
-          setHasAudio(false)
-          setMediaWarning('Could not access media devices — session timer is running.')
-        }
-      }
 
-      if (stream) {
-        streamRef.current = stream
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream
+        if (!res.ok) {
+          const { error: err } = await res.json()
+          throw new Error(err ?? 'Failed to get room')
         }
+
+        const data = await res.json()
+        setRoomUrl(data.url)
+        setToken(data.token)
+        setLoading(false)
+
+        // Start timer once room is ready
+        timerRef.current = setInterval(() => {
+          setElapsed(prev => prev + 1)
+        }, 1000)
+
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not join call')
+        setLoading(false)
       }
 
       setCameraReady(true)
       startTimer()
     }
 
-    startMedia()
+    getRoom()
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
-      streamRef.current?.getTracks().forEach(t => t.stop())
     }
-  }, [])
-
-  function toggleMute() {
-    if (!hasAudio) return
-    streamRef.current?.getAudioTracks().forEach(t => { t.enabled = muted })
-    setMuted(!muted)
-  }
-
-  function toggleVideo() {
-    if (!hasVideo) return
-    streamRef.current?.getVideoTracks().forEach(t => { t.enabled = videoOff })
-    setVideoOff(!videoOff)
-  }
+  }, [sessionId, isCoach])
 
   function handleEndClick() { setShowEndConfirm(true) }
 
   function handleConfirmEnd() {
     if (timerRef.current) clearInterval(timerRef.current)
-    streamRef.current?.getTracks().forEach(t => t.stop())
     setShowEndConfirm(false)
     onEnd(elapsed)
   }
 
-  // ─── END CONFIRM MODAL ───────────────────────────────────────────────────
+  // Build the Daily Prebuilt iframe URL with token
+  const iframeSrc = roomUrl && token
+    ? `${roomUrl}?t=${token}`
+    : roomUrl ?? ''
+
+  // ── Error ─────────────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
+        <div className="bg-white rounded-2xl p-8 max-w-sm mx-4 text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-gray-900 mb-2">Connection Error</h3>
+          <p className="text-sm text-gray-500 mb-6">{error}</p>
+          <button
+            onClick={onClose}
+            className="w-full py-3 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 text-blue-400 animate-spin mx-auto mb-4" />
+          <p className="text-white font-semibold text-lg">Joining call...</p>
+          <p className="text-gray-400 text-sm mt-1">Setting up your room</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── End confirm ───────────────────────────────────────────────────────────
   const EndConfirmModal = showEndConfirm && (
-    <div className="absolute inset-0 z-60 flex items-center justify-center bg-black/70">
+    <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/70">
       <div className="bg-white rounded-2xl p-6 max-w-xs mx-4 text-center">
         <PhoneOff className="w-10 h-10 text-red-500 mx-auto mb-3" />
         <h3 className="text-base font-bold text-gray-900 mb-1">End Call?</h3>
@@ -144,7 +139,8 @@ export function VideoCall({
           </p>
         ) : (
           <p className="text-sm text-gray-500 mb-4">
-            Only {Math.round(progressPct)}% completed. Need 80% ({formatTime(Math.round(requiredSeconds))}) to auto-complete.
+            Only {Math.round(progressPct)}% completed. Need 80%
+            ({formatTime(Math.round(requiredSeconds))}) to auto-complete.
           </p>
         )}
         <div className="flex gap-3">
@@ -165,30 +161,33 @@ export function VideoCall({
     </div>
   )
 
-  // ─── MINIMIZED VIEW ──────────────────────────────────────────────────────
+  // ── Minimized ─────────────────────────────────────────────────────────────
   if (minimized) {
     return (
       <div className="fixed bottom-4 right-4 z-50 w-72 rounded-2xl overflow-hidden shadow-2xl border border-white/20">
         <div className="relative bg-gray-900 h-40">
-          {hasVideo && !videoOff
-            ? <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-            : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                <VideoOff className="w-8 h-8 text-gray-400" />
-              </div>
-            )
-          }
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between">
+          <iframe
+            src={iframeSrc}
+            allow="camera; microphone; fullscreen; speaker; display-capture"
+            className="w-full h-full border-0"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+          <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between pointer-events-none">
             <div className="flex items-center gap-1.5 text-white text-xs font-mono">
               <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
               {formatTime(elapsed)}
             </div>
-            <div className="flex items-center gap-1.5">
-              <button onClick={() => setMinimized(false)} className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30">
+            <div className="flex items-center gap-1.5 pointer-events-auto">
+              <button
+                onClick={() => setMinimized(false)}
+                className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30"
+              >
                 <Maximize2 className="w-3.5 h-3.5" />
               </button>
-              <button onClick={handleEndClick} className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center text-white hover:bg-red-600">
+              <button
+                onClick={handleEndClick}
+                className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center text-white hover:bg-red-600"
+              >
                 <PhoneOff className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -199,136 +198,63 @@ export function VideoCall({
     )
   }
 
-  // ─── FULL VIEW ───────────────────────────────────────────────────────────
+  // ── Full view ─────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-gray-950">
 
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-b from-black/80 to-transparent absolute top-0 left-0 right-0 z-10">
+      <div className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           <span className="text-white text-sm font-semibold">Live Session</span>
           <span className="text-gray-400 text-sm">{durationMinutes} min scheduled</span>
         </div>
-        <button
-          onClick={() => setMinimized(true)}
-          className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
-        >
-          <Minimize2 className="w-4 h-4" />
-        </button>
-      </div>
 
-      {/* Main video area */}
-      <div className="flex-1 relative bg-gray-900">
-
-        {/* Remote video placeholder */}
-        <div className="w-full h-full flex flex-col items-center justify-center text-white">
-          <div className="w-24 h-24 rounded-full bg-blue-600/30 border-2 border-blue-500/50 flex items-center justify-center mb-4">
-            <Users className="w-12 h-12 text-blue-400" />
+        {/* Timer */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-black/40 rounded-xl px-3 py-1.5">
+            <Clock className="w-3.5 h-3.5 text-blue-400" />
+            <span className="font-mono text-sm font-bold text-white">{formatTime(elapsed)}</span>
+            <span className="text-gray-500 text-xs">/ {formatTime(totalSeconds)}</span>
           </div>
-          <p className="text-lg font-semibold text-white">Waiting for athlete</p>
-          <p className="text-sm text-gray-400 mt-1">Share your session link with the athlete to join</p>
-        </div>
 
-        {/* ✅ Media warning banner — non-blocking */}
-        {mediaWarning && (
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-amber-500/90 backdrop-blur-sm text-white text-xs font-medium px-4 py-2 rounded-full shadow-lg">
-            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-            {mediaWarning}
+          {/* Progress bar */}
+          <div className="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-1000 ${canAutoComplete ? 'bg-green-500' : 'bg-blue-500'}`}
+              style={{ width: `${progressPct}%` }}
+            />
           </div>
-        )}
 
-        {/* Local video PiP */}
-        <div className="absolute bottom-4 right-4 w-44 h-36 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl bg-gray-800">
-          {hasVideo && !videoOff
-            ? <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-            : (
-              <div className="absolute inset-0 bg-gray-800 flex flex-col items-center justify-center">
-                <VideoOff className="w-8 h-8 text-gray-400 mb-1" />
-                <p className="text-xs text-gray-500">{hasVideo ? 'Camera off' : 'No camera'}</p>
-              </div>
-            )
-          }
-          {!cameraReady && (
-            <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
-              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            </div>
+          {canAutoComplete && (
+            <span className="text-xs text-green-400 font-medium">✓ 80%</span>
           )}
-          <div className="absolute bottom-1 left-2 text-xs text-white/80 font-medium">You</div>
         </div>
 
-        {/* Timer overlay */}
-        <div className="absolute top-20 left-6 right-6">
-          <div className="bg-black/50 backdrop-blur-sm rounded-2xl px-4 py-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-white">
-                <Clock className="w-4 h-4 text-blue-400" />
-                <span className="font-mono font-bold text-lg">{formatTime(elapsed)}</span>
-                <span className="text-gray-400 text-sm">/ {formatTime(totalSeconds)}</span>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-400">Auto-complete at</p>
-                <p className="text-xs font-semibold text-green-400">{formatTime(Math.round(requiredSeconds))} (80%)</p>
-              </div>
-            </div>
-            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-1000 ${
-                  canAutoComplete ? 'bg-green-500' : 'bg-blue-500'
-                }`}
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-            {canAutoComplete && (
-              <p className="text-xs text-green-400 mt-1.5 font-medium flex items-center gap-1">
-                ✓ 80% attendance reached — session will auto-complete when you end the call
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Controls bar */}
-      <div className="flex items-center justify-center gap-6 py-8 bg-gradient-to-t from-black to-transparent">
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex items-center gap-2">
           <button
-            onClick={toggleMute}
-            disabled={!hasAudio}
-            className={`w-14 h-14 rounded-full flex items-center justify-center transition-colors ${
-              !hasAudio        ? 'bg-white/10 text-gray-600 cursor-not-allowed'
-              : muted          ? 'bg-red-500 text-white'
-              :                  'bg-white/20 text-white hover:bg-white/30'
-            }`}
+            onClick={() => setMinimized(true)}
+            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
           >
-            {muted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+            <Minimize2 className="w-4 h-4" />
           </button>
-          <span className="text-xs text-gray-400">{!hasAudio ? 'No Mic' : muted ? 'Unmute' : 'Mute'}</span>
-        </div>
-
-        <div className="flex flex-col items-center gap-1">
           <button
             onClick={handleEndClick}
-            className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30"
+            className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-xl transition-colors"
           >
-            <PhoneOff className="w-7 h-7" />
+            <PhoneOff className="w-4 h-4" />
+            End Call
           </button>
-          <span className="text-xs text-gray-400">End Call</span>
         </div>
+      </div>
 
-        <div className="flex flex-col items-center gap-1">
-          <button
-            onClick={toggleVideo}
-            disabled={!hasVideo}
-            className={`w-14 h-14 rounded-full flex items-center justify-center transition-colors ${
-              !hasVideo        ? 'bg-white/10 text-gray-600 cursor-not-allowed'
-              : videoOff       ? 'bg-red-500 text-white'
-              :                  'bg-white/20 text-white hover:bg-white/30'
-            }`}
-          >
-            {videoOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
-          </button>
-          <span className="text-xs text-gray-400">{!hasVideo ? 'No Camera' : videoOff ? 'Show Video' : 'Hide Video'}</span>
-        </div>
+      {/* Daily Prebuilt iframe — full screen */}
+      <div className="flex-1 relative">
+        <iframe
+          src={iframeSrc}
+          allow="camera; microphone; fullscreen; speaker; display-capture"
+          className="w-full h-full border-0"
+        />
       </div>
 
       {EndConfirmModal}
