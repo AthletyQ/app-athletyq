@@ -136,7 +136,7 @@ export function ConsultationCard({ consultant, onClose }: ConsultationCardProps)
       }
 
       // 1. Insert pending session — safely handle if function returns undefined
-      const bookResult = await bookConsultantSessions([session])
+      const bookResult = await bookConsultantSessions([session]) as { error?: unknown } | undefined
       if (bookResult?.error) throw new Error(String(bookResult.error))
 
       // 2. Retrieve the inserted session ID
