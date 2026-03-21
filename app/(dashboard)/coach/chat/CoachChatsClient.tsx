@@ -402,149 +402,110 @@ export default function CoachChatsPage() {
         />
       )}
 
-      <div className="flex h-[calc(100vh-64px)] bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="flex h-[calc(100vh-64px)] bg-white overflow-hidden">
 
         {/* ── Left panel ── */}
-        <div className={`flex flex-col w-full md:w-80 border-r border-gray-100 flex-shrink-0 bg-white ${showList ? 'flex' : 'hidden md:flex'}`}>
+        <div className={`flex flex-col w-full md:w-96 border-r border-gray-200 flex-shrink-0 bg-white ${showList ? 'flex' : 'hidden md:flex'}`}>
 
-          <div className="px-3 pt-4 pb-3">
+          {/* Header with title */}
+          <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Messages</h2>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search conversations..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 placeholder:text-gray-400"
               />
             </div>
           </div>
 
-          <div className="flex gap-4 px-4 border-b border-gray-100 mb-1">
-            {(['Chats', 'Calls'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => { setActiveTab(tab); setSelectedCall(null) }}
-                className={`pb-2.5 text-sm font-semibold border-b-2 transition-colors ${
-                  activeTab === tab ? 'text-blue-600 border-blue-600' : 'text-gray-400 border-transparent hover:text-gray-600'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          {/* Conversation list */}
+          <div className="flex-1 overflow-y-auto">
+            {loadingConvs ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-48 gap-2 px-6 text-center">
+                <MessageSquare size={32} className="text-gray-200" />
+                <p className="text-sm text-gray-400">No conversations yet</p>
+              </div>
+            ) : (
+              filtered.map((conv) => {
+                const isActive = activeConv?.id === conv.id
+                const unread   = conv.contact_unread_count ?? 0
+                const menuOpen = convMenuOpen === conv.id
 
-          {activeTab === 'Chats' && (
-            <div className="flex-1 overflow-y-auto">
-              {loadingConvs ? (
-                <div className="flex items-center justify-center h-32">
-                  <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-                </div>
-              ) : filtered.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 gap-2 px-6 text-center">
-                  <MessageSquare size={32} className="text-gray-200" />
-                  <p className="text-sm text-gray-400">No conversations yet</p>
-                </div>
-              ) : (
-                filtered.map((conv) => {
-                  const isActive = activeConv?.id === conv.id
-                  const unread   = conv.contact_unread_count ?? 0
-                  const menuOpen = convMenuOpen === conv.id
-
-                  return (
+                return (
+                  <div
+                    key={conv.id}
+                    className={`group relative flex items-center gap-3 px-5 py-4 transition-colors hover:bg-gray-50 cursor-pointer border-b border-gray-50 ${
+                      isActive ? 'bg-blue-50' : ''
+                    }`}
+                    onClick={() => openConversation(conv)}
+                  >
                     <div
-                      key={conv.id}
-                      className={`group relative flex items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50 border-b border-gray-50 cursor-pointer ${
-                        isActive ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''
-                      }`}
-                      onClick={() => openConversation(conv)}
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+                      style={{ backgroundColor: avatarColor(conv.athlete_id) }}
                     >
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                        style={{ backgroundColor: avatarColor(conv.athlete_id) }}
-                      >
-                        {initials(conv.athlete)}
+                      {initials(conv.athlete)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className={`text-sm truncate ${unread > 0 ? 'font-semibold text-gray-900' : 'font-medium text-gray-800'}`}>
+                          {fullName(conv.athlete)}
+                        </span>
+                        <span className="text-xs text-gray-400 flex-shrink-0">{formatTime(conv.last_message_at)}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className={`text-sm truncate ${unread > 0 ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
-                            {fullName(conv.athlete)}
+                      <div className="flex items-center justify-between gap-1 mt-0.5">
+                        <p className={`text-sm truncate ${unread > 0 ? 'text-gray-600 font-medium' : 'text-gray-400'}`}>
+                          {conv.last_message ?? 'No messages yet'}
+                        </p>
+                        {unread > 0 && (
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                            {unread > 9 ? '9+' : unread}
                           </span>
-                          <span className="text-xs text-gray-400 flex-shrink-0">{formatTime(conv.last_message_at)}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-1 mt-0.5">
-                          <p className={`text-xs truncate ${unread > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
-                            {conv.last_message ?? 'No messages yet'}
-                          </p>
-                          {unread > 0 && (
-                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
-                              {unread > 9 ? '9+' : unread}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Three-dot menu */}
-                      <div className="relative flex-shrink-0" ref={menuOpen ? menuRef : null}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setConvMenuOpen(menuOpen ? null : conv.id) }}
-                          className={`w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-opacity ${
-                            menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                          }`}
-                        >
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </button>
-                        {menuOpen && (
-                          <div className="absolute right-0 top-8 z-20 w-40 bg-white rounded-xl shadow-lg border border-gray-100 py-1">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDeleteTarget(conv); setConvMenuOpen(null) }}
-                              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" /> Delete chat
-                            </button>
-                          </div>
                         )}
                       </div>
                     </div>
-                  )
-                })
-              )}
-            </div>
-          )}
 
-          {activeTab === 'Calls' && (
-            <div className="flex-1 overflow-y-auto">
-              {calls.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 gap-2">
-                  <Phone className="w-8 h-8 text-gray-200" />
-                  <p className="text-sm text-gray-400">No call history</p>
-                </div>
-              ) : (
-                calls.map((call) => (
-                  <CallItem key={call.id} call={call} onClick={() => setSelectedCall(call)} selected={call.id === selectedCall?.id} />
-                ))
-              )}
-            </div>
-          )}
+                    {/* Three-dot menu */}
+                    <div className="relative flex-shrink-0" ref={menuOpen ? menuRef : null}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setConvMenuOpen(menuOpen ? null : conv.id) }}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-opacity ${
+                          menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+                      {menuOpen && (
+                        <div className="absolute right-0 top-8 z-20 w-40 bg-white rounded-xl shadow-lg border border-gray-100 py-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(conv); setConvMenuOpen(null) }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" /> Delete chat
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
         </div>
 
         {/* ── Right panel ── */}
         <div className={`flex-1 flex flex-col min-w-0 ${!showList ? 'flex' : 'hidden md:flex'}`}>
-          {activeTab === 'Calls' ? (
-            selectedCall
-              ? <CallDetailPanel call={selectedCall} />
-              : (
-                <div className="flex-1 flex items-center justify-center bg-gray-50">
-                  <div className="text-center">
-                    <Phone className="w-12 h-12 mx-auto mb-3 text-gray-200" />
-                    <p className="font-medium text-gray-400">Select a call to view details</p>
-                  </div>
-                </div>
-              )
-          ) : activeConv ? (
+          {activeConv ? (
             <>
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 flex-shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => setShowList(true)} className="md:hidden p-1 rounded-lg hover:bg-gray-100 text-gray-500">
                     <ArrowLeft size={18} />
@@ -631,7 +592,7 @@ export default function CoachChatsPage() {
               </div>
 
               {/* Input */}
-              <div className="flex-shrink-0 bg-white border-t border-gray-100 px-4 py-3 flex items-center gap-3">
+              <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center gap-3">
                 <button className="text-gray-400 hover:text-gray-600 p-1"><Paperclip className="w-5 h-5" /></button>
                 <button className="text-gray-400 hover:text-gray-600 p-1"><Smile className="w-5 h-5" /></button>
                 <input
@@ -656,10 +617,14 @@ export default function CoachChatsPage() {
               </div>
             </>
           ) : (
+            /* Empty state — matches consultant style */
             <div className="flex-1 flex items-center justify-center bg-gray-50">
               <div className="text-center">
-                <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-200" />
-                <p className="font-medium text-gray-400">Select a conversation to start chatting</p>
+                <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare className="w-8 h-8 text-blue-300" />
+                </div>
+                <p className="text-base font-semibold text-gray-700 mb-1">Your messages</p>
+                <p className="text-sm text-gray-400">Select a conversation to start chatting</p>
               </div>
             </div>
           )}
