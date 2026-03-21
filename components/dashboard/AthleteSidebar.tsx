@@ -89,7 +89,7 @@ export function Sidebar({ ...props }: React.ComponentProps<typeof BaseSidebar>) 
                         "transition-all duration-150",
                         open ? "rounded-xl w-full px-4 py-2 h-12" : "!w-10 !h-10 rounded-full flex items-center justify-center p-0",
                         isActive
-                          ? "bg-white text-blue-600 font-semibold shadow-sm hover:bg-white/95"
+                          ? "!bg-white !text-blue-600 font-semibold shadow-sm hover:!bg-white/95"
                           : "text-white/70 hover:bg-white/10 hover:text-white"
                       )}
                     >
