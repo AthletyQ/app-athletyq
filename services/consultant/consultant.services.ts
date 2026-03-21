@@ -192,7 +192,7 @@ export async function getConsultants(params?: {
   // 1. Fetch consultants with filters
   let query = supabase
     .from("consultants")
-    .select("user_id, specialty, bio, hourly_rate, certifications", { count: "exact" });
+    .select("user_id, specialty, bio, hourly_rate, certifications, rating, years_of_experience", { count: "exact" });
  
   if (params?.specialty)              query = query.ilike("specialty",  `%${params.specialty}%`);
   if (params?.minPrice !== undefined) query = query.gte("hourly_rate", params.minPrice);
@@ -211,10 +211,24 @@ export async function getConsultants(params?: {
  
   const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name")
+    .select("id, first_name, last_name, profile_image_url")
     .in("id", userIds);
  
   if (profileError) throw new Error(profileError.message);
+ 
+  // 3. Fetch session counts for each consultant
+  const { data: sessionCounts, error: sessionCountsError } = await supabase
+    .from("sessions")
+    .select("provider_id")
+    .eq("provider_type", "consultant")
+    .in("provider_id", userIds);
+
+  if (sessionCountsError) throw new Error(sessionCountsError.message);
+
+  const sessionCountMap = new Map();
+  sessionCounts?.forEach(s => {
+    sessionCountMap.set(s.provider_id, (sessionCountMap.get(s.provider_id) || 0) + 1);
+  });
  
   const profileMap = new Map(
     (profileRows || []).map((p) => [p.id, p])
@@ -230,10 +244,14 @@ export async function getConsultants(params?: {
       firstName,
       lastName,
       initials:       `${firstName[0] ?? "?"}${lastName[0] ?? ""}`.toUpperCase(),
+      avatarUrl:      profile?.profile_image_url ?? null,
       specialty:      row.specialty    ?? "",
       bio:            row.bio          ?? null,
       hourlyRate:     row.hourly_rate  !== null ? Number(row.hourly_rate) : null,
       certifications: row.certifications ?? [],
+      rating:         row.rating !== null ? Number(row.rating) : 0,
+      yearsOfExperience: row.years_of_experience,
+      totalSessions:  sessionCountMap.get(row.user_id) || 0,
     };
   });
  

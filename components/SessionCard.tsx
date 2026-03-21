@@ -126,7 +126,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         duration_minutes: durationMinutes,
         status: 'pending',
         price: (Number(coach.hourlyRate) || 0) / 2, // 30 min is half price of hourly rate
-        currency: 'USD',
+        currency: 'LKR',
         payment_status: 'unpaid',
         location_type: 'online',
       }
