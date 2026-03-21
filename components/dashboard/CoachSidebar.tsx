@@ -79,22 +79,22 @@ export function Sidebar({ ...props }: React.ComponentProps<typeof BaseSidebar>) 
               {menuItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
-                  <SidebarMenuItem key={item.href}>
+                  <SidebarMenuItem key={item.href} className={cn(!open && "flex justify-center")}>
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
                       tooltip={item.label}
-                      size="lg"
                       className={cn(
-                        "rounded-xl transition-all duration-150",
+                        "transition-all duration-150",
+                        open ? "rounded-xl w-full px-4 py-2 h-12" : "!w-10 !h-10 rounded-full flex items-center justify-center p-0",
                         isActive
-                          ? "bg-white text-blue-700 font-semibold shadow-sm hover:bg-white/95"
+                          ? "bg-white text-blue-600 font-semibold shadow-sm hover:bg-white/95"
                           : "text-white/70 hover:bg-white/10 hover:text-white"
                       )}
                     >
-                      <Link href={item.href}>
-                        <item.icon className="w-[18px] h-[18px] shrink-0" />
-                        <span className="font-medium">{item.label}</span>
+                      <Link href={item.href} className={cn(open ? "w-full flex items-center gap-3" : "flex items-center justify-center")}>
+                        <item.icon className={cn("shrink-0", open ? "w-5 h-5" : "w-5 h-5")} />
+                        {open && <span className="font-medium text-[15px]">{item.label}</span>}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
