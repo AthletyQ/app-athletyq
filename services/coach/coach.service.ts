@@ -50,22 +50,38 @@ export const coachService = {
       if (relevantAvailability.length === 0) {
         // --- DYNAMIC FALLBACK LOGIC ---
         let currentHour = 8;
-        // 8 AM to 9 PM (21:00)
-        const endHour = 21;
-
-        while (currentHour <= endHour) {
-          allPossibleSlots.push(`${currentHour.toString().padStart(2, '0')}:00`);
-          currentHour++;
+        let currentMinute = 0;
+        // 8 AM to 8:30 PM (20:30)
+        while (currentHour < 20 || (currentHour === 20 && currentMinute <= 30)) {
+          allPossibleSlots.push(
+            `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
+          );
+          currentMinute += 30;
+          if (currentMinute >= 60) {
+            currentHour++;
+            currentMinute = 0;
+          }
         }
       } else {
         relevantAvailability.forEach((avail: Availability) => {
           let currentHour = parseInt(avail.start_time.split(":")[0]);
+          let currentMinute = parseInt(avail.start_time.split(":")[1] || "0");
           const endHour = parseInt(avail.end_time.split(":")[0]);
-          // Include up to 21:00 if the availability allows
-          const limitHour = Math.min(endHour, 21);
-          while (currentHour <= limitHour) {
-            allPossibleSlots.push(`${currentHour.toString().padStart(2, '0')}:00`);
-            currentHour++;
+          const endMinute = parseInt(avail.end_time.split(":")[1] || "0");
+
+          // Limit to 20:30
+          while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
+            if (currentHour > 20 || (currentHour === 20 && currentMinute > 30)) break;
+            
+            allPossibleSlots.push(
+              `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
+            );
+            
+            currentMinute += 30;
+            if (currentMinute >= 60) {
+              currentHour++;
+              currentMinute = 0;
+            }
           }
         });
       }
@@ -75,15 +91,15 @@ export const coachService = {
       // Add existing bookings from DB, accounting for duration
       sessionsData?.forEach((session: { scheduled_at: string; duration_minutes: number }) => {
         const startTime = new Date(session.scheduled_at);
-        const duration = session.duration_minutes || 60;
-        const startHour = startTime.getHours();
-        const slotsCount = Math.ceil(duration / 60);
+        const duration = session.duration_minutes || 30;
+        
+        let current = new Date(startTime);
+        const endTime = new Date(startTime.getTime() + duration * 60000);
 
-        for (let i = 0; i < slotsCount; i++) {
-          const slotHour = startHour + i;
-          if (slotHour < 24) {
-            bookedSlotsSet.add(`${slotHour.toString().padStart(2, '0')}:00`);
-          }
+        while (current < endTime) {
+          const slotStr = `${current.getHours().toString().padStart(2, '0')}:${current.getMinutes().toString().padStart(2, '0')}`;
+          bookedSlotsSet.add(slotStr);
+          current.setMinutes(current.getMinutes() + 30);
         }
       });
 
@@ -91,11 +107,13 @@ export const coachService = {
       const now = new Date();
       const isToday = date.toDateString() === now.toDateString();
       if (isToday) {
-        const currentHour = now.getHours();
         allPossibleSlots.forEach(slot => { 
-          const slotHour = parseInt(slot.split(':')[0]);
-          if (slotHour <= currentHour) {
-            bookedSlotsSet.add(slot); // Treat past slots as "booked" (disabled)
+          const [h, m] = slot.split(':').map(Number);
+          const slotTime = new Date(date);
+          slotTime.setHours(h, m, 0, 0);
+          
+          if (slotTime < now) {
+            bookedSlotsSet.add(slot); // Only treat strictly past slots as "booked" (disabled)
           }
         });
       }

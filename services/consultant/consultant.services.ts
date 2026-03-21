@@ -192,7 +192,7 @@ export async function getConsultants(params?: {
   // 1. Fetch consultants with filters
   let query = supabase
     .from("consultants")
-    .select("user_id, specialty, bio, hourly_rate, certifications", { count: "exact" });
+    .select("user_id, specialty, bio, hourly_rate, certifications, rating, years_of_experience", { count: "exact" });
  
   if (params?.specialty)              query = query.ilike("specialty",  `%${params.specialty}%`);
   if (params?.minPrice !== undefined) query = query.gte("hourly_rate", params.minPrice);
@@ -211,10 +211,24 @@ export async function getConsultants(params?: {
  
   const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name")
+    .select("id, first_name, last_name, profile_image_url")
     .in("id", userIds);
  
   if (profileError) throw new Error(profileError.message);
+ 
+  // 3. Fetch session counts for each consultant
+  const { data: sessionCounts, error: sessionCountsError } = await supabase
+    .from("sessions")
+    .select("provider_id")
+    .eq("provider_type", "consultant")
+    .in("provider_id", userIds);
+
+  if (sessionCountsError) throw new Error(sessionCountsError.message);
+
+  const sessionCountMap = new Map();
+  sessionCounts?.forEach(s => {
+    sessionCountMap.set(s.provider_id, (sessionCountMap.get(s.provider_id) || 0) + 1);
+  });
  
   const profileMap = new Map(
     (profileRows || []).map((p) => [p.id, p])
@@ -230,10 +244,14 @@ export async function getConsultants(params?: {
       firstName,
       lastName,
       initials:       `${firstName[0] ?? "?"}${lastName[0] ?? ""}`.toUpperCase(),
+      avatarUrl:      profile?.profile_image_url ?? null,
       specialty:      row.specialty    ?? "",
       bio:            row.bio          ?? null,
       hourlyRate:     row.hourly_rate  !== null ? Number(row.hourly_rate) : null,
       certifications: row.certifications ?? [],
+      rating:         row.rating !== null ? Number(row.rating) : 0,
+      yearsOfExperience: row.years_of_experience,
+      totalSessions:  sessionCountMap.get(row.user_id) || 0,
     };
   });
  
@@ -263,29 +281,66 @@ export async function getConsultantAvailability(
  
   let query = supabase
     .from("sessions")
-    .select("scheduled_at, status")
+    .select("scheduled_at, status, duration_minutes")
     .eq("provider_id",   consultantId)
     .eq("provider_type", "consultant")
     .gte("scheduled_at", startOfDay.toISOString())
     .lte("scheduled_at", endOfDay.toISOString())
-    .in("status", ["pending", "confirmed"]);
+    .in("status", ["pending", "confirmed", "completed"]);
  
   if (sessionType) query = query.eq("location_type", sessionType);
  
   const { data, error } = await query;
   if (error) throw new Error(error.message);
  
-  const bookedSlots = (data || []).map((s) => {
-    const h = new Date(s.scheduled_at).getHours();
-    return `${String(h).padStart(2, "0")}:00`;
+  const bookedSlotsSet = new Set<string>();
+  (data || []).forEach((s) => {
+    const startTime = new Date(s.scheduled_at);
+    const duration = s.duration_minutes || 30;
+    
+    let current = new Date(startTime);
+    const endTime = new Date(startTime.getTime() + duration * 60000);
+
+    while (current < endTime) {
+      const slotStr = `${current.getHours().toString().padStart(2, '0')}:${current.getMinutes().toString().padStart(2, '0')}`;
+      bookedSlotsSet.add(slotStr);
+      current.setMinutes(current.getMinutes() + 30);
+    }
   });
  
-  const allSlots = Array.from({ length: 11 }, (_, i) =>
-    `${String(i + 8).padStart(2, "0")}:00`,
-  );
-  const availableSlots = allSlots.filter((s) => !bookedSlots.includes(s));
+  const allPossibleSlots: string[] = [];
+  let currentHour = 8;
+  let currentMinute = 0;
+  // 8 AM to 8:30 PM (20:30)
+  while (currentHour < 20 || (currentHour === 20 && currentMinute <= 30)) {
+    allPossibleSlots.push(
+      `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
+    );
+    currentMinute += 30;
+    if (currentMinute >= 60) {
+      currentHour++;
+      currentMinute = 0;
+    }
+  }
+
+  // Handle past slots for today
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  if (isToday) {
+    allPossibleSlots.forEach(slot => {
+      const [h, m] = slot.split(':').map(Number);
+      const slotTime = new Date(date);
+      slotTime.setHours(h, m, 0, 0);
+      if (slotTime < now) {
+        bookedSlotsSet.add(slot);
+      }
+    });
+  }
  
-  return { availableSlots, bookedSlots };
+  return { 
+    availableSlots: allPossibleSlots.sort(), 
+    bookedSlots: Array.from(bookedSlotsSet) 
+  };
 }
  
 export async function bookConsultantSessions(
