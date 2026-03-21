@@ -53,7 +53,12 @@ export function Sidebar({ ...props }: React.ComponentProps<typeof BaseSidebar>) 
   const { open } = useSidebar();
 
   return (
-    <BaseSidebar collapsible="icon" className="border-r-0" {...props}>
+    <BaseSidebar
+  collapsible="icon"
+  className="border-r-0 bg-[#1e2d3d]"
+  style={{ '--sidebar-background': '#1e2d3d' } as React.CSSProperties}
+  {...props}
+>
 
       {/* ── Header: logo left, collapse button right ── */}
       <SidebarHeader className="h-20 px-4">
