@@ -8,7 +8,11 @@ import {
   ChevronRight, Activity, Target, TrendingUp, Zap, Heart,
   Video, X, Phone,
 } from 'lucide-react'
-import { VideoCall } from '@/components/dashboard/VideoCall'
+import dynamic from 'next/dynamic'
+const VideoCall = dynamic(
+  () => import('@/components/dashboard/VideoCall').then(m => m.VideoCall),
+  { ssr: false }
+)
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
