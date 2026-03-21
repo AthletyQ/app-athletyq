@@ -313,7 +313,7 @@ export async function getConsultantAvailability(
       const [h, m] = slot.split(':').map(Number);
       const slotTime = new Date(date);
       slotTime.setHours(h, m, 0, 0);
-      if (slotTime <= now) {
+      if (slotTime < now) {
         bookedSlotsSet.add(slot);
       }
     });

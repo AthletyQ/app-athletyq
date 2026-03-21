@@ -112,8 +112,8 @@ export const coachService = {
           const slotTime = new Date(date);
           slotTime.setHours(h, m, 0, 0);
           
-          if (slotTime <= now) {
-            bookedSlotsSet.add(slot); // Treat past slots as "booked" (disabled)
+          if (slotTime < now) {
+            bookedSlotsSet.add(slot); // Only treat strictly past slots as "booked" (disabled)
           }
         });
       }
