@@ -10,13 +10,13 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const coachId    = searchParams.get('coachId')
   const athleteId  = searchParams.get('athleteId')
-  const weekStartP = searchParams.get('weekStart')  // optional ISO string from client
-  const weekEndP   = searchParams.get('weekEnd')    // optional ISO string from client
+  const weekStartP = searchParams.get('weekStart')
+  const weekEndP   = searchParams.get('weekEnd')
 
   if (!coachId && !athleteId)
     return NextResponse.json({ error: 'coachId or athleteId required' }, { status: 400 })
 
-  // ── Week range: use client-supplied params, or fall back to current week ──
+  // ── Week range ────────────────────────────────────────────────────────────
   let weekStart: Date
   let weekEnd: Date
 
@@ -60,7 +60,6 @@ export async function GET(request: NextRequest) {
         name
       )
     `)
-    // ✅ Exclude only cancelled sessions
     .in('status', ['pending', 'confirmed', 'completed', 'reschedule_requested'])
     .gte('scheduled_at', weekStart.toISOString())
     .lte('scheduled_at', weekEnd.toISOString())
@@ -93,6 +92,8 @@ export async function GET(request: NextRequest) {
     'bg-teal-50 text-teal-600',
   ]
 
+  const TZ = 'Asia/Colombo'   // ✅ UTC+5:30 — all display times in SL time
+
   const sessions = (data ?? []).map((s: any) => {
     const athlete   = Array.isArray(s.athletes) ? s.athletes[0] : s.athletes
     const profile   = Array.isArray(athlete?.profiles) ? athlete.profiles[0] : athlete?.profiles
@@ -107,7 +108,20 @@ export async function GET(request: NextRequest) {
 
     const date     = new Date(s.scheduled_at)
     const isOnline = s.location_type === 'online' || s.session_type === 'online'
-    const dateKey  = s.scheduled_at.slice(0, 10)  // "2026-03-21"
+
+    // ✅ dateKey: use SL local date (not UTC date) so day boundaries match SL midnight
+    const slDateStr = date.toLocaleDateString('en-CA', { timeZone: TZ }) // "YYYY-MM-DD"
+    const dateKey   = slDateStr
+
+    // ✅ Display date + time both in SL timezone
+    const formattedDate = date.toLocaleDateString('en-US', {
+      timeZone: TZ,
+      weekday: 'short', month: 'short', day: 'numeric',
+    })
+    const formattedTime = date.toLocaleTimeString('en-US', {
+      timeZone: TZ,
+      hour: 'numeric', minute: '2-digit',
+    })
 
     return {
       id:         s.id,
@@ -118,9 +132,9 @@ export async function GET(request: NextRequest) {
       sportColor: SPORT_COLORS[sportIdx],
       mode:       isOnline ? 'Online' : 'In-person',
       location:   s.location_details ?? (isOnline ? 'Online Session' : 'In-person'),
-      dateKey,
-      date:       date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-      time:       date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      dateKey,            // ✅ SL-local date e.g. "2026-03-23"
+      date:       formattedDate,
+      time:       formattedTime,  // ✅ SL time e.g. "8:00 AM" not "2:30 AM"
       duration:   `${s.duration_minutes ?? 60} min`,
       status:     s.status ?? 'pending',
     }
