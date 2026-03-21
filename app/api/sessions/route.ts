@@ -8,24 +8,34 @@ const supabase = createClient(
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const coachId   = searchParams.get('coachId')
-  const athleteId = searchParams.get('athleteId')
+  const coachId    = searchParams.get('coachId')
+  const athleteId  = searchParams.get('athleteId')
+  const weekStartP = searchParams.get('weekStart')  // optional ISO string from client
+  const weekEndP   = searchParams.get('weekEnd')    // optional ISO string from client
 
   if (!coachId && !athleteId)
     return NextResponse.json({ error: 'coachId or athleteId required' }, { status: 400 })
 
-  // ── Current week: Monday 00:00:00 UTC → Sunday 23:59:59 UTC ──────────────
-  const now       = new Date()
-  const dayOfWeek = now.getUTCDay()
-  const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  // ── Week range: use client-supplied params, or fall back to current week ──
+  let weekStart: Date
+  let weekEnd: Date
 
-  const weekStart = new Date(now)
-  weekStart.setUTCDate(now.getUTCDate() + diffToMon)
-  weekStart.setUTCHours(0, 0, 0, 0)
+  if (weekStartP && weekEndP) {
+    weekStart = new Date(weekStartP)
+    weekEnd   = new Date(weekEndP)
+  } else {
+    const now       = new Date()
+    const dayOfWeek = now.getUTCDay()
+    const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
 
-  const weekEnd = new Date(weekStart)
-  weekEnd.setUTCDate(weekStart.getUTCDate() + 6)   // Sunday
-  weekEnd.setUTCHours(23, 59, 59, 999)
+    weekStart = new Date(now)
+    weekStart.setUTCDate(now.getUTCDate() + diffToMon)
+    weekStart.setUTCHours(0, 0, 0, 0)
+
+    weekEnd = new Date(weekStart)
+    weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
+    weekEnd.setUTCHours(23, 59, 59, 999)
+  }
 
   let query = supabase
     .from('sessions')
@@ -50,7 +60,8 @@ export async function GET(request: NextRequest) {
         name
       )
     `)
-    // ✅ NO status filter — fetch all statuses (pending, confirmed, cancelled, completed, reschedule_requested)
+    // ✅ Exclude only cancelled sessions
+    .in('status', ['pending', 'confirmed', 'completed', 'reschedule_requested'])
     .gte('scheduled_at', weekStart.toISOString())
     .lte('scheduled_at', weekEnd.toISOString())
     .order('scheduled_at', { ascending: true })
@@ -96,16 +107,7 @@ export async function GET(request: NextRequest) {
 
     const date     = new Date(s.scheduled_at)
     const isOnline = s.location_type === 'online' || s.session_type === 'online'
-
-    // ✅ ISO date key sliced directly — no locale/timezone issues
-    const dateKey = s.scheduled_at.slice(0, 10)  // "2026-03-21"
-
-    const formattedDate = date.toLocaleDateString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric',
-    })
-    const formattedTime = date.toLocaleTimeString('en-US', {
-      hour: 'numeric', minute: '2-digit',
-    })
+    const dateKey  = s.scheduled_at.slice(0, 10)  // "2026-03-21"
 
     return {
       id:         s.id,
@@ -116,9 +118,9 @@ export async function GET(request: NextRequest) {
       sportColor: SPORT_COLORS[sportIdx],
       mode:       isOnline ? 'Online' : 'In-person',
       location:   s.location_details ?? (isOnline ? 'Online Session' : 'In-person'),
-      dateKey,            // ✅ used for day filtering on client
-      date:       formattedDate,
-      time:       formattedTime,
+      dateKey,
+      date:       date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      time:       date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       duration:   `${s.duration_minutes ?? 60} min`,
       status:     s.status ?? 'pending',
     }
