@@ -70,9 +70,6 @@ export function VideoCall({
         setError(err instanceof Error ? err.message : 'Could not join call')
         setLoading(false)
       }
-
-      setCameraReady(true)
-      startTimer()
     }
 
     getRoom()
