@@ -7,6 +7,7 @@ import {
   Users,
   UserSearch,
   MessageSquare,
+  PersonStanding,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -28,6 +29,7 @@ const menuItems = [
   { icon: Users,           label: "Coaches",     href: "/athlete/coaches"     },
   { icon: UserSearch,      label: "Consultants", href: "/athlete/consultants" },
   { icon: MessageSquare,   label: "Chats",       href: "/athlete/chats"       },
+  { icon: PersonStanding,  label: "SmartPose",   href: "/athlete/pose-analyzer" },
 ];
 
 function CollapseButton() {
