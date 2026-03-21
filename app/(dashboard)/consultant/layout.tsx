@@ -6,7 +6,7 @@ import { Navbar } from "@/components/dashboard/Navbar";
 
 export default function ConsultantLayout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="min-h-screen flex w-full">
+        <div id="main-layout-wrapper" className="min-h-screen flex w-full">
             {/* Consultant Sidebar */}
             <Sidebar />
 

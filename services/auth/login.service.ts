@@ -11,12 +11,15 @@ export type LoginResult =
   | { ok: false; error: { message: string; code?: string; status?: number } };
 
 function toError(error: AuthError | Error): LoginResult {
+  const status = (error as { status?: number }).status;
+  const code = (error as { code?: string }).code;
+
   return {
     ok: false,
     error: {
       message: error.message,
-      code: (error as any).code,
-      status: (error as any).status,
+      code: typeof code === "string" ? code : undefined,
+      status: typeof status === "number" ? status : undefined,
     },
   };
 }
@@ -36,6 +39,23 @@ export async function login(input: LoginInput): Promise<LoginResult> {
       ok: false,
       error: { message: "Login failed. No session returned." },
     };
+  }
+
+  // Ensure role is in user_metadata for consistent redirection
+  if (!data.user.user_metadata?.role) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .single();
+    
+    if (profile?.role) {
+      // Update local user object for this response
+      data.user.user_metadata = {
+        ...data.user.user_metadata,
+        role: profile.role
+      };
+    }
   }
 
   return {

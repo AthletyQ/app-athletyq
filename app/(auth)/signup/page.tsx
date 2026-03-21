@@ -179,8 +179,9 @@ export default function SignupPage() {
         return;
       }
       setSubmitted(true);
-    } catch (err: any) {
-      setSubmitError(err?.message || "Network error. Please try again.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Network error. Please try again.";
+      setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }

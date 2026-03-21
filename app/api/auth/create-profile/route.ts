@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Insert into actor-specific table ──
-    let actorError: any = null;
+    let actorError: { message: string; code?: string } | null = null;
 
     if (role === "athlete") {
       const { error } = await supabaseAdmin.from("athletes").insert({
@@ -137,14 +137,14 @@ export async function POST(request: NextRequest) {
         years_of_experience: meta.yearsOfExperience
           ? Number(meta.yearsOfExperience)
           : null,
-        certifications: meta.coachCertifications ?? [],
+        certifications: (meta.coachCertifications as string[]) ?? [],
       });
       actorError = error;
     } else if (role === "wellness_professional") {
       const { error } = await supabaseAdmin.from("consultants").insert({
         user_id: user.id,
         specialty: meta.consultantSpecialty || null,
-        certifications: meta.consultantCertifications ?? [],
+        certifications: (meta.consultantCertifications as string[]) ?? [],
       });
       actorError = error;
     }
@@ -161,12 +161,13 @@ export async function POST(request: NextRequest) {
       { ok: true, data: { id: user.id } },
       { status: 201 },
     );
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Internal server error";
     console.error("Create profile error:", error);
     return NextResponse.json(
       {
         ok: false,
-        error: { message: "Internal server error", details: error.message },
+        error: { message: "Internal server error", details: message },
       },
       { status: 500 },
     );

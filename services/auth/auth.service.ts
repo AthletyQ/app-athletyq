@@ -54,12 +54,15 @@ function isSupabaseConfigured() {
 }
 
 function toServiceError(error: AuthError | Error): AuthServiceResult<never> {
+  const status = (error as { status?: number }).status;
+  const code = (error as { code?: string }).code;
+
   return {
     ok: false,
     error: {
       message: error.message,
-      code: (error as any).code,
-      status: (error as any).status,
+      code: typeof code === "string" ? code : undefined,
+      status: typeof status === "number" ? status : undefined,
     },
   };
 }
