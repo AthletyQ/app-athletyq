@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { PoseLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-vision';
+import { usePoseFeedback } from '@/hooks/usePoseFeedback';
+import type { RepFormErrors } from '@/hooks/usePoseFeedback';
 
 const VISIBILITY_THRESHOLD = 0.7;
 const ANGLE_BUFFER_SIZE = 5;
@@ -28,12 +30,6 @@ interface ArmLandmarks {
   wrist: { x: number; y: number; z: number; visibility?: number };
 }
 
-interface RepFormErrors {
-  incompleteFlexion: boolean;   // didn't curl high enough
-  incompleteExtension: boolean; // didn't extend low enough
-  elbowDrift: boolean;          // upper arm swung forward during curl
-  torsoLean: boolean;           // torso leaned back to assist the lift
-}
 
 interface RepAccumulator {
   extensionAngle: number;     // max angle seen in the 'down' phase before this curl
@@ -71,7 +67,7 @@ export default function PoseDetector() {
   const [isDetecting, setIsDetecting] = useState(false);
   const [fps, setFps] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [hasPermission, setHasPermission] = useState(false);
+  const [_hasPermission, setHasPermission] = useState(false);
   const [isDetectorReady, setIsDetectorReady] = useState(false);
 
   const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
@@ -94,6 +90,7 @@ export default function PoseDetector() {
   const leftMaxExtensionRef = useRef<number>(0);
   const [rightFormErrors, setRightFormErrors] = useState<RepFormErrors | null>(null);
   const [leftFormErrors, setLeftFormErrors] = useState<RepFormErrors | null>(null);
+  const { requestFeedback, aiFeedback, isFetchingFeedback, isSpeaking, clearFeedback } = usePoseFeedback();
 
   useEffect(() => {
     console.log('[PoseDetector] Component mounted, initializing...');
@@ -418,6 +415,7 @@ export default function PoseDetector() {
               };
               setRightFormErrors(errors);
               console.log('[Form] Right rep', rightRepCountRef.current, errors);
+              requestFeedback('right', rightRepCountRef.current, errors);
             }
           }
 
@@ -464,6 +462,7 @@ export default function PoseDetector() {
               };
               setLeftFormErrors(errors);
               console.log('[Form] Left rep', leftRepCountRef.current, errors);
+              requestFeedback('left', leftRepCountRef.current, errors);
             }
           }
 
@@ -566,6 +565,7 @@ export default function PoseDetector() {
     setLeftReps(0);
     setRightFormErrors(null);
     setLeftFormErrors(null);
+    clearFeedback();
   };
 
   useEffect(() => {
@@ -605,6 +605,19 @@ export default function PoseDetector() {
               <span className="text-slate-500 text-xs">reps</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* AI coaching feedback */}
+      {isDetecting && (isFetchingFeedback || aiFeedback) && (
+        <div className="flex items-center gap-3 px-6 py-3 bg-indigo-500/10 border border-indigo-500/40 rounded-xl self-center max-w-xl text-center">
+          {isFetchingFeedback ? (
+            <span className="text-slate-400 text-sm animate-pulse">Analyzing your form...</span>
+          ) : isSpeaking ? (
+            <span className="text-indigo-400 text-sm animate-pulse">🔊 {aiFeedback}</span>
+          ) : (
+            <span className="text-indigo-300 text-sm font-medium">{aiFeedback}</span>
+          )}
         </div>
       )}
 
