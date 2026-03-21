@@ -497,11 +497,28 @@ export function ConsultationCard({ consultant, onClose }: ConsultationCardProps)
         return
       }
 
-      // Build session rows – one per selected time slot
-      const sessions = selectedTimes.map(time => {
-        const [hours] = time.split(':')
-        const scheduledAt = new Date(date)
-        scheduledAt.setHours(parseInt(hours), 0, 0, 0)
+      // Ensure athlete profile row exists
+      const { data: athleteData, error: athleteError } = await supabase
+        .from('athletes')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (athleteError && athleteError.code !== 'PGRST116') {
+        throw new Error('Error verifying athlete profile: ' + athleteError.message)
+      }
+      if (!athleteData) {
+        const { error: createError } = await supabase
+          .from('athletes')
+          .insert({ user_id: user.id })
+        if (createError) throw new Error('Could not create athlete profile: ' + createError.message)
+      }
+
+      // 30 minute session logic
+      const startStr = selectedTimes[0]
+      const [startHour, startMinute] = startStr.split(':').map(Number)
+      
+      const durationMinutes = 30
 
       const scheduledAt = new Date(date)
       scheduledAt.setHours(startHour, startMinute, 0, 0)
@@ -528,37 +545,11 @@ export function ConsultationCard({ consultant, onClose }: ConsultationCardProps)
         return
       }
 
-      // 1. Insert pending sessions into DB
-      await bookConsultantSessions(sessions)
-
-      // 2. Collect the inserted session IDs by querying for them
-      const { data: inserted } = await supabase
-        .from('sessions')
-        .select('id')
-        .eq('athlete_id', user.id)
-        .eq('provider_id', consultant.id)
-        .eq('payment_status', 'unpaid')
-        .eq('status', 'pending')
-        .in('scheduled_at', sessions.map(s => s.scheduled_at as string))
-
-      const sessionIds = (inserted ?? []).map((s: { id: string }) => s.id)
-
-      if (sessionIds.length === 0) {
-        throw new Error('Could not retrieve session IDs for payment')
-      }
-
-      // 3. Create Stripe Checkout session
-      const res = await fetch('/api/payments/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionIds }),
-      })
-      const { url, error: checkoutError } = await res.json()
-      if (checkoutError || !url) throw new Error(checkoutError ?? 'Failed to create checkout')
-
-      // 4. Redirect to Stripe Checkout
-      window.location.href = url
-    } catch (err: unknown) {
+      await bookConsultantSessions([session])
+      setBookingStatus('success')
+      setTimeout(() => onClose(), 2000)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to book session. Please try again.'
       setBookingStatus('error')
       setErrorMessage(message)
     } finally {

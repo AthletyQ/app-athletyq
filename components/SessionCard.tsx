@@ -353,21 +353,11 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
   const handleNextStep = () => { if (step < steps.length - 1) setStep(step + 1) }
   const handlePrevStep = () => { if (step > 0) setStep(step - 1) }
 
-<<<<<<< HEAD
-  /**
-   * Selection Logic: Only one slot can be selected.
-   */
-  const toggleTime = (time: string) => {
-    setSelectedTimes(prev => {
-      if (prev.includes(time)) return []
-      return [time]
-=======
   const toggleTime = (time: string) => {
     setSelectedTimes(prev => {
       if (prev.includes(time)) return prev.filter(t => t !== time)
       if (prev.length >= 2) return [prev[0], time].sort()
       return [...prev, time].sort()
->>>>>>> 24fab1a (Payment Integration)
     })
   }
 
@@ -403,45 +393,17 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         throw new Error(errorData.error || 'Failed to initialize athlete profile')
       }
 
-<<<<<<< HEAD
-      // 30 minute session logic
-      const startStr = selectedTimes[0]
-      const [startHour, startMinute] = startStr.split(':').map(Number)
-      
-      const durationMinutes = 30
-=======
       // Calculate duration from selected slots
       const sortedTimes    = [...selectedTimes].sort()
       const startHour      = parseInt(sortedTimes[0].split(':')[0])
       const endHour        = parseInt(sortedTimes[sortedTimes.length - 1].split(':')[0])
       const durationHours  = endHour - startHour + 1
       const durationMinutes = durationHours * 60
->>>>>>> 24fab1a (Payment Integration)
 
       const scheduledAt = new Date(date)
       scheduledAt.setHours(startHour, startMinute, 0, 0)
 
-<<<<<<< HEAD
-      const session: Partial<Session> = {
-        athlete_id: user.id,
-        provider_id: coach.id,
-        provider_type: 'coach',
-        sport_id: coach.sportId,
-        session_type: 'one-on-one',
-        scheduled_at: scheduledAt.toISOString(),
-        duration_minutes: durationMinutes,
-        status: 'pending',
-        price: (Number(coach.hourlyRate) || 0) / 2, // 30 min is half price of hourly rate
-        currency: 'LKR',
-        payment_status: 'unpaid',
-        location_type: 'online',
-      }
-
-      // Check if scheduled time is in the past
-      if (new Date(session.scheduled_at!) <= new Date()) {
-=======
       if (scheduledAt <= new Date()) {
->>>>>>> 24fab1a (Payment Integration)
         setBookingStatus('error')
         setErrorMessage('Cannot book a session in the past.')
         setIsSubmitting(false)
