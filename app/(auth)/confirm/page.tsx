@@ -24,7 +24,7 @@ function ConfirmPageContent() {
         const type = hashParams.get("type");
 
         // If we have tokens in the hash, Supabase has already confirmed the email
-        if (accessToken && refreshToken && type === "signup") {
+        if (accessToken && refreshToken && (type === "signup" || type === "recovery")) {
           // Set the session using the tokens
           const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -33,6 +33,11 @@ function ConfirmPageContent() {
 
           if (sessionError) throw sessionError;
           if (!sessionData.user) throw new Error("User not found after setting session");
+
+          if (type === "recovery") {
+            router.replace("/reset-password");
+            return;
+          }
 
           // Call API to create profile + actor record (idempotent)
           // All role-specific data is stored in user_metadata
@@ -94,10 +99,11 @@ function ConfirmPageContent() {
             throw new Error("Missing confirmation tokens");
           }
         }
-      } catch (error: any) {
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to confirm email";
         console.error("Confirmation error:", error);
         setStatus("error");
-        setErrorMessage(error.message || "Failed to confirm email");
+        setErrorMessage(message);
       }
     }
 
