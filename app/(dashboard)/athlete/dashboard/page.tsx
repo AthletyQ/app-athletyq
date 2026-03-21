@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   Calendar, Users, MessageSquare, Dumbbell,
   ChevronRight, Activity, Target, TrendingUp, Zap, Heart,
+  Video, X, Phone,
 } from 'lucide-react'
 
 const supabase = createClient(
@@ -36,6 +37,7 @@ interface Session {
   location_type: string
   provider_type: string
   price: number
+  provider_id: string
   provider: { first_name: string; last_name: string } | null
 }
 
@@ -73,19 +75,123 @@ function formatTime(iso: string) {
   return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeStr}`
 }
 
+// ─── Session Action Modal ─────────────────────────────────────────────────────
+
+function SessionActionModal({
+  session,
+  currentUserId,
+  onClose,
+  onMessage,
+}: {
+  session: Session
+  currentUserId: string
+  onClose: () => void
+  onMessage: (providerId: string) => void
+}) {
+  const providerName = `${session.provider?.first_name ?? ''} ${session.provider?.last_name ?? ''}`.trim()
+  const isOnline = session.location_type === 'online'
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+
+        {/* Header */}
+        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${avatarColor(session.provider?.first_name ?? '')}`}>
+              {initials(session.provider?.first_name ?? '', session.provider?.last_name ?? '')}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-900">{providerName}</p>
+              <p className="text-xs text-gray-400 capitalize">{session.provider_type}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Session details */}
+        <div className="px-5 py-4 bg-gray-50 border-b border-gray-100">
+          <div className="flex justify-between text-xs text-gray-500 mb-1">
+            <span>Scheduled</span>
+            <span className="font-semibold text-gray-700">{formatTime(session.scheduled_at)}</span>
+          </div>
+          <div className="flex justify-between text-xs text-gray-500 mb-1">
+            <span>Duration</span>
+            <span className="font-semibold text-gray-700">{session.duration_minutes} min</span>
+          </div>
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>Format</span>
+            <span className="font-semibold text-gray-700 capitalize">
+              {session.location_type === 'online' ? 'Online' : 'In-person'}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="p-5 space-y-3">
+          {/* Join Call — only for online sessions */}
+          {isOnline && (
+            <button
+              onClick={() => {
+                // Video call link would come from session data in production
+                alert('Your coach/consultant will share the meeting link via chat.')
+              }}
+              className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition-colors shadow-sm shadow-blue-100"
+            >
+              <Video className="w-4 h-4" />
+              Join Call
+            </button>
+          )}
+
+          {/* In-person indicator */}
+          {!isOnline && (
+            <div className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-gray-50 border border-gray-200 text-gray-500 rounded-xl text-sm">
+              <Phone className="w-4 h-4" />
+              In-person session — check your location
+            </div>
+          )}
+
+          {/* Message */}
+          <button
+            onClick={() => {
+              onClose()
+              onMessage(session.provider_id)
+            }}
+            className="w-full flex items-center justify-center gap-2.5 px-4 py-3 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-semibold text-sm transition-colors"
+          >
+            <MessageSquare className="w-4 h-4" />
+            Message {session.provider?.first_name}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AthleteDashboard() {
   const router = useRouter()
-  const [profile,       setProfile]       = useState<AthleteProfile | null>(null)
-  const [sessions,      setSessions]      = useState<Session[]>([])
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [providers,     setProviders]     = useState<{ id: string; first_name: string; last_name: string; type: string }[]>([])
-  const [loading,       setLoading]       = useState(true)
+  const [profile,        setProfile]        = useState<AthleteProfile | null>(null)
+  const [sessions,       setSessions]       = useState<Session[]>([])
+  const [conversations,  setConversations]  = useState<Conversation[]>([])
+  const [providers,      setProviders]      = useState<{ id: string; first_name: string; last_name: string; type: string }[]>([])
+  const [loading,        setLoading]        = useState(true)
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null)
+  const [currentUserId,  setCurrentUserId]  = useState<string>('')
+  const [messagingLoad,  setMessagingLoad]  = useState(false)
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
+
+    setCurrentUserId(user.id)
 
     const [{ data: prof }, { data: ath }] = await Promise.all([
       supabase.from('profiles').select('id, first_name, last_name, email').eq('id', user.id).single(),
@@ -167,6 +273,45 @@ export default function AthleteDashboard() {
 
   useEffect(() => { load() }, [load])
 
+  // ── Open or create conversation then navigate to chats ────────────────────
+  const handleMessage = useCallback(async (providerId: string) => {
+    if (!currentUserId || messagingLoad) return
+    setMessagingLoad(true)
+
+    try {
+      // Check if conversation already exists
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('athlete_id', currentUserId)
+        .eq('contact_id', providerId)
+        .maybeSingle()
+
+      if (existing?.id) {
+        router.push(`/athlete/chats?contactId=${providerId}`)
+        return
+      }
+
+      // Create new conversation
+      const { error } = await supabase
+        .from('conversations')
+        .insert({
+          athlete_id: currentUserId,
+          contact_id: providerId,
+          unread_count: 0,
+          contact_unread_count: 0,
+        })
+
+      if (error) throw error
+
+      router.push(`/athlete/chats?contactId=${providerId}`)
+    } catch (err) {
+      console.error('Failed to open conversation:', err)
+    } finally {
+      setMessagingLoad(false)
+    }
+  }, [currentUserId, messagingLoad, router])
+
   const totalUnread     = conversations.reduce((s, c) => s + (c.unread_count ?? 0), 0)
   const upcomingCount   = sessions.length
   const coachCount      = providers.filter((p) => p.type === 'coach').length
@@ -216,6 +361,16 @@ export default function AthleteDashboard() {
 
   return (
     <>
+      {/* ── Session Action Modal ── */}
+      {selectedSession && (
+        <SessionActionModal
+          session={selectedSession}
+          currentUserId={currentUserId}
+          onClose={() => setSelectedSession(null)}
+          onMessage={handleMessage}
+        />
+      )}
+
       {/* ── Header ── */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
@@ -327,39 +482,85 @@ export default function AthleteDashboard() {
             {sessions.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-6">No upcoming sessions</p>
             ) : (
-              // ── Scrollable sessions list ──
               <div className="overflow-y-auto max-h-[340px] space-y-3 pr-1">
-                {sessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 hover:border-blue-100 hover:bg-blue-50/30 transition-colors"
-                  >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${avatarColor(session.provider?.first_name ?? '')}`}>
-                      {initials(session.provider?.first_name ?? '', session.provider?.last_name ?? '')}
+                {sessions.map((session) => {
+                  const isConfirmed = session.status === 'confirmed'
+                  return (
+                    <div
+                      key={session.id}
+                      onClick={() => isConfirmed && setSelectedSession(session)}
+                      className={`flex items-center gap-4 p-3 rounded-xl border transition-colors ${
+                        isConfirmed
+                          ? 'border-green-100 hover:border-green-200 hover:bg-green-50/30 cursor-pointer'
+                          : 'border-gray-100 hover:border-blue-100 hover:bg-blue-50/30'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${avatarColor(session.provider?.first_name ?? '')}`}>
+                        {initials(session.provider?.first_name ?? '', session.provider?.last_name ?? '')}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {session.provider?.first_name} {session.provider?.last_name}
+                        </p>
+                        <p className="text-xs text-gray-400 capitalize mt-0.5">
+                          {session.provider_type} &bull;{' '}
+                          {session.location_type === 'online' ? 'Online' : 'In-person'} &bull;{' '}
+                          {session.duration_minutes} min
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Quick action icons — only on confirmed sessions */}
+                        {isConfirmed && (
+                          <>
+                            {session.location_type === 'online' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedSession(session)
+                                }}
+                                title="Join Call"
+                                className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center text-blue-600 transition-colors"
+                              >
+                                <Video className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleMessage(session.provider_id)
+                              }}
+                              title="Message"
+                              className="w-7 h-7 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-colors"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-gray-700">{formatTime(session.scheduled_at)}</p>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block mt-1 ${
+                            isConfirmed
+                              ? 'bg-green-50 text-green-600'
+                              : 'bg-amber-50 text-amber-600'
+                          }`}>
+                            {session.status}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {session.provider?.first_name} {session.provider?.last_name}
-                      </p>
-                      <p className="text-xs text-gray-400 capitalize mt-0.5">
-                        {session.provider_type} &bull;{' '}
-                        {session.location_type === 'online' ? 'Online' : 'In-person'} &bull;{' '}
-                        {session.duration_minutes} min
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-medium text-gray-700">{formatTime(session.scheduled_at)}</p>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block mt-1 ${
-                        session.status === 'confirmed'
-                          ? 'bg-green-50 text-green-600'
-                          : 'bg-amber-50 text-amber-600'
-                      }`}>
-                        {session.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
+            )}
+
+            {/* Legend */}
+            {sessions.some(s => s.status === 'confirmed') && (
+              <p className="text-[10px] text-gray-400 mt-3 text-right">
+                ✦ Click a confirmed session to join or message
+              </p>
             )}
           </div>
 
