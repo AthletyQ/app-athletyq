@@ -13,25 +13,23 @@ export async function GET(request: NextRequest) {
 
   const now = new Date()
 
-  // ── Current week: Monday 00:00:00 → Sunday 23:59:59 (local-midnight in UTC) ──
-  const dayOfWeek  = now.getUTCDay()                          // 0 = Sun
-  const diffToMon  = dayOfWeek === 0 ? -6 : 1 - dayOfWeek    // days back to Monday
+  // ── Current week (UTC) ────────────────────────────────────────────────────
+  const dayOfWeek = now.getUTCDay()
+  const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
 
   const weekStart = new Date(now)
   weekStart.setUTCDate(now.getUTCDate() + diffToMon)
   weekStart.setUTCHours(0, 0, 0, 0)
 
   const weekEnd = new Date(weekStart)
-  weekEnd.setUTCDate(weekStart.getUTCDate() + 6)   // Sunday of same week
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
   weekEnd.setUTCHours(23, 59, 59, 999)
 
-  // ── Today ──────────────────────────────────────────────────────────────────
   const todayStart = new Date(now)
   todayStart.setUTCHours(0, 0, 0, 0)
   const todayEnd = new Date(now)
   todayEnd.setUTCHours(23, 59, 59, 999)
 
-  // ── Month boundaries ───────────────────────────────────────────────────────
   const monthStart     = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
   const lastMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
   const lastMonthEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999))
@@ -45,14 +43,14 @@ export async function GET(request: NextRequest) {
     { data: lastMonthPayments },
   ] = await Promise.all([
 
-    // unique confirmed clients (all time — for Total Clients card)
+    // all confirmed sessions → unique confirmed athletes
     supabase
       .from('sessions')
       .select('athlete_id')
       .eq('provider_id', coachId)
       .eq('status', 'confirmed'),
 
-    // ✅ confirmed sessions strictly within this Mon–Sun week only
+    // confirmed sessions this week
     supabase
       .from('sessions')
       .select('*', { count: 'exact', head: true })
@@ -61,7 +59,7 @@ export async function GET(request: NextRequest) {
       .gte('scheduled_at', weekStart.toISOString())
       .lte('scheduled_at', weekEnd.toISOString()),
 
-    // confirmed sessions today only
+    // confirmed sessions today
     supabase
       .from('sessions')
       .select('*', { count: 'exact', head: true })
@@ -70,7 +68,7 @@ export async function GET(request: NextRequest) {
       .gte('scheduled_at', todayStart.toISOString())
       .lte('scheduled_at', todayEnd.toISOString()),
 
-    // pending sessions (deduplicated by athlete)
+    // all pending sessions → athlete_ids
     supabase
       .from('sessions')
       .select('athlete_id')
@@ -91,8 +89,18 @@ export async function GET(request: NextRequest) {
       .lte('created_at', lastMonthEnd.toISOString()),
   ])
 
-  const uniqueConfirmed = new Set((confirmedSessions ?? []).map((s: any) => s.athlete_id))
-  const uniquePending   = new Set((pendingSessions   ?? []).map((s: any) => s.athlete_id))
+  // Athletes with at least one confirmed session
+  const confirmedAthleteIds = new Set(
+    (confirmedSessions ?? []).map((s: any) => s.athlete_id)
+  )
+
+  // ✅ Pending clients = athletes who have pending sessions but NO confirmed session at all
+  const pendingAthleteIds = new Set(
+    (pendingSessions ?? []).map((s: any) => s.athlete_id)
+  )
+  const trueNewPendingCount = [...pendingAthleteIds].filter(
+    (id) => !confirmedAthleteIds.has(id)
+  ).length
 
   const thisMonthTotal = (thisMonthPayments ?? []).reduce(
     (sum: number, p: any) => sum + (p.amount ?? 0), 0
@@ -115,17 +123,12 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    totalClients:       uniqueConfirmed.size,
+    totalClients:       confirmedAthleteIds.size,
     sessionsThisWeek:   sessionsThisWeek ?? 0,
     monthlyEarnings:    `$${thisMonthTotal.toLocaleString()}`,
     clientSatisfaction: '4.9',
-    pendingClients:     uniquePending.size,
-    sessionsToday:      sessionsToday    ?? 0,
+    pendingClients:     trueNewPendingCount,  // ✅ only athletes with NO confirmed session
+    sessionsToday:      sessionsToday ?? 0,
     earningsChange,
-    // debug info (remove in production)
-    _debug: {
-      weekStart: weekStart.toISOString(),
-      weekEnd:   weekEnd.toISOString(),
-    },
   })
 }
