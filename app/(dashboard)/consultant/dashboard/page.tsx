@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Users, Video, TrendingUp, DollarSign, Calendar, CheckCircle, MapPin } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import { VideoCall } from '@/components/dashboard/VideoCall';
 
 function initials(firstName: string, lastName: string) {
   return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
@@ -20,10 +21,17 @@ function getColor(name: string) {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 }
 
+// ── Active call type ──────────────────────────────────────────────────────────
+interface ActiveCall {
+  sessionId:       string
+  durationMinutes: number
+}
+
 export default function ConsultantDashboard() {
   const [dashboardData, setDashboardData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [consultantId, setConsultantId] = useState<string | null>(null);
+  const [loading,       setLoading]       = useState(true);
+  const [consultantId,  setConsultantId]  = useState<string | null>(null);
+  const [activeCall,    setActiveCall]    = useState<ActiveCall | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -45,6 +53,19 @@ export default function ConsultantDashboard() {
       .finally(() => setLoading(false));
   }, [consultantId]);
 
+  // ── Handle call end ───────────────────────────────────────────────────────
+  async function handleCallEnd(durationSeconds: number) {
+    if (!activeCall) return
+    const requiredSeconds = activeCall.durationMinutes * 60 * 0.8
+    if (durationSeconds >= requiredSeconds) {
+      await supabase
+        .from('sessions')
+        .update({ status: 'completed' })
+        .eq('id', activeCall.sessionId)
+    }
+    setActiveCall(null)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -64,20 +85,33 @@ export default function ConsultantDashboard() {
     );
   }
 
-  const profile = dashboardData?.profile;
+  const profile   = dashboardData?.profile;
   const firstName = profile?.first_name || '';
-  const lastName = profile?.last_name || '';
+  const lastName  = profile?.last_name  || '';
   const specialty = profile?.consultants?.specialty || 'Consultant';
 
   const stats = [
     { label: 'Total Clients',       value: dashboardData?.totalAthletes || 0,           sub: '+3 this month',        subColor: 'text-blue-500',  icon: Users      },
-    { label: 'Sessions This Week', value: dashboardData?.sessionsThisWeek || 0, sub: dashboardData?.upcomingSessions?.length > 0 ? `${dashboardData.upcomingSessions.length} upcoming` : 'None upcoming', subColor: dashboardData?.upcomingSessions?.length > 0 ? 'text-blue-500' : 'text-gray-400', icon: Calendar },
+    { label: 'Sessions This Week',  value: dashboardData?.sessionsThisWeek || 0,         sub: dashboardData?.upcomingSessions?.length > 0 ? `${dashboardData.upcomingSessions.length} upcoming` : 'None upcoming', subColor: dashboardData?.upcomingSessions?.length > 0 ? 'text-blue-500' : 'text-gray-400', icon: Calendar },
     { label: 'This Month',          value: `$${dashboardData?.earnings || 0}`,            sub: '+12% vs last month',   subColor: 'text-green-500', icon: DollarSign },
     { label: 'Client Satisfaction', value: '4.9',                                         sub: 'Based on 155 reviews', subColor: 'text-gray-400',  icon: TrendingUp },
   ];
 
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
+
+      {/* ── Video Call overlay ── */}
+      {activeCall && (
+        <VideoCall
+          sessionId={activeCall.sessionId}
+          coachId={consultantId}
+          durationMinutes={activeCall.durationMinutes}
+          isCoach={true}
+          onEnd={handleCallEnd}
+          onClose={() => setActiveCall(null)}
+        />
+      )}
+
       <main className="flex-1 p-6">
 
         <div className="mb-6">
@@ -167,14 +201,16 @@ export default function ConsultantDashboard() {
                   <p className="text-sm text-gray-400 text-center py-6">No upcoming sessions</p>
                 )}
                 {dashboardData?.upcomingSessions?.map((session: any) => {
-                  const fName = session.athletes?.profiles?.first_name || '';
-                  const lName = session.athletes?.profiles?.last_name || '';
-                  const sport = session.athletes?.sports?.name || '';
+                  const fName    = session.athletes?.profiles?.first_name || '';
+                  const lName    = session.athletes?.profiles?.last_name  || '';
+                  const sport    = session.athletes?.sports?.name          || '';
                   const isOnline = session.location_type === 'online';
-                  const date = new Date(session.scheduled_at);
-                  const isToday = date.toDateString() === new Date().toDateString();
-                  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  const dateStr = isToday ? `Today, ${timeStr}` : `Tomorrow, ${timeStr}`;
+                  const date     = new Date(session.scheduled_at);
+                  const isToday  = date.toDateString() === new Date().toDateString();
+                  const timeStr  = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  const dateStr  = isToday ? `Today, ${timeStr}` : `Tomorrow, ${timeStr}`;
+                  const isConfirmed = session.status === 'confirmed';
+
                   return (
                     <div key={session.id} className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 hover:border-blue-100 hover:bg-blue-50/30 transition-colors">
                       <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
@@ -188,9 +224,22 @@ export default function ConsultantDashboard() {
                         <p className="text-sm text-gray-700 font-medium">{dateStr}</p>
                         <p className="text-xs text-gray-400">{session.duration_minutes} min</p>
                       </div>
-                      <button className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0">
-                        Join
-                      </button>
+                      {/* Join button — only enabled for confirmed online sessions */}
+                      {isOnline && isConfirmed ? (
+                        <button
+                          onClick={() => setActiveCall({
+                            sessionId:       String(session.id),
+                            durationMinutes: session.duration_minutes,
+                          })}
+                          className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0"
+                        >
+                          Join
+                        </button>
+                      ) : (
+                        <span className="px-4 py-2 bg-gray-100 text-gray-400 text-xs font-semibold rounded-lg flex-shrink-0 cursor-not-allowed">
+                          {isOnline ? 'Pending' : 'In-person'}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
@@ -229,9 +278,9 @@ export default function ConsultantDashboard() {
                   <p className="text-sm text-gray-400 text-center py-4">No new messages</p>
                 )}
                 {dashboardData?.newMessages?.map((msg: any) => {
-                  const fName = msg.athlete?.first_name || '';
-                  const lName = msg.athlete?.last_name || '';
-                  const color = getColor(fName);
+                  const fName   = msg.athlete?.first_name || '';
+                  const lName   = msg.athlete?.last_name  || '';
+                  const color   = getColor(fName);
                   const timeStr = new Date(msg.last_message_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                   return (
                     <div key={msg.id} className="flex gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer">
@@ -265,8 +314,8 @@ export default function ConsultantDashboard() {
                 )}
                 {dashboardData?.activity?.map((item: any) => {
                   const fName = item.athletes?.profiles?.first_name || '';
-                  const lName = item.athletes?.profiles?.last_name || '';
-                  const time = new Date(item.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  const lName = item.athletes?.profiles?.last_name  || '';
+                  const time  = new Date(item.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                   return (
                     <div key={item.id} className="flex gap-3 items-start">
                       <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />

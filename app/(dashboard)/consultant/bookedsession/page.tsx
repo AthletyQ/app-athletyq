@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { updateConsultantSession } from '@/services/consultant/consultant.services'
+import { VideoCall } from '@/components/dashboard/VideoCall'
 
 type SessionStatus = 'confirmed' | 'pending' | 'cancelled' | 'reschedule_requested' | 'completed'
 
@@ -235,12 +236,13 @@ function SessionMenu({ session, onReschedule }: { session: Session; onReschedule
 }
 
 function SessionCard({
-  session, onConfirm, onReschedule, onCancel,
+  session, onConfirm, onReschedule, onCancel, onJoinCall,
 }: {
   session:      Session
   onConfirm:    (id: number) => void
   onReschedule: (id: number) => void
   onCancel:     (session: Session) => void
+  onJoinCall:   (session: Session) => void
 }) {
   const { label, classes, icon: StatusIcon } = STATUS_CONFIG[session.status] ?? STATUS_CONFIG['pending']
   const firstName   = session.athletes?.profiles?.first_name || ''
@@ -305,7 +307,10 @@ function SessionCard({
             </>
           )}
           {session.status === 'confirmed' && isOnline && (
-            <button className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 flex items-center gap-1">
+            <button
+              onClick={() => onJoinCall(session)}
+              className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 flex items-center gap-1"
+            >
               <PhoneCall className="w-3 h-3" /> Join Call
             </button>
           )}
@@ -340,6 +345,7 @@ export default function BookedSessionsPage() {
   const [cancelFor,     setCancelFor]     = useState<Session | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [toast,         setToast]         = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const [activeCall,    setActiveCall]    = useState<Session | null>(null)  // ← video call state
 
   function showToast(msg: string, type: 'success' | 'error') {
     setToast({ msg, type })
@@ -377,6 +383,7 @@ export default function BookedSessionsPage() {
           filter: `provider_id=eq.${consultantId}`,
         },
         (payload) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const row = (payload.new ?? payload.old) as any
           if (row?.provider_type !== 'consultant') return
 
@@ -448,6 +455,23 @@ export default function BookedSessionsPage() {
     }
   }
 
+  // ── Handle call end ────────────────────────────────────────────────────────
+  async function handleCallEnd(durationSeconds: number) {
+    if (!activeCall) return
+    const requiredSeconds = activeCall.duration_minutes * 60 * 0.8
+    if (durationSeconds >= requiredSeconds) {
+      await supabase
+        .from('sessions')
+        .update({ status: 'completed' })
+        .eq('id', activeCall.id)
+      setSessions(prev =>
+        prev.map(s => s.id === activeCall.id ? { ...s, status: 'completed' } : s)
+      )
+      showToast('Session marked as completed!', 'success')
+    }
+    setActiveCall(null)
+  }
+
   const daySessions     = sessions.filter((s) => formatDate(new Date(s.scheduled_at)) === activeDay)
   const filtered        = filterStatus === 'all' ? daySessions : daySessions.filter((s) => s.status === filterStatus)
   const totalAll        = sessions.length
@@ -469,6 +493,18 @@ export default function BookedSessionsPage() {
 
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
+
+      {/* ── Video Call overlay ── */}
+      {activeCall && (
+        <VideoCall
+          sessionId={String(activeCall.id)}
+          coachId={consultantId ?? ''}
+          durationMinutes={activeCall.duration_minutes}
+          isCoach={true}
+          onEnd={handleCallEnd}
+          onClose={() => setActiveCall(null)}
+        />
+      )}
 
       {toast && (
         <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white ${
@@ -551,6 +587,7 @@ export default function BookedSessionsPage() {
                 onConfirm={handleConfirm}
                 onReschedule={handleReschedule}
                 onCancel={(s) => setCancelFor(s)}
+                onJoinCall={(s) => setActiveCall(s)}
               />
             ))}
           </div>
