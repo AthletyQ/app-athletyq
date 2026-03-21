@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Clock, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Search, Clock, CheckCircle, XCircle, MessageSquare, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 
 const AVATAR_COLORS = [
@@ -24,20 +25,74 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
-function ClientCard({ client, pending = false, onAccept, onDecline }: {
-  client: any;
-  pending?: boolean;
-  onAccept?: (id: string) => void;
-  onDecline?: (id: string) => void;
+function ClientCard({ client, pending = false, consultantUserId, onAccept, onDecline }: {
+  client:            any;
+  pending?:          boolean;
+  consultantUserId:  string;
+  onAccept?:         (id: string) => void;
+  onDecline?:        (id: string) => void;
 }) {
-  const firstName = client.profiles?.first_name || '';
-  const lastName = client.profiles?.last_name || '';
-  const sport = client.sports?.name || 'No sport';
-  const role = client.profiles?.role || 'Athlete';
-  const color = getColor(firstName);
-  const completedSessions = client.completedSessions ?? 0;
-  const totalSessions = client.totalSessions ?? 0;
-  const progressPct = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+  const router = useRouter();
+  const [messaging, setMessaging] = useState(false);
+  const [msgError,  setMsgError]  = useState<string | null>(null);
+
+  const firstName         = client.profiles?.first_name || '';
+  const lastName          = client.profiles?.last_name  || '';
+  const sport             = client.sports?.name         || 'No sport';
+  const role              = client.profiles?.role       || 'Athlete';
+  const color             = getColor(firstName);
+  const completedSessions = client.completedSessions    ?? 0;
+  const totalSessions     = client.totalSessions        ?? 0;
+  const progressPct       = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+
+  async function handleMessage() {
+    setMsgError(null);
+
+    if (!consultantUserId) {
+      setMsgError('Consultant session not loaded yet.');
+      return;
+    }
+    if (!client.user_id) {
+      setMsgError('Athlete ID missing.');
+      return;
+    }
+
+    setMessaging(true);
+    try {
+      const res = await fetch('/api/messages/conversations/find-or-create', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          coachUserId:   consultantUserId,
+          athleteUserId: client.user_id,
+        }),
+      });
+
+      const text = await res.text();
+
+      if (!res.ok) {
+        setMsgError(`Server error ${res.status}`);
+        return;
+      }
+
+      let data: any;
+      try { data = JSON.parse(text); } catch {
+        setMsgError('Unexpected response from server');
+        return;
+      }
+
+      if (!data.conversationId) {
+        setMsgError('No conversation ID returned');
+        return;
+      }
+
+      router.push(`/consultant/chats?conversationId=${data.conversationId}`);
+    } catch (err: any) {
+      setMsgError('Network error — check console');
+    } finally {
+      setMessaging(false);
+    }
+  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
@@ -80,10 +135,7 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
               <p className="text-xs font-semibold text-blue-600">{progressPct}%</p>
             </div>
             <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-600 rounded-full transition-all"
-                style={{ width: `${progressPct}%` }}
-              />
+              <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
             </div>
             <p className="text-xs text-gray-400 mt-1">
               {completedSessions} of {totalSessions} sessions completed
@@ -108,6 +160,10 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
         <span>Joined {formatDate(client.created_at)}</span>
       </div>
 
+      {msgError && (
+        <p className="text-xs text-red-500 text-center">{msgError}</p>
+      )}
+
       <div className="flex gap-2">
         {pending ? (
           <>
@@ -129,8 +185,15 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
             <button className="flex-1 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">
               View Details
             </button>
-            <button className="flex-1 py-2 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1">
-              <MessageSquare className="w-3.5 h-3.5" /> Message
+            <button
+              onClick={handleMessage}
+              disabled={messaging}
+              className="flex-1 py-2 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1 disabled:opacity-60"
+            >
+              {messaging
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <><MessageSquare className="w-3.5 h-3.5" /> Message</>
+              }
             </button>
           </>
         )}
@@ -140,16 +203,21 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
 }
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [consultantId, setConsultantId] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'active' | 'pending'>('active');
+  const [clients,          setClients]          = useState<any[]>([]);
+  const [loading,          setLoading]          = useState(true);
+  const [consultantId,     setConsultantId]     = useState<string | null>(null);
+  const [consultantUserId, setConsultantUserId] = useState<string>('');
+  const [search,           setSearch]           = useState('');
+  const [activeTab,        setActiveTab]        = useState<'active' | 'pending'>('active');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setConsultantId(data.user.id);
-      else setLoading(false);
+      if (data.user) {
+        setConsultantId(data.user.id);
+        setConsultantUserId(data.user.id);
+      } else {
+        setLoading(false);
+      }
     });
   }, []);
 
@@ -163,11 +231,11 @@ export default function ClientsPage() {
       .finally(() => setLoading(false));
   }, [consultantId]);
 
-  const activeClients = clients.filter((c) => c.completedSessions > 0 || c.upcomingSessions > 0);
+  const activeClients  = clients.filter((c) => c.completedSessions > 0 || c.upcomingSessions > 0);
   const pendingClients = clients.filter((c) => c.pendingSessions > 0 && c.completedSessions === 0 && c.upcomingSessions === 0);
 
   const displayClients = (activeTab === 'active' ? activeClients : pendingClients).filter((c) => {
-    const name = `${c.profiles?.first_name} ${c.profiles?.last_name}`.toLowerCase();
+    const name  = `${c.profiles?.first_name} ${c.profiles?.last_name}`.toLowerCase();
     const sport = c.sports?.name?.toLowerCase() || '';
     return name.includes(search.toLowerCase()) || sport.includes(search.toLowerCase());
   });
@@ -246,6 +314,7 @@ export default function ClientsPage() {
                 key={client.user_id}
                 client={client}
                 pending={activeTab === 'pending'}
+                consultantUserId={consultantUserId}
                 onAccept={handleAccept}
                 onDecline={handleDecline}
               />
