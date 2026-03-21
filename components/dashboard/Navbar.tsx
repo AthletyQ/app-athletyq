@@ -71,7 +71,15 @@ export function Navbar() {
                 </div>
 
                 <button
-                  onClick={() => { setOpen(false); router.push("/dashboard/profile"); }}
+                  onClick={() => {
+                    setOpen(false);
+                    const roleRouteMap: Record<string, string> = {
+                      athlete: "/athlete/profile",
+                      coach: "/coach/profile",
+                      wellness_professional: "/consultant/profile",
+                    };
+                    router.push(roleRouteMap[profile?.role ?? ""] ?? "/athlete/profile");
+                  }}
                   className="w-full flex items-center gap-3 px-4 py-5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
                 >
                   <User className="w-4 h-4 text-gray-400" />
