@@ -1,5 +1,5 @@
 import type { AuthError, User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/server";
 
 /* ─── Types ─── */
 export type UserRole = "athlete" | "coach" | "wellness_professional";

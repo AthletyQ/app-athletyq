@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/server";
 import type { User } from "@supabase/supabase-js";
 
 export async function getCurrentUser(): Promise<User | null> {

@@ -1,5 +1,5 @@
 import type { AuthError, User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/server";
 
 export type LoginInput = {
   email: string;
