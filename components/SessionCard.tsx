@@ -66,40 +66,17 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
   const handlePrevStep = () => { if (step > 0) setStep(step - 1) }
 
   /**
-   * Selection Logic: "Only from time and to time"
-   * Only exactly the clicked times are selected. Max 2 slots.
+   * Selection Logic: Only one slot can be selected.
    */
   const toggleTime = (time: string) => {
     setSelectedTimes(prev => {
-      // If the clicked time is already selected, remove it.
-      if (prev.includes(time)) {
-        const filtered = prev.filter(t => t !== time);
-        // If only 21:00 remains, clear it because it cannot be a start time
-        if (filtered.length === 1 && filtered[0] === "21:00") return [];
-        return filtered;
-      }
-      
-      // Prevent 21:00 from being selected as the FIRST/START time
-      if (prev.length === 0 && time === "21:00") {
-        return [];
-      }
-
-      // Auto-select 21:00 if 20:00 is clicked as the first selection
-      if (prev.length === 0 && time === "20:00") {
-        return ["20:00", "21:00"]
-      }
-
-      // If we already have 2 times, we are replacing the second time (the to-time).
-      if (prev.length >= 2) {
-        return [prev[0], time].sort()
-      }
-      // If we have 0 or 1 time, just add and sort.
-      return [...prev, time].sort()
+      if (prev.includes(time)) return []
+      return [time]
     })
   }
 
   const isStepValid = () => {
-    if (step === 0) return !!date && selectedTimes.length >= 1
+    if (step === 0) return !!date && selectedTimes.length === 1
     return true
   }
 
@@ -130,21 +107,14 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         throw new Error(errorData.error || 'Failed to initialize athlete profile');
       }
 
-      // Calculate duration and start time
-      const sortedTimes = [...selectedTimes].sort()
-      const startStr = sortedTimes[0]
-      const endStr = sortedTimes[sortedTimes.length - 1]
+      // 30 minute session logic
+      const startStr = selectedTimes[0]
+      const [startHour, startMinute] = startStr.split(':').map(Number)
       
-      const startHour = parseInt(startStr.split(':')[0])
-      const endHour = parseInt(endStr.split(':')[0])
-      
-      // If user picks 08:00 to 09:00, that is exactly 1 hour (9-8).
-      // If they pick only 08:00, that is also 1 hour.
-      const durationHours = endHour > startHour ? (endHour - startHour) : 1
-      const durationMinutes = durationHours * 60
+      const durationMinutes = 30
 
       const scheduledAt = new Date(date)
-      scheduledAt.setHours(startHour, 0, 0, 0)
+      scheduledAt.setHours(startHour, startMinute, 0, 0)
 
       const session: Partial<Session> = {
         athlete_id: user.id,
@@ -155,7 +125,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         scheduled_at: scheduledAt.toISOString(),
         duration_minutes: durationMinutes,
         status: 'pending',
-        price: (Number(coach.hourlyRate) || 0) * durationHours,
+        price: (Number(coach.hourlyRate) || 0) / 2, // 30 min is half price of hourly rate
         currency: 'USD',
         payment_status: 'unpaid',
         location_type: 'online',
@@ -253,7 +223,6 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                   </div>
                   
                   <div className="w-full bg-gray-50/80 rounded-3xl p-5 space-y-3 text-left border border-gray-100">
-                    <div className="flex justify-between text-[13px]"><span className="text-gray-400">Type</span><span className="font-bold text-gray-900 capitalize">Online 1-on-1</span></div>
                     <div className="flex justify-between text-[13px]">
                       <span className="text-gray-400">Scheduled</span>
                       <div className="text-right">
@@ -264,13 +233,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                     <div className="flex justify-between text-sm border-t border-gray-200/60 pt-3 mt-3">
                       <span className="text-gray-500 font-medium">Total Price</span>
                       <span className="font-extrabold text-blue-600 text-lg">
-                        LKR {(() => {
-                          const sorted = [...selectedTimes].sort();
-                          const start = parseInt(sorted[0].split(':')[0]);
-                          const end = parseInt(sorted[sorted.length - 1].split(':')[0]);
-                          const hours = end > start ? (end - start) : 1;
-                          return (coach.hourlyRate || 0) * hours;
-                        })()}
+                        LKR {(Number(coach.hourlyRate) || 0) / 2}
                       </span>
                     </div>
                   </div>

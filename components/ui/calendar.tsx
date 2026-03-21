@@ -31,10 +31,11 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ]
 
-// Default slots with 1-hour difference as requested
+// Default slots with 30-minute intervals as requested
 const DEFAULT_SLOTS = [
-  "08:00", "09:00", "10:00", "11:00", "12:00", 
-  "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"
+  "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
+  "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
+  "18:00", "18:30", "19:00", "19:30", "20:00", "20:30"
 ]
 
 export function Calendar({
@@ -134,21 +135,7 @@ export function Calendar({
           ) : (
             <div className="grid grid-cols-2 gap-2 overflow-y-auto max-h-[320px] pr-2 scrollbar-thin scrollbar-thumb-gray-200">
               {availableSlots.map(time => {
-                const sorted = [...selectedTimes].sort()
-                const isStart = sorted.length > 0 && time === sorted[0]
-                const isEnd = sorted.length > 1 && time === sorted[sorted.length - 1]
-                
-                // 9 PM logic: Hide it unless it's already selected OR we are selecting a range (start is picked)
-                if (time === "21:00" && !isStart && !isEnd && sorted.length === 0) return null;
-
-                // Determine if this slot is WITHIN the selected range
-                const isInRange = sorted.length === 2 && (() => {
-                  const current = parseInt(time.split(':')[0])
-                  const start = parseInt(sorted[0].split(':')[0])
-                  const end = parseInt(sorted[1].split(':')[0])
-                  return current > start && current < end
-                })()
-
+                const isSelected = selectedTimes.includes(time)
                 const isBooked = bookedSlots.includes(time)
                 
                 return (
@@ -159,18 +146,13 @@ export function Calendar({
                     className={cn(
                       "relative py-3 px-4 rounded-xl text-sm font-bold border transition-all flex flex-col items-center justify-center gap-0.5",
                       isBooked ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed" :
-                      (isStart || isEnd)
+                      isSelected
                         ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100 z-10" 
-                        : isInRange
-                          ? "bg-blue-50 border-blue-200 text-blue-600"
-                          : "bg-white border-gray-100 text-gray-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                        : "bg-white border-gray-100 text-gray-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
                     )}
                   >
-                    <span className="text-[10px] uppercase tracking-tighter opacity-80 leading-none">
-                      {isStart ? 'Start' : isEnd ? 'End' : '\u00A0'}
-                    </span>
                     <span className="flex items-center gap-1.5">
-                      {(isStart || isEnd) && <Check size={12} strokeWidth={3} />}
+                      {isSelected && <Check size={12} strokeWidth={3} />}
                       {time}
                     </span>
                   </button>
@@ -181,7 +163,7 @@ export function Calendar({
         </div>
       </div>
 
-      {/* FOOTER: SELECTED SLOTS SUMMARY */}
+      {/* FOOTER: SELECTED SLOT SUMMARY */}
       {selectedDate && selectedTimes.length > 0 && (
         <div className="mt-2 p-4 bg-blue-50 rounded-2xl flex items-center justify-between border border-blue-100 animate-in fade-in slide-in-from-bottom-2">
           <div className="flex items-center gap-3">
@@ -190,18 +172,18 @@ export function Calendar({
             </div>
             <div>
               <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">
-                {selectedTimes.length} {selectedTimes.length === 1 ? 'Slot' : 'Slots'} Selected
+                Session Selected
               </p>
               <p className="text-sm font-bold text-gray-900 truncate max-w-[300px]">
-                {selectedDate.toDateString()} at {selectedTimes.join(', ')}
+                {selectedDate.toDateString()} at {selectedTimes[0]}
               </p>
             </div>
           </div>
           <button 
             className="text-xs font-bold text-blue-600 hover:underline"
-            onClick={() => selectedTimes.forEach(t => onToggleTime?.(t))}
+            onClick={() => onToggleTime?.(selectedTimes[0])}
           >
-            Clear All
+            Clear
           </button>
         </div>
       )}
