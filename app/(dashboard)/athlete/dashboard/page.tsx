@@ -115,7 +115,6 @@ export default function AthleteDashboard() {
       .in('status', ['pending', 'confirmed'])
       .gte('scheduled_at', new Date().toISOString())
       .order('scheduled_at', { ascending: true })
-      .limit(5)
 
     if (sessData && sessData.length > 0) {
       const providerIds = [...new Set(sessData.map((s) => s.provider_id))]
@@ -215,7 +214,6 @@ export default function AthleteDashboard() {
     },
   ]
 
-  // Layout already provides bg-gray-50 + padding — no wrapper needed here
   return (
     <>
       {/* ── Header ── */}
@@ -325,10 +323,12 @@ export default function AthleteDashboard() {
                 Book More <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
+
             {sessions.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-6">No upcoming sessions</p>
             ) : (
-              <div className="space-y-3">
+              // ── Scrollable sessions list ──
+              <div className="overflow-y-auto max-h-[340px] space-y-3 pr-1">
                 {sessions.map((session) => (
                   <div
                     key={session.id}

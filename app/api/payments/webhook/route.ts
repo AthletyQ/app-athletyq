@@ -2,19 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-// const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-//   apiVersion: "2024-06-20",
-// });
-
-
-// Must use admin client — webhook runs server-side, no user session
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(req: NextRequest) {
+  // ── Initialize inside handler so env vars are available at request time ──
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
   const body      = await req.text();
   const signature = req.headers.get("stripe-signature");
 
@@ -100,8 +95,3 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ received: true });
 }
-
-// Disable body parsing — Stripe needs the raw body to verify signatures
-// export const config = {
-//   api: { bodyParser: false },
-// };
