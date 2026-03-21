@@ -66,10 +66,10 @@ export async function getSessionStats(consultantId: string) {
   const sessions = data || [];
 
   return {
-    total: sessions.length,
-    confirmed: sessions.filter(s => s.status === 'confirmed').length,
-    pending: sessions.filter(s => s.status === 'pending').length,
-    sessionDates: sessions.map(s => s.scheduled_at), // ← for calendar dots
+    total:        sessions.length,
+    confirmed:    sessions.filter(s => s.status === 'confirmed').length,
+    pending:      sessions.filter(s => s.status === 'pending').length,
+    sessionDates: sessions.map(s => s.scheduled_at),
   };
 }
 
@@ -189,42 +189,38 @@ export async function getConsultants(params?: {
   minPrice?:  number;
   maxPrice?:  number;
 }) {
-  // 1. Fetch consultants with filters
   let query = supabase
     .from("consultants")
     .select("user_id, specialty, bio, hourly_rate, certifications", { count: "exact" });
- 
+
   if (params?.specialty)              query = query.ilike("specialty",  `%${params.specialty}%`);
   if (params?.minPrice !== undefined) query = query.gte("hourly_rate", params.minPrice);
   if (params?.maxPrice !== undefined) query = query.lte("hourly_rate", params.maxPrice);
- 
+
   const { data: consultantRows, error: consultantError, count } = await query
     .order("created_at", { ascending: false });
- 
+
   if (consultantError) throw new Error(consultantError.message);
-  if (!consultantRows || consultantRows.length === 0) {
-    return { consultants: [], total: 0 };
-  }
- 
-  // 2. Fetch matching profiles using the collected user_ids
+  if (!consultantRows || consultantRows.length === 0) return { consultants: [], total: 0 };
+
   const userIds = consultantRows.map((r) => r.user_id);
- 
+
   const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
     .select("id, first_name, last_name")
     .in("id", userIds);
- 
+
   if (profileError) throw new Error(profileError.message);
- 
+
   const profileMap = new Map(
     (profileRows || []).map((p) => [p.id, p])
   );
- 
+
   let consultants = consultantRows.map((row: any) => {
     const profile   = profileMap.get(row.user_id);
     const firstName = profile?.first_name ?? "";
     const lastName  = profile?.last_name  ?? "";
- 
+
     return {
       id:             row.user_id,
       firstName,
@@ -236,7 +232,7 @@ export async function getConsultants(params?: {
       certifications: row.certifications ?? [],
     };
   });
- 
+
   if (params?.search) {
     const q = params.search.toLowerCase();
     consultants = consultants.filter(
@@ -246,10 +242,10 @@ export async function getConsultants(params?: {
         c.specialty.toLowerCase().includes(q),
     );
   }
- 
+
   return { consultants, total: count ?? consultants.length };
 }
- 
+
 export async function getConsultantAvailability(
   consultantId: string,
   date: Date,
@@ -257,10 +253,10 @@ export async function getConsultantAvailability(
 ) {
   const startOfDay = new Date(date);
   startOfDay.setHours(0, 0, 0, 0);
- 
+
   const endOfDay = new Date(date);
   endOfDay.setHours(23, 59, 59, 999);
- 
+
   let query = supabase
     .from("sessions")
     .select("scheduled_at, status")
@@ -269,28 +265,26 @@ export async function getConsultantAvailability(
     .gte("scheduled_at", startOfDay.toISOString())
     .lte("scheduled_at", endOfDay.toISOString())
     .in("status", ["pending", "confirmed"]);
- 
+
   if (sessionType) query = query.eq("location_type", sessionType);
- 
+
   const { data, error } = await query;
   if (error) throw new Error(error.message);
- 
+
   const bookedSlots = (data || []).map((s) => {
     const h = new Date(s.scheduled_at).getHours();
     return `${String(h).padStart(2, "0")}:00`;
   });
- 
+
   const allSlots = Array.from({ length: 11 }, (_, i) =>
     `${String(i + 8).padStart(2, "0")}:00`,
   );
   const availableSlots = allSlots.filter((s) => !bookedSlots.includes(s));
- 
+
   return { availableSlots, bookedSlots };
 }
- 
-export async function bookConsultantSessions(
-  sessions: Record<string, unknown>[],
-) {
+
+export async function bookConsultantSessions(sessions: Record<string, unknown>[]) {
   const { error } = await supabase.from("sessions").insert(sessions);
   if (error) throw new Error(error.message);
 }
@@ -324,24 +318,18 @@ export async function getConsultantClients(consultantId: string) {
     if (!clientMap.has(id)) {
       clientMap.set(id, {
         ...athlete,
-        totalSessions: 0,
-        upcomingSessions: 0,
+        totalSessions:     0,
+        upcomingSessions:  0,
         completedSessions: 0,
-        pendingSessions: 0,
+        pendingSessions:   0,
       });
     }
 
     const client = clientMap.get(id);
     client.totalSessions += 1;
-    if (s.status === 'pending') {
-      client.pendingSessions += 1;
-    }
-    if (new Date(s.scheduled_at) > new Date() && s.status === 'confirmed') {
-      client.upcomingSessions += 1;
-    }
-    if (s.status === 'completed') {
-      client.completedSessions += 1;
-    }
+    if (s.status === 'pending')                                              client.pendingSessions   += 1;
+    if (new Date(s.scheduled_at) > new Date() && s.status === 'confirmed')  client.upcomingSessions  += 1;
+    if (s.status === 'completed')                                            client.completedSessions += 1;
   });
 
   return Array.from(clientMap.values());
@@ -363,10 +351,7 @@ export async function updateConsultantSession(sessionId: string, action: 'approv
   if (action === 'cancel') {
     const { data, error } = await supabase
       .from('sessions')
-      .update({ 
-        status: 'cancelled', 
-        cancelled_at: new Date().toISOString() 
-      })
+      .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
       .eq('id', sessionId)
       .select()
       .single();
@@ -376,7 +361,15 @@ export async function updateConsultantSession(sessionId: string, action: 'approv
   }
 
   if (action === 'reschedule') {
-    return { id: sessionId, action: 'reschedule' };
+    const { data, error } = await supabase
+      .from('sessions')
+      .update({ status: 'reschedule_requested' })
+      .eq('id', sessionId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
   }
 }
 
