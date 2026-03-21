@@ -6,10 +6,10 @@ export default function PoseAnalyzerPage() {
       {/* Header */}
       <div className="text-center max-w-3xl">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Pose Detection <span className="text-gray-400 font-normal">Live</span>
+          SmartPose <span className="text-gray-400 font-normal">Live</span>
         </h1>
         <p className="text-sm text-gray-500">
-          AthletyQ real-time pose landmark detection powered by MediaPipe
+          AthletyQ real-time Smart Pose Analyzer
         </p>
       </div>
 
