@@ -27,6 +27,8 @@ export function VideoCall({
   const [elapsed,        setElapsed]        = useState(0)
   const [minimized,      setMinimized]      = useState(false)
   const [showEndConfirm, setShowEndConfirm] = useState(false)
+  const [hasVideo,       setHasVideo]       = useState(true)
+  const [hasAudio,       setHasAudio]       = useState(true)
 
   const totalSeconds    = durationMinutes * 60
   const requiredSeconds = totalSeconds * 0.8
@@ -68,6 +70,9 @@ export function VideoCall({
         setError(err instanceof Error ? err.message : 'Could not join call')
         setLoading(false)
       }
+
+      setCameraReady(true)
+      startTimer()
     }
 
     getRoom()
