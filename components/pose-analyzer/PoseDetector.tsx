@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { PoseLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-vision';
+import { usePoseFeedback } from '@/hooks/usePoseFeedback';
+import type { RepFormErrors } from '@/hooks/usePoseFeedback';
 
 const VISIBILITY_THRESHOLD = 0.7;
 const ANGLE_BUFFER_SIZE = 5;
@@ -16,18 +18,18 @@ const EXTEND_QUALITY_THRESHOLD = 170; // maxAngle at bottom must be > this for f
 const ELBOW_DRIFT_THRESHOLD = 0.12;   // shoulder.z - elbow.z > this = elbow drifted forward
 const TORSO_LEAN_THRESHOLD = 0.05;    // change in (shoulder.z - hipMid.z) > this = torso lean
 
+// Landmark index sets per arm — used to suppress the non-active arm when user stands side-on
+const LEFT_ARM_INDICES  = new Set([11, 13, 15, 17, 19, 21]);
+const RIGHT_ARM_INDICES = new Set([12, 14, 16, 18, 20, 22]);
+// Minimum visibility gap to confidently decide which side is active (0 = always filter)
+const SIDE_VIS_GAP = 0.2;
+
 interface ArmLandmarks {
   shoulder: { x: number; y: number; z: number; visibility?: number };
   elbow: { x: number; y: number; z: number; visibility?: number };
   wrist: { x: number; y: number; z: number; visibility?: number };
 }
 
-interface RepFormErrors {
-  incompleteFlexion: boolean;   // didn't curl high enough
-  incompleteExtension: boolean; // didn't extend low enough
-  elbowDrift: boolean;          // upper arm swung forward during curl
-  torsoLean: boolean;           // torso leaned back to assist the lift
-}
 
 interface RepAccumulator {
   extensionAngle: number;     // max angle seen in the 'down' phase before this curl
@@ -65,7 +67,7 @@ export default function PoseDetector() {
   const [isDetecting, setIsDetecting] = useState(false);
   const [fps, setFps] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [hasPermission, setHasPermission] = useState(false);
+  const [_hasPermission, setHasPermission] = useState(false);
   const [isDetectorReady, setIsDetectorReady] = useState(false);
 
   const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
@@ -88,6 +90,7 @@ export default function PoseDetector() {
   const leftMaxExtensionRef = useRef<number>(0);
   const [rightFormErrors, setRightFormErrors] = useState<RepFormErrors | null>(null);
   const [leftFormErrors, setLeftFormErrors] = useState<RepFormErrors | null>(null);
+  const { requestFeedback, aiFeedback, isFetchingFeedback, isSpeaking, clearFeedback } = usePoseFeedback();
 
   useEffect(() => {
     console.log('[PoseDetector] Component mounted, initializing...');
@@ -257,23 +260,59 @@ export default function PoseDetector() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Draw pose landmarks
+      // Draw pose landmarks — suppress the non-active arm when user stands side-on
       if (results.landmarks && results.landmarks.length > 0) {
         const drawingUtils = new DrawingUtils(ctx);
 
         for (const landmarks of results.landmarks) {
-          // Draw connections
-          drawingUtils.drawConnectors(
-            landmarks,
-            PoseLandmarker.POSE_CONNECTIONS,
-            { color: '#00FF00', lineWidth: 2 }
-          );
+          // Per-landmark visibility (shoulder/elbow/wrist for each side)
+          const lShoulder = landmarks[11]?.visibility ?? 0;
+          const lElbow    = landmarks[13]?.visibility ?? 0;
+          const lWrist    = landmarks[15]?.visibility ?? 0;
+          const rShoulder = landmarks[12]?.visibility ?? 0;
+          const rElbow    = landmarks[14]?.visibility ?? 0;
+          const rWrist    = landmarks[16]?.visibility ?? 0;
 
-          // Draw landmarks
-          drawingUtils.drawLandmarks(landmarks, {
+          // Use min: all three joints must be visible for the arm to count as "visible"
+          const leftArmVis  = Math.min(lShoulder, lElbow, lWrist);
+          const rightArmVis = Math.min(rShoulder, rElbow, rWrist);
+          const gap = leftArmVis - rightArmVis;
+
+          // Debug log throttled to ~1/s (fpsCounterRef hasn't incremented for this frame yet)
+          if (fpsCounterRef.current % 30 === 0) {
+            console.log(
+              '[ArmVis] L shoulder/elbow/wrist:',
+              lShoulder.toFixed(3), lElbow.toFixed(3), lWrist.toFixed(3),
+              '→ max:', leftArmVis.toFixed(3),
+              '| R shoulder/elbow/wrist:',
+              rShoulder.toFixed(3), rElbow.toFixed(3), rWrist.toFixed(3),
+              '→ max:', rightArmVis.toFixed(3),
+              '| gap (L-R):', gap.toFixed(3),
+              '| threshold:', SIDE_VIS_GAP,
+            );
+          }
+
+          let inactiveSet: Set<number> | null = null;
+          if      (gap >  SIDE_VIS_GAP) { inactiveSet = RIGHT_ARM_INDICES; if (fpsCounterRef.current % 30 === 0) console.log('[ArmVis] → suppressing RIGHT arm skeleton'); }
+          else if (gap < -SIDE_VIS_GAP) { inactiveSet = LEFT_ARM_INDICES;  if (fpsCounterRef.current % 30 === 0) console.log('[ArmVis] → suppressing LEFT arm skeleton');  }
+          else                          {                                    if (fpsCounterRef.current % 30 === 0) console.log('[ArmVis] → gap too small, drawing both arms'); }
+
+          // Connections — drop any connection where both endpoints are on the inactive arm
+          const connections = inactiveSet
+            ? PoseLandmarker.POSE_CONNECTIONS.filter(
+                ({ start, end }) => !(inactiveSet!.has(start) && inactiveSet!.has(end))
+              )
+            : PoseLandmarker.POSE_CONNECTIONS;
+          drawingUtils.drawConnectors(landmarks, connections, { color: '#00FF00', lineWidth: 2 });
+
+          // Landmark dots — skip inactive arm's indices entirely
+          const visibleLandmarks = inactiveSet
+            ? landmarks.filter((_, i) => !inactiveSet!.has(i))
+            : landmarks;
+          drawingUtils.drawLandmarks(visibleLandmarks, {
             color: '#FF0000',
             fillColor: '#FF0000',
-            radius: 3
+            radius: 3,
           });
         }
       }
@@ -379,6 +418,7 @@ export default function PoseDetector() {
               };
               setRightFormErrors(errors);
               console.log('[Form] Right rep', rightRepCountRef.current, errors);
+              requestFeedback('right', rightRepCountRef.current, errors);
             }
           }
 
@@ -425,6 +465,7 @@ export default function PoseDetector() {
               };
               setLeftFormErrors(errors);
               console.log('[Form] Left rep', leftRepCountRef.current, errors);
+              requestFeedback('left', leftRepCountRef.current, errors);
             }
           }
 
@@ -528,6 +569,7 @@ export default function PoseDetector() {
     setLeftReps(0);
     setRightFormErrors(null);
     setLeftFormErrors(null);
+    clearFeedback();
   };
 
   useEffect(() => {
@@ -567,6 +609,19 @@ export default function PoseDetector() {
               <span className="text-slate-500 text-xs">reps</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* AI coaching feedback */}
+      {isDetecting && (isFetchingFeedback || aiFeedback) && (
+        <div className="flex items-center gap-3 px-6 py-3 bg-indigo-500/10 border border-indigo-500/40 rounded-xl self-center max-w-xl text-center">
+          {isFetchingFeedback ? (
+            <span className="text-slate-400 text-sm animate-pulse">Analyzing your form...</span>
+          ) : isSpeaking ? (
+            <span className="text-indigo-400 text-sm animate-pulse">🔊 {aiFeedback}</span>
+          ) : (
+            <span className="text-indigo-300 text-sm font-medium">{aiFeedback}</span>
+          )}
         </div>
       )}
 
