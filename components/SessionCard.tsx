@@ -395,7 +395,8 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
 
       // Calculate duration from selected slots
       const sortedTimes    = [...selectedTimes].sort()
-      const startHour      = parseInt(sortedTimes[0].split(':')[0])
+      const startStr = selectedTimes[0]
+      const [startHour, startMinute] = startStr.split(':').map(Number)
       const endHour        = parseInt(sortedTimes[sortedTimes.length - 1].split(':')[0])
       const durationHours  = endHour - startHour + 1
       const durationMinutes = durationHours * 60

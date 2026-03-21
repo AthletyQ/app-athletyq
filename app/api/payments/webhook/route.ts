@@ -101,6 +101,6 @@ export async function POST(req: NextRequest) {
 }
 
 // Disable body parsing — Stripe needs the raw body to verify signatures
-export const config = {
-  api: { bodyParser: false },
-};
+// export const config = {
+//   api: { bodyParser: false },
+// };
