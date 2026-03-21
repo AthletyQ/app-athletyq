@@ -47,9 +47,8 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
     if (error) {
       console.error("Failed to fetch availability:", error)
     } else if (data) {
-      // Filter out booked slots entirely as requested
-      const filteredAvailable = data.availableSlots.filter(slot => !data.bookedSlots.includes(slot))
-      setAvailableSlots(filteredAvailable)
+      // Show all slots, including booked ones (Calendar component handles graying them out)
+      setAvailableSlots(data.availableSlots)
       setBookedSlots(data.bookedSlots)
     }
     setLoadingAvailability(false)
@@ -67,30 +66,17 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
   const handlePrevStep = () => { if (step > 0) setStep(step - 1) }
 
   /**
-   * Selection Logic: "Only from time and to time"
-   * Only exactly the clicked times are selected. Max 2 slots.
+   * Selection Logic: Only one slot can be selected.
    */
   const toggleTime = (time: string) => {
     setSelectedTimes(prev => {
-      // If the clicked time is already selected, remove it.
-      if (prev.includes(time)) {
-        return prev.filter(t => t !== time)
-      }
-      // If we already have 2 times, we are replacing the second time (the to-time).
-      // This allows the user to change the end time while keeping the start time.
-      if (prev.length >= 2) {
-        // We assume the first element is the "from" time and the second is the "to" time (since it's sorted).
-        // If the new time is before the first time, it becomes the new from-time, and the old from-time becomes the to-time.
-        // If the new time is after, it just replaces the second one.
-        return [prev[0], time].sort()
-      }
-      // If we have 0 or 1 time, just add and sort.
-      return [...prev, time].sort()
+      if (prev.includes(time)) return []
+      return [time]
     })
   }
 
   const isStepValid = () => {
-    if (step === 0) return !!date && selectedTimes.length >= 1
+    if (step === 0) return !!date && selectedTimes.length === 1
     return true
   }
 
@@ -121,20 +107,14 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         throw new Error(errorData.error || 'Failed to initialize athlete profile');
       }
 
-      // Calculate duration and start time
-      const sortedTimes = [...selectedTimes].sort()
-      const startStr = sortedTimes[0]
-      const endStr = sortedTimes[sortedTimes.length - 1]
+      // 30 minute session logic
+      const startStr = selectedTimes[0]
+      const [startHour, startMinute] = startStr.split(':').map(Number)
       
-      const startHour = parseInt(startStr.split(':')[0])
-      const endHour = parseInt(endStr.split(':')[0])
-      
-      // If only one slot is selected, duration is 60.
-      const durationHours = endHour - startHour + 1
-      const durationMinutes = durationHours * 60
+      const durationMinutes = 30
 
       const scheduledAt = new Date(date)
-      scheduledAt.setHours(startHour, 0, 0, 0)
+      scheduledAt.setHours(startHour, startMinute, 0, 0)
 
       const session: Partial<Session> = {
         athlete_id: user.id,
@@ -145,8 +125,8 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         scheduled_at: scheduledAt.toISOString(),
         duration_minutes: durationMinutes,
         status: 'pending',
-        price: (Number(coach.hourlyRate) || 0) * durationHours,
-        currency: 'USD',
+        price: (Number(coach.hourlyRate) || 0) / 2, // 30 min is half price of hourly rate
+        currency: 'LKR',
         payment_status: 'unpaid',
         location_type: 'online',
       }
@@ -243,7 +223,6 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                   </div>
                   
                   <div className="w-full bg-gray-50/80 rounded-3xl p-5 space-y-3 text-left border border-gray-100">
-                    <div className="flex justify-between text-[13px]"><span className="text-gray-400">Type</span><span className="font-bold text-gray-900 capitalize">Online 1-on-1</span></div>
                     <div className="flex justify-between text-[13px]">
                       <span className="text-gray-400">Scheduled</span>
                       <div className="text-right">
@@ -253,7 +232,9 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                     </div>
                     <div className="flex justify-between text-sm border-t border-gray-200/60 pt-3 mt-3">
                       <span className="text-gray-500 font-medium">Total Price</span>
-                      <span className="font-extrabold text-blue-600 text-lg">LKR {(coach.hourlyRate || 0) * selectedTimes.length}</span>
+                      <span className="font-extrabold text-blue-600 text-lg">
+                        LKR {(Number(coach.hourlyRate) || 0) / 2}
+                      </span>
                     </div>
                   </div>
 

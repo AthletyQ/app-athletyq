@@ -76,10 +76,10 @@ export default function ConsultantFiltersBar({ filters, onChange }: Props) {
             : undefined
         }
         options={[
-          { label: "Under $50",   value: "0-50"       },
-          { label: "$50 – $100",  value: "50-100"     },
-          { label: "$100 – $150", value: "100-150"    },
-          { label: "$150+",       value: "150-99999"  },
+          { label: "Under LKR 1000",   value: "0-1000"       },
+          { label: "LKR 1000 – 5000",  value: "1000-5000"     },
+          { label: "LKR 5000 – 10000", value: "5000-10000"    },
+          { label: "LKR 10000+",       value: "10000-99999"  },
         ]}
         onChange={(v) => {
           if (!v) {

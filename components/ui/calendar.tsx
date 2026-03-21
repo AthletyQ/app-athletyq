@@ -31,10 +31,11 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ]
 
-// Default slots with 1-hour difference as requested
+// Default slots with 30-minute intervals as requested
 const DEFAULT_SLOTS = [
-  "08:00", "09:00", "10:00", "11:00", "12:00", 
-  "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"
+  "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
+  "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
+  "18:00", "18:30", "19:00", "19:30", "20:00", "20:30"
 ]
 
 export function Calendar({
@@ -134,24 +135,26 @@ export function Calendar({
           ) : (
             <div className="grid grid-cols-2 gap-2 overflow-y-auto max-h-[320px] pr-2 scrollbar-thin scrollbar-thumb-gray-200">
               {availableSlots.map(time => {
-                const isSelectedTime = selectedTimes.includes(time)
-                const isBooked = bookedSlots.includes(time) // Check if already booked
+                const isSelected = selectedTimes.includes(time)
+                const isBooked = bookedSlots.includes(time)
                 
                 return (
                   <button
                     key={time}
-                    disabled={isBooked} // Unclickable if booked
+                    disabled={isBooked}
                     onClick={() => onToggleTime?.(time)}
                     className={cn(
-                      "py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center gap-2",
-                      isBooked ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed" : // Gray and unclickable
-                      isSelectedTime 
-                        ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100" 
+                      "relative py-3 px-4 rounded-xl text-sm font-bold border transition-all flex flex-col items-center justify-center gap-0.5",
+                      isBooked ? "bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed" :
+                      isSelected
+                        ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100 z-10" 
                         : "bg-white border-gray-100 text-gray-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
                     )}
                   >
-                    {isSelectedTime && <Check size={14} strokeWidth={3} />}
-                    {time}
+                    <span className="flex items-center gap-1.5">
+                      {isSelected && <Check size={12} strokeWidth={3} />}
+                      {time}
+                    </span>
                   </button>
                 )
               })}
@@ -160,7 +163,7 @@ export function Calendar({
         </div>
       </div>
 
-      {/* FOOTER: SELECTED SLOTS SUMMARY */}
+      {/* FOOTER: SELECTED SLOT SUMMARY */}
       {selectedDate && selectedTimes.length > 0 && (
         <div className="mt-2 p-4 bg-blue-50 rounded-2xl flex items-center justify-between border border-blue-100 animate-in fade-in slide-in-from-bottom-2">
           <div className="flex items-center gap-3">
@@ -169,18 +172,18 @@ export function Calendar({
             </div>
             <div>
               <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">
-                {selectedTimes.length} {selectedTimes.length === 1 ? 'Slot' : 'Slots'} Selected
+                Session Selected
               </p>
               <p className="text-sm font-bold text-gray-900 truncate max-w-[300px]">
-                {selectedDate.toDateString()} at {selectedTimes.join(', ')}
+                {selectedDate.toDateString()} at {selectedTimes[0]}
               </p>
             </div>
           </div>
           <button 
             className="text-xs font-bold text-blue-600 hover:underline"
-            onClick={() => selectedTimes.forEach(t => onToggleTime?.(t))}
+            onClick={() => onToggleTime?.(selectedTimes[0])}
           >
-            Clear All
+            Clear
           </button>
         </div>
       )}

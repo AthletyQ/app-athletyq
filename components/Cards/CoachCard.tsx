@@ -2,7 +2,7 @@
 
 // import { useState, useEffect } from "react";
 // import { Coach } from "@/types/coach";
-// import { Star, Clock, DollarSign, CheckCircle, Loader2 } from "lucide-react";
+// import { Star, Clock, CheckCircle, Loader2 } from "lucide-react";
 // import { SessionCard } from "@/components/SessionCard"; // Import the multi-step SessionCard
 // import { coachService } from "@/services/coach/coach.service";
 
@@ -199,7 +199,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { Coach } from "@/types/coach";
-import { Star, Clock, DollarSign, CheckCircle, MessageSquare } from "lucide-react";
+import { Star, Clock, CheckCircle, MessageSquare } from "lucide-react";
 import { SessionCard } from "@/components/SessionCard";
 
 const supabase = createClient(
@@ -338,8 +338,7 @@ export default function CoachCard({ coach }: { coach: Coach }) {
           )}
           {coach.hourlyRate !== null && (
             <div className="flex items-center gap-1.5 text-xs text-gray-600">
-              <DollarSign size={13} className="text-gray-400" />
-              <span>${coach.hourlyRate} / hour</span>
+              <span>LKR {coach.hourlyRate / 2} / 30 min</span>
             </div>
           )}
         </div>

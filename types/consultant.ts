@@ -23,6 +23,11 @@ export interface Consultant {
 
   /** consultant.certifications (text[]) */
   certifications: string[];
+
+  // Stats
+  rating: number | null;
+  totalSessions: number | null;
+  yearsOfExperience: number | null;
 }
 
 // ─── API Shapes ───────────────────────────────────────────────────────────────
