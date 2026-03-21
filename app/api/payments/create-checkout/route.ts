@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 //   apiVersion: "2024-06-20",
 // });
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+
 
 // Use admin client to bypass RLS for reading session data
 const supabaseAdmin = createClient(
@@ -14,6 +14,7 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(req: NextRequest) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
   try {
     const { sessionIds } = await req.json();
 

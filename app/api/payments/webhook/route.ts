@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 //   apiVersion: "2024-06-20",
 // });
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+
 
 // Must use admin client — webhook runs server-side, no user session
 const supabaseAdmin = createClient(
@@ -14,6 +14,7 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(req: NextRequest) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
   const body      = await req.text();
   const signature = req.headers.get("stripe-signature");
 
