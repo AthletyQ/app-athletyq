@@ -26,14 +26,19 @@ type Session = {
   sportColor: string
   mode:       'Online' | 'In-person'
   location:   string
-  date:       string
+  dateKey:    string   // "2026-03-21" — used for filtering
+  date:       string   // "Sat, Mar 21" — display only
   time:       string
   duration:   string
   status:     SessionStatus
 }
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+// ✅ Locale-safe ISO key: "2026-03-21"
+function toDateKey(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 function getMondayOfWeek(ref: Date): Date {
@@ -51,10 +56,10 @@ function getWeekDays(monday: Date) {
     const date = new Date(monday)
     date.setDate(monday.getDate() + i)
     return {
-      full:    formatDate(date),
-      short:   date.toLocaleDateString('en-US', { weekday: 'short' }),
-      date:    String(date.getDate()),
-      isToday: date.toDateString() === today.toDateString(),
+      dateKey:  toDateKey(date),
+      short:    date.toLocaleDateString('en-US', { weekday: 'short' }),
+      date:     String(date.getDate()),
+      isToday:  date.toDateString() === today.toDateString(),
     }
   })
 }
@@ -69,11 +74,19 @@ const STATUS_CONFIG: Record<SessionStatus, { label: string; classes: string; ico
 
 // ─── WEEK STRIP ───────────────────────────────────────────────────────────────
 
-function WeekStrip({ activeDay, setActiveDay, weekOffset, setWeekOffset, sessions }: {
-  activeDay: string; setActiveDay: (d: string) => void
-  weekOffset: number; setWeekOffset: (n: number) => void; sessions: Session[]
+function WeekStrip({ activeDateKey, setActiveDateKey, weekOffset, setWeekOffset, sessions }: {
+  activeDateKey:    string
+  setActiveDateKey: (key: string) => void
+  weekOffset:       number
+  setWeekOffset:    (n: number) => void
+  sessions:         Session[]
 }) {
-  const monday     = useMemo(() => { const b = getMondayOfWeek(new Date()); b.setDate(b.getDate() + weekOffset * 7); return b }, [weekOffset])
+  const monday = useMemo(() => {
+    const b = getMondayOfWeek(new Date())
+    b.setDate(b.getDate() + weekOffset * 7)
+    return b
+  }, [weekOffset])
+
   const week       = useMemo(() => getWeekDays(monday), [monday])
   const monthLabel = monday.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
@@ -82,21 +95,41 @@ function WeekStrip({ activeDay, setActiveDay, weekOffset, setWeekOffset, session
       <div className="flex items-center justify-between mb-2 px-1">
         <span className="text-xs font-semibold text-gray-500">{monthLabel}</span>
         <div className="flex gap-1">
-          <button onClick={() => setWeekOffset(weekOffset - 1)} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"><ChevronLeft className="w-4 h-4" /></button>
-          <button onClick={() => setWeekOffset(0)} className="px-2 h-7 rounded-full text-xs font-medium text-blue-600 hover:bg-blue-50">Today</button>
-          <button onClick={() => setWeekOffset(weekOffset + 1)} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"><ChevronRight className="w-4 h-4" /></button>
+          <button onClick={() => setWeekOffset(weekOffset - 1)} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => { setWeekOffset(0); setActiveDateKey(toDateKey(new Date())) }}
+            className="px-2 h-7 rounded-full text-xs font-medium text-blue-600 hover:bg-blue-50"
+          >
+            Today
+          </button>
+          <button onClick={() => setWeekOffset(weekOffset + 1)} className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100">
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
       <div className="flex gap-1">
         {week.map((day) => {
-          const isActive    = activeDay === day.full
-          const hasSessions = sessions.some((s) => s.date === day.full)
+          const isActive    = activeDateKey === day.dateKey
+          const hasSessions = sessions.some((s) => s.dateKey === day.dateKey)
           return (
-            <button key={day.full} onClick={() => setActiveDay(day.full)}
-              className={`flex-1 flex flex-col items-center py-2 rounded-xl transition-colors ${isActive ? 'bg-blue-600' : day.isToday ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-              <span className={`text-xs font-medium mb-1 ${isActive ? 'text-blue-100' : 'text-gray-400'}`}>{day.short}</span>
-              <span className={`text-sm font-bold ${isActive ? 'text-white' : day.isToday ? 'text-blue-600' : 'text-gray-700'}`}>{day.date}</span>
-              <span className={`mt-1.5 w-1.5 h-1.5 rounded-full ${hasSessions ? (isActive ? 'bg-blue-200' : 'bg-blue-400') : 'bg-transparent'}`} />
+            <button
+              key={day.dateKey}
+              onClick={() => setActiveDateKey(day.dateKey)}
+              className={`flex-1 flex flex-col items-center py-2 rounded-xl transition-colors ${
+                isActive ? 'bg-blue-600' : day.isToday ? 'bg-blue-50' : 'hover:bg-gray-50'
+              }`}
+            >
+              <span className={`text-xs font-medium mb-1 ${isActive ? 'text-blue-100' : 'text-gray-400'}`}>
+                {day.short}
+              </span>
+              <span className={`text-sm font-bold ${isActive ? 'text-white' : day.isToday ? 'text-blue-600' : 'text-gray-700'}`}>
+                {day.date}
+              </span>
+              <span className={`mt-1.5 w-1.5 h-1.5 rounded-full ${
+                hasSessions ? (isActive ? 'bg-blue-200' : 'bg-blue-400') : 'bg-transparent'
+              }`} />
             </button>
           )
         })}
@@ -113,20 +146,35 @@ function CancelModal({ session, onClose, onConfirm }: { session: Session; onClos
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2"><Trash2 className="w-5 h-5 text-red-500" /><h2 className="text-base font-bold text-gray-900">Cancel Session</h2></div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400"><X className="w-4 h-4" /></button>
+          <div className="flex items-center gap-2">
+            <Trash2 className="w-5 h-5 text-red-500" />
+            <h2 className="text-base font-bold text-gray-900">Cancel Session</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
+            <X className="w-4 h-4" />
+          </button>
         </div>
         <div className="px-6 py-5">
           <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${session.color}`}>{session.initials}</div>
-            <div><p className="text-sm font-semibold text-gray-900">{session.client}</p><p className="text-xs text-gray-500">{session.sport} · {session.date} at {session.time}</p></div>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${session.color}`}>
+              {session.initials}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{session.client}</p>
+              <p className="text-xs text-gray-500">{session.sport} · {session.date} at {session.time}</p>
+            </div>
           </div>
           <p className="text-sm text-gray-600">Are you sure you want to cancel this session? The athlete will be notified immediately.</p>
         </div>
         <div className="px-6 pb-6 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">Keep Session</button>
-          <button onClick={async () => { setSaving(true); await onConfirm(); setSaving(false) }} disabled={saving}
-            className={`flex-1 py-2.5 text-white text-sm font-semibold rounded-xl ${saving ? 'bg-red-300 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'}`}>
+          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-50">
+            Keep Session
+          </button>
+          <button
+            onClick={async () => { setSaving(true); await onConfirm(); setSaving(false) }}
+            disabled={saving}
+            className={`flex-1 py-2.5 text-white text-sm font-semibold rounded-xl ${saving ? 'bg-red-300 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'}`}
+          >
             {saving ? 'Cancelling...' : 'Yes, Cancel'}
           </button>
         </div>
@@ -142,7 +190,9 @@ function SessionMenu({ session, onReschedule }: { session: Session; onReschedule
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
@@ -156,8 +206,10 @@ function SessionMenu({ session, onReschedule }: { session: Session; onReschedule
       </button>
       {open && (
         <div className="absolute right-0 top-9 z-20 bg-white border border-gray-100 rounded-xl shadow-lg py-1 w-48">
-          <button onClick={() => { setOpen(false); onReschedule() }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium">
+          <button
+            onClick={() => { setOpen(false); onReschedule() }}
+            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
+          >
             <Calendar className="w-4 h-4 text-gray-400" /> Reschedule
           </button>
         </div>
@@ -169,11 +221,11 @@ function SessionMenu({ session, onReschedule }: { session: Session; onReschedule
 // ─── SESSION CARD ─────────────────────────────────────────────────────────────
 
 function SessionCard({ session, onConfirm, onReschedule, onCancel, onJoin }: {
-  session:     Session
-  onConfirm:   (id: string) => void
-  onReschedule:(id: string) => void
-  onCancel:    (id: string) => void
-  onJoin:      (id: string, duration: string) => void
+  session:      Session
+  onConfirm:    (id: string) => void
+  onReschedule: (id: string) => void
+  onCancel:     (id: string) => void
+  onJoin:       (id: string, duration: string) => void
 }) {
   const { label, classes, icon: StatusIcon } = STATUS_CONFIG[session.status]
 
@@ -183,7 +235,9 @@ function SessionCard({ session, onConfirm, onReschedule, onCancel, onJoin }: {
     }`}>
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${session.color}`}>{session.initials}</div>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${session.color}`}>
+            {session.initials}
+          </div>
           <div>
             <p className="text-sm font-bold text-gray-900">{session.client}</p>
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${session.sportColor}`}>{session.sport}</span>
@@ -274,17 +328,14 @@ export default function BookedSessionsPage() {
   const [sessions,      setSessions]      = useState<Session[]>([])
   const [loading,       setLoading]       = useState(true)
   const [error,         setError]         = useState<string | null>(null)
-  const [activeDay,     setActiveDay]     = useState(formatDate(new Date()))
+  const [activeDateKey, setActiveDateKey] = useState(toDateKey(new Date()))  // ✅ ISO key
   const [weekOffset,    setWeekOffset]    = useState(0)
   const [filterStatus,  setFilterStatus]  = useState<'all' | SessionStatus>('all')
   const [cancelFor,     setCancelFor]     = useState<Session | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [toast,         setToast]         = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const [coachId,       setCoachId]       = useState<string>('')
-  const [activeCall,    setActiveCall]    = useState<{
-    sessionId:       string
-    durationMinutes: number
-  } | null>(null)
+  const [activeCall,    setActiveCall]    = useState<{ sessionId: string; durationMinutes: number } | null>(null)
 
   function showToast(msg: string, type: 'success' | 'error') {
     setToast({ msg, type })
@@ -311,8 +362,6 @@ export default function BookedSessionsPage() {
     load()
   }, [])
 
-  // ─── CONFIRM ────────────────────────────────────────────────────────────────
-
   async function handleConfirm(sessionId: string) {
     setActionLoading(sessionId)
     try {
@@ -324,20 +373,14 @@ export default function BookedSessionsPage() {
     finally { setActionLoading(null) }
   }
 
-  // ─── RESCHEDULE ─────────────────────────────────────────────────────────────
-
   async function handleReschedule(sessionId: string) {
     try {
       const res = await updateSession(sessionId, 'reschedule')
       if (!res) { showToast('Failed to send reschedule notification.', 'error'); return }
-      setSessions(prev => prev.map(s =>
-        s.id === sessionId ? { ...s, status: 'reschedule_requested' } : s
-      ))
+      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'reschedule_requested' } : s))
       showToast('Athlete has been notified to reschedule.', 'success')
     } catch { showToast('Failed to send reschedule notification.', 'error') }
   }
-
-  // ─── CANCEL ─────────────────────────────────────────────────────────────────
 
   async function handleCancelConfirm() {
     if (!cancelFor) return
@@ -352,34 +395,22 @@ export default function BookedSessionsPage() {
     finally { setActionLoading(null) }
   }
 
-  // ─── JOIN CALL ──────────────────────────────────────────────────────────────
-
   async function handleJoin(sessionId: string, durationStr: string) {
     const durationMinutes = parseInt(durationStr) || 60
     setActiveCall({ sessionId, durationMinutes })
   }
 
-  // ─── CALL ENDED ─────────────────────────────────────────────────────────────
-
   async function handleCallEnd(durationSeconds: number) {
     if (!activeCall) return
-
     const requiredSeconds = activeCall.durationMinutes * 60 * 0.8
-
     try {
-      const res = await fetch(`/api/sessions/${activeCall.sessionId}/complete`, {
+      const res  = await fetch(`/api/sessions/${activeCall.sessionId}/complete`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          coachId,
-          durationSeconds,
-          requiredSeconds,
-        }),
+        body:    JSON.stringify({ coachId, durationSeconds, requiredSeconds }),
       })
       const data = await res.json()
-
       if (data.completed) {
-        // ✅ update local state to completed
         setSessions(prev => prev.map(s =>
           s.id === activeCall.sessionId ? { ...s, status: 'completed' } : s
         ))
@@ -392,11 +423,11 @@ export default function BookedSessionsPage() {
       console.error('Call end error:', err)
       showToast('Call ended.', 'success')
     }
-
     setActiveCall(null)
   }
 
-  const daySessions     = sessions.filter((s) => s.date === activeDay)
+  // ✅ Filter by dateKey (ISO string) — reliable across server/client/timezone
+  const daySessions     = sessions.filter((s) => s.dateKey === activeDateKey)
   const filtered        = filterStatus === 'all' ? daySessions : daySessions.filter((s) => s.status === filterStatus)
   const totalAll        = sessions.length
   const totalConfirmed  = sessions.filter((s) => s.status === 'confirmed').length
@@ -404,10 +435,14 @@ export default function BookedSessionsPage() {
   const totalReschedule = sessions.filter((s) => s.status === 'reschedule_requested').length
   const totalCompleted  = sessions.filter((s) => s.status === 'completed').length
 
+  // Display label for the active day
+  const activeDayDisplay = useMemo(() => {
+    const [y, m, d] = activeDateKey.split('-').map(Number)
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  }, [activeDateKey])
+
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
-
-      {/* ✅ Video call overlay */}
       {activeCall && (
         <VideoCall
           sessionId={activeCall.sessionId}
@@ -418,7 +453,6 @@ export default function BookedSessionsPage() {
         />
       )}
 
-      {/* Toast */}
       {toast && (
         <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white ${
           toast.type === 'success' ? 'bg-green-600' : 'bg-red-500'
@@ -428,7 +462,6 @@ export default function BookedSessionsPage() {
         </div>
       )}
 
-      {/* Cancel Modal */}
       {cancelFor && (
         <CancelModal
           session={cancelFor}
@@ -443,14 +476,13 @@ export default function BookedSessionsPage() {
           <p className="text-sm text-gray-500 mt-0.5">Manage and track all your coaching sessions.</p>
         </div>
 
-        {/* ✅ 5 summary cards */}
         <div className="grid grid-cols-5 gap-3 mb-5">
           {[
-            { label: 'Total',       value: totalAll,        color: 'text-gray-900'   },
-            { label: 'Confirmed',   value: totalConfirmed,  color: 'text-green-600'  },
-            { label: 'Pending',     value: totalPending,    color: 'text-amber-600'  },
-            { label: 'Reschedule',  value: totalReschedule, color: 'text-purple-600' },
-            { label: 'Completed',   value: totalCompleted,  color: 'text-blue-600'   },
+            { label: 'Total',      value: totalAll,        color: 'text-gray-900'   },
+            { label: 'Confirmed',  value: totalConfirmed,  color: 'text-green-600'  },
+            { label: 'Pending',    value: totalPending,    color: 'text-amber-600'  },
+            { label: 'Reschedule', value: totalReschedule, color: 'text-purple-600' },
+            { label: 'Completed',  value: totalCompleted,  color: 'text-blue-600'   },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-4 flex items-center justify-between">
               <p className="text-xs text-gray-500 font-medium">{label}</p>
@@ -460,17 +492,16 @@ export default function BookedSessionsPage() {
         </div>
 
         <WeekStrip
-          activeDay={activeDay}
-          setActiveDay={setActiveDay}
+          activeDateKey={activeDateKey}
+          setActiveDateKey={setActiveDateKey}
           weekOffset={weekOffset}
           setWeekOffset={setWeekOffset}
           sessions={sessions}
         />
 
-        {/* Filter row */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm font-semibold text-gray-700">
-            {activeDay} — <span className="text-gray-400 font-normal">{daySessions.length} session{daySessions.length !== 1 ? 's' : ''}</span>
+            {activeDayDisplay} — <span className="text-gray-400 font-normal">{daySessions.length} session{daySessions.length !== 1 ? 's' : ''}</span>
           </p>
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gray-400" />
@@ -482,14 +513,12 @@ export default function BookedSessionsPage() {
                   filterStatus === s ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'
                 }`}
               >
-                {s === 'reschedule_requested' ? 'Reschedule'
-                  : s.charAt(0).toUpperCase() + s.slice(1)}
+                {s === 'reschedule_requested' ? 'Reschedule' : s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Content */}
         {loading ? (
           <div className="flex items-center justify-center h-48 bg-white rounded-2xl border border-gray-100">
             <div className="text-center">

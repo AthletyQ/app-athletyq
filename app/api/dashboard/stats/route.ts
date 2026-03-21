@@ -13,53 +13,55 @@ export async function GET(request: NextRequest) {
 
   const now = new Date()
 
-  // ✅ Monday-based week
-  const dayOfWeek = now.getDay()
-  const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  // ── Current week: Monday 00:00:00 → Sunday 23:59:59 (local-midnight in UTC) ──
+  const dayOfWeek  = now.getUTCDay()                          // 0 = Sun
+  const diffToMon  = dayOfWeek === 0 ? -6 : 1 - dayOfWeek    // days back to Monday
 
   const weekStart = new Date(now)
-  weekStart.setDate(now.getDate() + diffToMon)
-  weekStart.setHours(0, 0, 0, 0)
+  weekStart.setUTCDate(now.getUTCDate() + diffToMon)
+  weekStart.setUTCHours(0, 0, 0, 0)
 
   const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekStart.getDate() + 7)
-  weekEnd.setHours(0, 0, 0, 0)
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6)   // Sunday of same week
+  weekEnd.setUTCHours(23, 59, 59, 999)
 
+  // ── Today ──────────────────────────────────────────────────────────────────
   const todayStart = new Date(now)
-  todayStart.setHours(0, 0, 0, 0)
+  todayStart.setUTCHours(0, 0, 0, 0)
   const todayEnd = new Date(now)
-  todayEnd.setHours(23, 59, 59, 999)
+  todayEnd.setUTCHours(23, 59, 59, 999)
 
-  const monthStart     = new Date(now.getFullYear(), now.getMonth(), 1)
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const lastMonthEnd   = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)
+  // ── Month boundaries ───────────────────────────────────────────────────────
+  const monthStart     = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  const lastMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
+  const lastMonthEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999))
 
   const [
     { data: confirmedSessions },
     { count: sessionsThisWeek },
     { count: sessionsToday },
-    { data: pendingSessions },       // ✅ fetch all pending to deduplicate
+    { data: pendingSessions },
     { data: thisMonthPayments },
     { data: lastMonthPayments },
   ] = await Promise.all([
 
-    // unique confirmed clients
+    // unique confirmed clients (all time — for Total Clients card)
     supabase
       .from('sessions')
       .select('athlete_id')
       .eq('provider_id', coachId)
       .eq('status', 'confirmed'),
 
-    // confirmed sessions this week
+    // ✅ confirmed sessions strictly within this Mon–Sun week only
     supabase
       .from('sessions')
       .select('*', { count: 'exact', head: true })
       .eq('provider_id', coachId)
       .eq('status', 'confirmed')
       .gte('scheduled_at', weekStart.toISOString())
-      .lt('scheduled_at',  weekEnd.toISOString()),
+      .lte('scheduled_at', weekEnd.toISOString()),
 
-    // confirmed sessions today
+    // confirmed sessions today only
     supabase
       .from('sessions')
       .select('*', { count: 'exact', head: true })
@@ -68,7 +70,7 @@ export async function GET(request: NextRequest) {
       .gte('scheduled_at', todayStart.toISOString())
       .lte('scheduled_at', todayEnd.toISOString()),
 
-    // ✅ fetch pending sessions with athlete_id to deduplicate
+    // pending sessions (deduplicated by athlete)
     supabase
       .from('sessions')
       .select('athlete_id')
@@ -89,15 +91,8 @@ export async function GET(request: NextRequest) {
       .lte('created_at', lastMonthEnd.toISOString()),
   ])
 
-  // ✅ deduplicate confirmed athletes
-  const uniqueConfirmed = new Set(
-    (confirmedSessions ?? []).map((s: any) => s.athlete_id)
-  )
-
-  // ✅ deduplicate pending athletes
-  const uniquePending = new Set(
-    (pendingSessions ?? []).map((s: any) => s.athlete_id)
-  )
+  const uniqueConfirmed = new Set((confirmedSessions ?? []).map((s: any) => s.athlete_id))
+  const uniquePending   = new Set((pendingSessions   ?? []).map((s: any) => s.athlete_id))
 
   const thisMonthTotal = (thisMonthPayments ?? []).reduce(
     (sum: number, p: any) => sum + (p.amount ?? 0), 0
@@ -121,11 +116,16 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     totalClients:       uniqueConfirmed.size,
-    sessionsThisWeek:   sessionsThisWeek  ?? 0,
+    sessionsThisWeek:   sessionsThisWeek ?? 0,
     monthlyEarnings:    `$${thisMonthTotal.toLocaleString()}`,
     clientSatisfaction: '4.9',
-    pendingClients:     uniquePending.size,   // ✅ unique athletes not session count
-    sessionsToday:      sessionsToday     ?? 0,
+    pendingClients:     uniquePending.size,
+    sessionsToday:      sessionsToday    ?? 0,
     earningsChange,
+    // debug info (remove in production)
+    _debug: {
+      weekStart: weekStart.toISOString(),
+      weekEnd:   weekEnd.toISOString(),
+    },
   })
 }

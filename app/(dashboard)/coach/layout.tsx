@@ -11,9 +11,9 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
     >
       <div id="main-layout-wrapper" className="min-h-screen flex w-full">
         <Sidebar />
-        <SidebarInset className="flex flex-col flex-1 h-screen overflow-hidden">
+        <SidebarInset className="flex flex-col flex-1">
           <Navbar />
-          <main className="flex-1 bg-gray-50 overflow-y-auto">
+          <main className="flex-1 bg-gray-50 p-6">
             {children}
           </main>
         </SidebarInset>
