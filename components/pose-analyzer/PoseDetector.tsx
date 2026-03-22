@@ -8,6 +8,9 @@ import type { RepFormErrors } from '@/hooks/usePoseFeedback';
 const VISIBILITY_THRESHOLD = 0.7;
 const ANGLE_BUFFER_SIZE = 5;
 
+// Bicep curl rep detection thresholds (degrees)
+const CURL_UP_THRESHOLD = 50;    // angle must drop below this to register "up"
+const CURL_DOWN_THRESHOLD = 160; // angle must rise above this to register "down" (= 1 rep)
 
 // Form quality thresholds
 const FLEX_QUALITY_THRESHOLD = 40;    // minAngle during curl must be < this (deeper = better)
