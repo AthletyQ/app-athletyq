@@ -175,10 +175,20 @@ export default function PoseDetector() {
 
       if (videoRef.current) {
         console.log('[Webcam] Setting stream to video element...');
-        videoRef.current.srcObject = stream;
         streamRef.current = stream;
 
-        
+        // Wait for metadata before play() so readyState is guaranteed when caller proceeds
+        await new Promise<void>((resolve) => {
+          const video = videoRef.current!;
+          if (video.readyState >= 1) {
+            resolve();
+          } else {
+            video.onloadedmetadata = () => resolve();
+          }
+          video.srcObject = stream;
+        });
+
+        // Log video track settings
         const videoTrack = stream.getVideoTracks()[0];
         if (videoTrack) {
           const settings = videoTrack.getSettings();
@@ -190,7 +200,6 @@ export default function PoseDetector() {
           });
         }
 
-     
         try {
           await videoRef.current.play();
           console.log('[Webcam] Video play() called successfully');
@@ -510,28 +519,9 @@ export default function PoseDetector() {
     sessionStartRef.current = Date.now();
     setIsDetecting(true);
 
-    if (videoRef.current) {
-      console.log('[Detection] Waiting for video metadata...');
-      videoRef.current.onloadedmetadata = () => {
-        console.log('[Detection] Video metadata loaded');
-        console.log('[Detection] Video dimensions:', {
-          videoWidth: videoRef.current?.videoWidth,
-          videoHeight: videoRef.current?.videoHeight,
-          readyState: videoRef.current?.readyState
-        });
-        console.log('[Detection] Starting pose detection loop...');
-        detectPose();
-      };
-
-      videoRef.current.onplay = () => {
-        console.log('[Detection] Video playing');
-      };
-
-      // Add error handler
-      videoRef.current.onerror = (e) => {
-        console.error('[Detection] Video error:', e);
-      };
-    }
+    // Video is ready (metadata loaded + play() resolved) — start detection immediately
+    console.log('[Detection] Video ready, starting pose detection loop...');
+    detectPose();
   };
 
   const handleStopDetection = () => {
