@@ -47,7 +47,8 @@ function formatTime(iso: string | null) {
     : d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
-const STARRED_KEY = 'athletyq_starred_convs'
+// ✅ Separate key from coach so stars don't cross-contaminate
+const STARRED_KEY = 'athletyq_consultant_starred_convs'
 function loadStarred(): Set<string> {
   try { const r = localStorage.getItem(STARRED_KEY); return r ? new Set(JSON.parse(r)) : new Set() } catch { return new Set() }
 }
@@ -59,30 +60,24 @@ function saveStarred(s: Set<string>) {
 
 const EMOJI_CATEGORIES: Record<string, string[]> = {
   '😀': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','💫','🤯','🤠','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'],
-  '👋': ['👋','🤚','🖐','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦵','🦶','👂','🦻','👃','👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵'],
+  '👋': ['👋','🤚','🖐','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','🧠','🦷','🦴','👀','👁','👅','👄','🫦','👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵'],
   '❤️': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','💕','💞','💓','💗','💖','💘','💝','💟','♥️','💋','💌','💤','💢','💬','💭','💯'],
   '🎉': ['🎉','🎊','🎈','🎁','🎀','🎗','🎟','🎫','🏆','🥇','🥈','🥉','🏅','🎖','🏵','🎪','🤹','🎭','🎨','🎬','🎤','🎧','🎼','🎵','🎶','🎷','🪗','🎸','🎹','🎺','🎻','🪘','🥁','🎯','🎱','🎮','🕹','🎲','♟','🎰','🧩','🪀','🪁'],
   '🌍': ['🌍','🌎','🌏','🌐','🗺','🧭','🏔','⛰','🌋','🗻','🏕','🏖','🏜','🏝','🏞','🏟','🏛','🏗','🧱','🛖','🏘','🏚','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩','🕋','⛲','⛺','🌁','🌃','🏙','🌄','🌅','🌆','🌇','🌉','🌌','🌠','🎇','🎆','🌈','⚡','❄️','☃️','⛄','🔥','💧','🌊'],
-  '🐶': ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐻‍❄️','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐒','🦆','🐧','🐦','🐤','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷','🦂','🐢','🐍','🦎','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🦣','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃'],
+  '🐶': ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐒','🦆','🐧','🐦','🐤','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷','🦂','🐢','🐍','🦎','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃'],
   '🍎': ['🍎','🍊','🍋','🍇','🍓','🫐','🍈','🍑','🍒','🍌','🍉','🥭','🍍','🥝','🍅','🫒','🥥','🥑','🍆','🥔','🥕','🌽','🌶','🫑','🥒','🥬','🥦','🧄','🧅','🍄','🥜','🌰','🍞','🥐','🥖','🫓','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🌮','🌯','🥙','🧆','🍜','🍝','🍛','🍣','🍱','🥟','🍤','🍙','🍚','🍘','🍥','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🍯','🧃','🥤','🧋','☕','🍵','🍺','🍻','🥂','🍷','🥃','🍸'],
-  '✈️': ['✈️','🚀','🛸','🚁','🛶','⛵','🚤','🛥','🛳','🚢','🚂','🚃','🚄','🚅','🚆','🚇','🚈','🚉','🚊','🚝','🚞','🚋','🚌','🚍','🚎','🏎','🚐','🚑','🚒','🚓','🚔','🚕','🚖','🚗','🚘','🚙','🛻','🚚','🚛','🚜','🏍','🛵','🚲','🛴','🛹','🛼','⛽','🚨','🚥','🚦','🚧','⚓','🛟','🪝','🪂','💺','🚟','🚠','🚡'],
+  '✈️': ['✈️','🚀','🛸','🚁','🛶','⛵','🚤','🛥','🛳','🚢','🚂','🚃','🚄','🚅','🚆','🚇','🚈','🚉','🚊','🚝','🚞','🚋','🚌','🚍','🚎','🏎','🚐','🚑','🚒','🚓','🚔','🚕','🚖','🚗','🚘','🚙','🛻','🚚','🚛','🚜','🏍','🛵','🚲','🛴','🛹','🛼','⛽','🚨','🚥','🚦','🚧','⚓','🛟','🪂','💺','🚟','🚠','🚡'],
   '💡': ['⌚','📱','📲','💻','⌨️','🖥','🖨','🖱','🖲','🕹','🗜','💾','💿','📀','📼','📷','📸','📹','🎥','📽','🎞','📞','☎️','📟','📠','📺','📻','🧭','⏱','⏲','⏰','🕰','⌛','⏳','📡','🔋','🪫','🔌','💡','🔦','🕯','🧯','💰','💴','💵','💶','💷','💸','💳','🪙','💹','📈','📉','📊','📋','🗒','🗓','📆','📅','📌','📍','📎','🖇','📏','📐','✂️','🔍','🔎','🔏','🔐','🔒','🔓'],
 }
-
-// ─── Emoji Picker ─────────────────────────────────────────────────────────────
 
 function EmojiPicker({ onSelect, onClose }: { onSelect: (e: string) => void; onClose: () => void }) {
   const [tab, setTab] = useState('😀')
   const ref = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-    }
+    function handler(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) onClose() }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [onClose])
-
   return (
     <div ref={ref} className="absolute bottom-14 left-0 z-30 w-80 bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
       <div className="flex border-b border-gray-100 px-1 pt-1.5 gap-0.5 overflow-x-auto">
@@ -105,24 +100,18 @@ function EmojiPicker({ onSelect, onClose }: { onSelect: (e: string) => void; onC
   )
 }
 
-// ─── Attachment Bubble ────────────────────────────────────────────────────────
-
 function AttachmentBubble({ url, name, type, isMine }: { url: string; name: string; type: string; isMine: boolean }) {
-  if (type.startsWith('image/')) {
-    return (
-      <a href={url} target="_blank" rel="noreferrer" className="block mt-1 max-w-[200px]">
-        <img src={url} alt={name} className="rounded-xl border border-white/20 object-cover w-full" />
-      </a>
-    )
-  }
-  if (type.startsWith('video/')) {
-    return (
-      <a href={url} target="_blank" rel="noreferrer"
-        className={`flex items-center gap-1.5 mt-1 text-xs underline ${isMine ? 'text-blue-100' : 'text-blue-600'}`}>
-        <Film className="w-3.5 h-3.5" />{name}
-      </a>
-    )
-  }
+  if (type.startsWith('image/')) return (
+    <a href={url} target="_blank" rel="noreferrer" className="block mt-1 max-w-[200px]">
+      <img src={url} alt={name} className="rounded-xl border border-white/20 object-cover w-full" />
+    </a>
+  )
+  if (type.startsWith('video/')) return (
+    <a href={url} target="_blank" rel="noreferrer"
+      className={`flex items-center gap-1.5 mt-1 text-xs underline ${isMine ? 'text-blue-100' : 'text-blue-600'}`}>
+      <Film className="w-3.5 h-3.5" />{name}
+    </a>
+  )
   return (
     <a href={url} target="_blank" rel="noreferrer"
       className={`flex items-center gap-1.5 mt-1 text-xs font-medium px-3 py-2 rounded-xl ${isMine ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}`}>
@@ -131,8 +120,6 @@ function AttachmentBubble({ url, name, type, isMine }: { url: string; name: stri
     </a>
   )
 }
-
-// ─── File Preview Bar ─────────────────────────────────────────────────────────
 
 function FilePreviewBar({ pending, onRemove }: { pending: PendingFile; onRemove: () => void }) {
   return (
@@ -152,8 +139,6 @@ function FilePreviewBar({ pending, onRemove }: { pending: PendingFile; onRemove:
     </div>
   )
 }
-
-// ─── Delete Conversation Modal ────────────────────────────────────────────────
 
 function DeleteModal({ name, onConfirm, onCancel, deleting }: {
   name: string; onConfirm: () => void; onCancel: () => void; deleting: boolean
@@ -189,31 +174,31 @@ function DeleteModal({ name, onConfirm, onCancel, deleting }: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function CoachChatsPage() {
+export default function ConsultantChatsClient() {
   const searchParams         = useSearchParams()
   const targetConversationId = searchParams.get('conversationId')
 
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [filtered,      setFiltered]      = useState<Conversation[]>([])
-  const [search,        setSearch]        = useState('')
-  const [activeConv,    setActiveConv]    = useState<Conversation | null>(null)
-  const [messages,      setMessages]      = useState<Message[]>([])
-  const [newMessage,    setNewMessage]    = useState('')
-  const [sending,       setSending]       = useState(false)
-  const [loadingConvs,  setLoadingConvs]  = useState(true)
-  const [loadingMsgs,   setLoadingMsgs]   = useState(false)
-  const [showList,      setShowList]      = useState(true)
-  const [autoOpened,    setAutoOpened]    = useState(false)
-  const [convMenuOpen,  setConvMenuOpen]  = useState<string | null>(null)
-  const [deleteTarget,  setDeleteTarget]  = useState<Conversation | null>(null)
-  const [deleting,      setDeleting]      = useState(false)
-  const [showEmoji,     setShowEmoji]     = useState(false)
-  const [pendingFile,   setPendingFile]   = useState<PendingFile | null>(null)
-  const [uploadingFile, setUploadingFile] = useState(false)
-  const [starred,       setStarred]       = useState<Set<string>>(new Set())
-  const [hoveredMsg,    setHoveredMsg]    = useState<string | null>(null)
-  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null)
+  const [currentUserId,  setCurrentUserId]  = useState<string | null>(null)
+  const [conversations,  setConversations]  = useState<Conversation[]>([])
+  const [filtered,       setFiltered]       = useState<Conversation[]>([])
+  const [search,         setSearch]         = useState('')
+  const [activeConv,     setActiveConv]     = useState<Conversation | null>(null)
+  const [messages,       setMessages]       = useState<Message[]>([])
+  const [newMessage,     setNewMessage]     = useState('')
+  const [sending,        setSending]        = useState(false)
+  const [loadingConvs,   setLoadingConvs]   = useState(true)
+  const [loadingMsgs,    setLoadingMsgs]    = useState(false)
+  const [showList,       setShowList]       = useState(true)
+  const [autoOpened,     setAutoOpened]     = useState(false)
+  const [convMenuOpen,   setConvMenuOpen]   = useState<string | null>(null)
+  const [deleteTarget,   setDeleteTarget]   = useState<Conversation | null>(null)
+  const [deleting,       setDeleting]       = useState(false)
+  const [showEmoji,      setShowEmoji]      = useState(false)
+  const [pendingFile,    setPendingFile]    = useState<PendingFile | null>(null)
+  const [uploadingFile,  setUploadingFile]  = useState(false)
+  const [starred,        setStarred]        = useState<Set<string>>(new Set())
+  const [hoveredMsg,     setHoveredMsg]     = useState<string | null>(null)
+  const [deletingMsgId,  setDeletingMsgId]  = useState<string | null>(null)
 
   const bottomRef      = useRef<HTMLDivElement>(null)
   const msgChannelRef  = useRef<RealtimeChannel | null>(null)
@@ -255,6 +240,7 @@ export default function CoachChatsPage() {
 
   useEffect(() => { if (currentUserId) fetchConversations(currentUserId) }, [currentUserId, fetchConversations])
 
+  // ✅ Auto-open conversation from ?conversationId= query param
   useEffect(() => {
     if (autoOpened || !targetConversationId || conversations.length === 0) return
     const target = conversations.find((c) => c.id === targetConversationId)
@@ -265,14 +251,14 @@ export default function CoachChatsPage() {
   useEffect(() => {
     if (!currentUserId) return
     convChannelRef.current?.unsubscribe()
-    convChannelRef.current = supabase.channel(`coach-convs-${currentUserId}`)
+    convChannelRef.current = supabase.channel(`consultant-convs-${currentUserId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations', filter: `contact_id=eq.${currentUserId}` },
         () => fetchConversations(currentUserId))
       .subscribe()
     return () => { convChannelRef.current?.unsubscribe() }
   }, [currentUserId, fetchConversations])
 
-  // ✅ Starred convs float to top, then sort by recency
+  // ✅ Starred float to top, then recency
   useEffect(() => {
     const q = search.toLowerCase()
     const base = q
@@ -280,14 +266,12 @@ export default function CoachChatsPage() {
           fullName(c.athlete).toLowerCase().includes(q) ||
           (c.last_message ?? '').toLowerCase().includes(q))
       : [...conversations]
-
     base.sort((a, b) => {
       const aS = starred.has(a.id) ? 1 : 0
       const bS = starred.has(b.id) ? 1 : 0
       if (bS !== aS) return bS - aS
       return new Date(b.last_message_at ?? 0).getTime() - new Date(a.last_message_at ?? 0).getTime()
     })
-
     setFiltered(base)
   }, [search, conversations, starred])
 
@@ -344,7 +328,7 @@ export default function CoachChatsPage() {
   useEffect(() => {
     if (!activeConv) return
     msgChannelRef.current?.unsubscribe()
-    msgChannelRef.current = supabase.channel(`coach-msgs-${activeConv.id}`)
+    msgChannelRef.current = supabase.channel(`consultant-msgs-${activeConv.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeConv.id}` },
         (payload) => {
           const msg = payload.new as Message
@@ -383,15 +367,10 @@ export default function CoachChatsPage() {
         const { error: upErr } = await supabase.storage.from('attachments').upload(path, pendingFile.file)
         if (upErr) throw upErr
         const { data: { publicUrl } } = supabase.storage.from('attachments').getPublicUrl(path)
-        attachmentUrl  = publicUrl
-        attachmentName = pendingFile.file.name
-        attachmentType = pendingFile.file.type
+        attachmentUrl = publicUrl; attachmentName = pendingFile.file.name; attachmentType = pendingFile.file.type
         if (pendingFile.previewUrl) URL.revokeObjectURL(pendingFile.previewUrl)
         setPendingFile(null)
-      } catch (err) {
-        console.error('Upload failed:', err)
-        setSending(false); setUploadingFile(false); return
-      }
+      } catch (err) { console.error('Upload failed:', err); setSending(false); setUploadingFile(false); return }
       setUploadingFile(false)
     }
 
@@ -477,7 +456,6 @@ export default function CoachChatsPage() {
                         )}
                       </div>
                     </div>
-                    {/* ✅ List three-dot: Delete only */}
                     <div className="relative flex-shrink-0" ref={menuOpen ? menuRef : null}>
                       <button onClick={(e) => { e.stopPropagation(); setConvMenuOpen(menuOpen ? null : conv.id) }}
                         className={`w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-opacity ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
@@ -503,7 +481,7 @@ export default function CoachChatsPage() {
         <div className={`flex-1 flex flex-col min-w-0 ${!showList ? 'flex' : 'hidden md:flex'}`}>
           {activeConv ? (
             <>
-              {/* Header — ✅ only Star button, no three-dot menu */}
+              {/* Header — Star only, no three-dot */}
               <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 flex-shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => setShowList(true)} className="md:hidden p-1 rounded-lg hover:bg-gray-100 text-gray-500">
@@ -516,7 +494,6 @@ export default function CoachChatsPage() {
                     <p className="text-xs text-green-500 font-medium">Athlete</p>
                   </div>
                 </div>
-                {/* ✅ Star only — no more three-dot / delete in header */}
                 <button onClick={() => toggleStar(activeConv.id)}
                   className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
                   title={starred.has(activeConv.id) ? 'Unstar' : 'Star conversation'}>
@@ -532,8 +509,8 @@ export default function CoachChatsPage() {
                   <div className="flex items-center justify-center h-full"><p className="text-sm text-gray-400">No messages yet. Say hello!</p></div>
                 ) : (
                   messages.map((msg) => {
-                    const isMine    = msg.sender_id === currentUserId
-                    const isHovered = hoveredMsg === msg.id
+                    const isMine     = msg.sender_id === currentUserId
+                    const isHovered  = hoveredMsg === msg.id
                     const isDeleting = deletingMsgId === msg.id
                     return (
                       <div key={msg.id}
@@ -544,7 +521,6 @@ export default function CoachChatsPage() {
                           <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 mb-1"
                             style={{ backgroundColor: avatarColor(activeConv.athlete_id) }}>{initials(activeConv.athlete)}</div>
                         )}
-                        {/* Delete button — own messages only, visible on hover */}
                         {isMine && (
                           <button onClick={() => handleDeleteMessage(msg.id)} disabled={isDeleting}
                             className={`w-6 h-6 rounded-full bg-gray-100 hover:bg-red-100 flex items-center justify-center text-gray-400 hover:text-red-500 transition-all flex-shrink-0 mb-1 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
@@ -571,7 +547,6 @@ export default function CoachChatsPage() {
                 <div ref={bottomRef} />
               </div>
 
-              {/* File preview bar */}
               {pendingFile && (
                 <FilePreviewBar pending={pendingFile} onRemove={() => {
                   if (pendingFile.previewUrl) URL.revokeObjectURL(pendingFile.previewUrl)

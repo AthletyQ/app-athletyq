@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate password length
+    
     if (password.length < 6) {
       return NextResponse.json(
         {
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call service
+    
     const result = await login({ email, password });
 
     if (!result.ok) {
