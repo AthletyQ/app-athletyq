@@ -8,7 +8,6 @@ interface FormErrors {
     incompleteFlexion: boolean;
     incompleteExtension: boolean;
     elbowDrift: boolean;
-    torsoLean: boolean;
 }
 
 interface AnalyzeRequest {
@@ -21,7 +20,6 @@ const ERROR_DESCRIPTIONS: Record<keyof FormErrors, string> = {
     incompleteFlexion:   "not curling the arm high enough at the top",
     incompleteExtension: "not fully extending the arm at the bottom",
     elbowDrift:          "letting the elbow drift forward instead of keeping it pinned to the side",
-    torsoLean:           "leaning the torso back to swing the weight up",
 };
 
 export async function POST(req: Request) {
