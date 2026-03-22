@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
       return {
         price_data: {
-          currency:     (s.currency ?? "usd").toLowerCase(),
+          currency:     (s.currency ?? "lkr").toLowerCase(),
           unit_amount:  Math.round(Number(s.price) * 100), // Stripe uses cents
           product_data: {
             name:        `Session with ${providerName}`,

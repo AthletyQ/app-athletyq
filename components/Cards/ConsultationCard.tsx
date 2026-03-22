@@ -129,8 +129,8 @@ export function ConsultationCard({ consultant, onClose }: ConsultationCardProps)
         scheduled_at:     scheduledAt.toISOString(),
         duration_minutes: durationMinutes,
         status:           'pending',
-        price:            (Number(consultant.hourlyRate) || 0) / 2, // 30 min = half hourly rate
-        currency:         'USD',
+        price:            (Number(consultant.hourlyRate) || 0),
+        currency:         'LKR',
         payment_status:   'unpaid',
         location_type:    'online',
       }
@@ -280,7 +280,7 @@ export function ConsultationCard({ consultant, onClose }: ConsultationCardProps)
                   <div className="flex justify-between text-sm border-t border-gray-200/60 pt-3 mt-3">
                     <span className="text-gray-500 font-medium">Total</span>
                     <span className="font-extrabold text-indigo-600 text-lg">
-                      ${(Number(consultant.hourlyRate) || 0) / 2}
+                      LKR{(Number(consultant.hourlyRate) || 0)}
                     </span>
                   </div>
                 </div>

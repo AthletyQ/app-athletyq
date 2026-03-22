@@ -121,7 +121,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         duration_minutes: durationMinutes,
         status:           'pending',
         price:            (Number(coach.hourlyRate) || 0) * durationHours,
-        currency:         'USD',
+        currency:         'LKR',
         payment_status:   'unpaid',
         location_type:    'online',
       }
@@ -263,7 +263,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                   <div className="flex justify-between text-sm border-t border-gray-200/60 pt-3 mt-3">
                     <span className="text-gray-500 font-medium">Total</span>
                     <span className="font-extrabold text-blue-600 text-lg">
-                      ${(coach.hourlyRate || 0) * selectedTimes.length}
+                      LKR{(coach.hourlyRate || 0) * selectedTimes.length}
                     </span>
                   </div>
                 </div>
