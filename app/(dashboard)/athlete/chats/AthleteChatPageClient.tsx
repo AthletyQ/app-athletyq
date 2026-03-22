@@ -216,6 +216,7 @@ export default function AthleteChatPageClient() {
       .eq('athlete_id', userId)
       .order('last_message_at', { ascending: false })
     if (!error && data) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const shaped = data.map((c: any) => ({
         ...c, contact: Array.isArray(c.contact) ? c.contact[0] ?? null : c.contact,
       })) as Conversation[]
@@ -226,7 +227,6 @@ export default function AthleteChatPageClient() {
 
   useEffect(() => { if (currentUserId) fetchConversations(currentUserId) }, [currentUserId, fetchConversations])
 
-  // ✅ Auto-open conversation from ?contactId= param
   useEffect(() => {
     if (!openWith || !currentUserId || autoOpenDone || loadingConvs) return
     const existing = conversations.find((c) => c.contact_id === openWith)
@@ -295,16 +295,30 @@ export default function AthleteChatPageClient() {
     finally { setDeletingMsgId(null); setHoveredMsg(null) }
   }
 
+  // ── Realtime: new messages + is_read tick updates ─────────────────────────
   useEffect(() => {
     if (!activeConv) return
     msgChannelRef.current?.unsubscribe()
-    msgChannelRef.current = supabase.channel(`athlete-msgs-${activeConv.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeConv.id}` },
-        (payload) => {
-          const msg = payload.new as Message
-          setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
-          if (currentUserId && msg.sender_id !== currentUserId) markAsRead(activeConv.id, currentUserId)
-        })
+    msgChannelRef.current = supabase
+      .channel(`athlete-msgs-${activeConv.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public',
+        table: 'messages', filter: `conversation_id=eq.${activeConv.id}`,
+      }, (payload) => {
+        const msg = payload.new as Message
+        setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
+        if (currentUserId && msg.sender_id !== currentUserId) markAsRead(activeConv.id, currentUserId)
+      })
+      // ── Tick updates: fires when is_read flips to true ──
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public',
+        table: 'messages', filter: `conversation_id=eq.${activeConv.id}`,
+      }, (payload) => {
+        const updated = payload.new as Message
+        setMessages((prev) =>
+          prev.map((m) => m.id === updated.id ? { ...m, is_read: updated.is_read } : m)
+        )
+      })
       .subscribe()
     return () => { msgChannelRef.current?.unsubscribe() }
   }, [activeConv, currentUserId, markAsRead])
@@ -345,6 +359,7 @@ export default function AthleteChatPageClient() {
     }
 
     setNewMessage('')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const payload: any = { conversation_id: activeConv.id, sender_id: currentUserId, content: text || '', is_read: false }
     if (attachmentUrl)  payload.attachment_url  = attachmentUrl
     if (attachmentName) payload.attachment_name = attachmentName
