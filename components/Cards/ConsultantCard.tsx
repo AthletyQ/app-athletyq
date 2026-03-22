@@ -34,14 +34,14 @@ export default function ConsultantCard({ consultant }: { consultant: Consultant 
     return () => { document.body.style.overflow = "unset"; };
   }, [isBooking]);
 
-  // ── Create or retrieve conversation, then navigate to chat ───────────────
+
   const handleMessage = async () => {
     setMessaging(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
 
-      // Check if a conversation already exists between this athlete + consultant
+    
       const { data: existing } = await supabase
         .from("conversations")
         .select("id")
@@ -50,12 +50,12 @@ export default function ConsultantCard({ consultant }: { consultant: Consultant 
         .maybeSingle();
 
       if (existing) {
-        // Conversation exists — open it directly
+        
         router.push(`/athlete/chats?consultantId=${consultant.id}`);
         return;
       }
 
-      // Create a new conversation row
+    
       const { error } = await supabase
         .from("conversations")
         .insert({
@@ -81,7 +81,7 @@ export default function ConsultantCard({ consultant }: { consultant: Consultant 
     <>
       <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow duration-200 flex flex-col gap-4 relative">
 
-        {/* Header */}
+       
         <div className="flex items-start gap-3">
           {consultant.avatarUrl ? (
             <img
@@ -111,7 +111,7 @@ export default function ConsultantCard({ consultant }: { consultant: Consultant 
           </div>
         </div>
 
-        {/* Stats */}
+     
         <div className="space-y-1.5">
           {consultant.rating !== null && (
             <div className="flex items-center gap-1.5">
@@ -135,14 +135,13 @@ export default function ConsultantCard({ consultant }: { consultant: Consultant 
           )}
         </div>
 
-        {/* Bio */}
         {consultant.bio ? (
           <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{consultant.bio}</p>
         ) : (
           <p className="text-xs text-gray-300 italic">No bio available</p>
         )}
 
-        {/* Certifications */}
+        
         {consultant.certifications.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {consultant.certifications.slice(0, 2).map((cert) => (
@@ -156,9 +155,9 @@ export default function ConsultantCard({ consultant }: { consultant: Consultant 
           </div>
         )}
 
-        {/* Actions */}
+       
         <div className="flex gap-2 mt-auto">
-          {/* Message button */}
+          
           <button
             onClick={handleMessage}
             disabled={messaging}
@@ -168,7 +167,7 @@ export default function ConsultantCard({ consultant }: { consultant: Consultant 
             {messaging ? "Opening..." : "Message"}
           </button>
 
-          {/* Book Session button */}
+          
           <button
             onClick={() => setIsBooking(true)}
             className="flex-1 bg-blue-600 text-white text-xs font-medium py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors"

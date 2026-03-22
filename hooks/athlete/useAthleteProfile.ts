@@ -11,17 +11,7 @@ interface UseAthleteProfileReturn {
   refetch: () => Promise<void>;
 }
 
-/**
- * useAthleteProfile
- *
- * Client-side hook — use in 'use client' dashboard components.
- * Fetches the full athlete profile (profiles + athletes + sports joined).
- *
- * For Server Components, call getAthleteProfile() from athlete.service.ts directly.
- *
- * Usage:
- *   const { profile, loading, error } = useAthleteProfile();
- */
+
 export function useAthleteProfile(): UseAthleteProfileReturn {
   const [profile, setProfile] = useState<AthleteProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +23,7 @@ export function useAthleteProfile(): UseAthleteProfileReturn {
       setLoading(true);
       setError(null);
 
-      // Step 1: get current user
+      
       const {
         data: { user },
         error: authError,
@@ -44,7 +34,7 @@ export function useAthleteProfile(): UseAthleteProfileReturn {
         return;
       }
 
-      // Step 2: fetch profile row
+    
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
@@ -56,7 +46,7 @@ export function useAthleteProfile(): UseAthleteProfileReturn {
         return;
       }
 
-      // Step 3: fetch athlete row + sport join
+   
       const { data: athleteData, error: athleteError } = await supabase
         .from("athletes")
         .select(
@@ -75,9 +65,9 @@ export function useAthleteProfile(): UseAthleteProfileReturn {
         .eq("user_id", user.id)
         .single();
 
-      // Step 4: merge — athlete row may not exist yet if onboarding incomplete
+     
       const merged: AthleteProfile = {
-        // profile
+        
         id: profileData.id,
         email: profileData.email,
         role: profileData.role,
@@ -87,14 +77,14 @@ export function useAthleteProfile(): UseAthleteProfileReturn {
         profile_image_url: profileData.profile_image_url,
         created_at: profileData.created_at,
         updated_at: profileData.updated_at,
-        // athlete (fallback to null if athlete row missing)
+        
         age: athleteData?.age ?? null,
         height_cm: athleteData?.height_cm ?? null,
         weight_kg: athleteData?.weight_kg ?? null,
         preferred_sport_id: athleteData?.preferred_sport_id ?? null,
         goals: athleteData?.goals ?? null,
         injuries: athleteData?.injuries ?? null,
-        // sport
+        
         sport: athleteData?.sport
           ? Array.isArray(athleteData.sport)
             ? athleteData.sport[0] ?? null

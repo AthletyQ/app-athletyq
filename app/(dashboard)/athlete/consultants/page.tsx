@@ -43,7 +43,7 @@ export default function ConsultantsPage() {
       <main className="flex-1 overflow-y-auto p-6">
         <div className="space-y-6">
 
-          {/* Header */}
+          
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Consultants</h1>
             <p className="text-sm text-gray-500 mt-1">
@@ -51,7 +51,7 @@ export default function ConsultantsPage() {
             </p>
           </div>
 
-          {/* Search */}
+         
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -63,10 +63,9 @@ export default function ConsultantsPage() {
             />
           </div>
 
-          {/* Filters */}
           <ConsultantFiltersBar filters={filters} onChange={setFilters} />
 
-          {/* Results */}
+
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[...Array(6)].map((_, i) => (

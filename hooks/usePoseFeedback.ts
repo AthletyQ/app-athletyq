@@ -20,7 +20,7 @@ export function usePoseFeedback() {
     errors: RepFormErrors,
   ) => {
     const hasErrors = Object.values(errors).some(Boolean);
-    // Don't pile up requests; skip if one is already in-flight
+
     if (inProgressRef.current || !hasErrors) return;
 
     inProgressRef.current = true;
@@ -28,7 +28,7 @@ export function usePoseFeedback() {
     setAiFeedback(null);
 
     try {
-      // Step 1: generate coaching text via Groq
+ 
       const textRes = await fetch('/api/athlete/pose/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -39,7 +39,7 @@ export function usePoseFeedback() {
       setAiFeedback(feedback);
       setIsFetchingFeedback(false);
 
-      // Step 2: convert to speech via AWS Polly
+   
       const ttsRes = await fetch('/api/athlete/pose/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -54,7 +54,7 @@ export function usePoseFeedback() {
       const audioBlob = await ttsRes.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      // Stop any audio that's still playing from a previous rep
+
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -68,8 +68,7 @@ export function usePoseFeedback() {
         URL.revokeObjectURL(audioUrl);
         audioRef.current = null;
         setIsSpeaking(false);
-        // Release the lock only after speaking finishes so the next rep isn't
-        // processed while audio is still playing
+
         inProgressRef.current = false;
       };
       audio.onerror = () => {
@@ -90,7 +89,7 @@ export function usePoseFeedback() {
   };
 
   const clearFeedback = () => {
-    // Stop playback immediately if detection is stopped
+
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;

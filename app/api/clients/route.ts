@@ -15,7 +15,7 @@ const COLORS = [
   'bg-green-100 text-green-700',
 ]
 
-// ─── GET /api/clients?coachId=...&status=active|pending ───────────────────────
+
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // ─── Group all sessions by athlete ────────────────────────────────────────
+
 
   const athleteMap = new Map<string, {
     sessions:      any[]
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     athleteMap.get(athleteId)!.sessions.push(row)
   })
 
-  // ─── Build client list ────────────────────────────────────────────────────
+
 
   const clients: any[] = []
   let colorIndex = 0

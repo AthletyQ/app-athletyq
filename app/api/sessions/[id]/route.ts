@@ -29,7 +29,7 @@ export async function PATCH(
 
   const sport = Array.isArray(session.sports) ? session.sports[0] : session.sports
 
-  // ─── APPROVE ──────────────────────────────────────────────────────────────
+
   if (action === 'approve') {
     const { error: updateError } = await supabase
       .from('sessions')
@@ -65,12 +65,12 @@ export async function PATCH(
     return NextResponse.json({ success: true, action: 'approved' })
   }
 
-  // ─── RESCHEDULE ───────────────────────────────────────────────────────────
+
   if (action === 'reschedule') {
     const { error: updateError } = await supabase
       .from('sessions')
       .update({
-        status:     'reschedule_requested',  // ✅ save to DB so it persists on refresh
+        status:     'reschedule_requested',  
         updated_at: new Date().toISOString(),
       })
       .eq('id', sessionId)
@@ -103,7 +103,7 @@ export async function PATCH(
     return NextResponse.json({ success: true, action: 'rescheduled' })
   }
 
-  // ─── CANCEL ───────────────────────────────────────────────────────────────
+
   if (action === 'cancel') {
     const { error: updateError } = await supabase
       .from('sessions')

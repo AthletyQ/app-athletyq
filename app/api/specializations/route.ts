@@ -6,10 +6,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
 
-/**
- * Returns distinct specialty values from the consultants table.
- * No separate specializations table required.
- */
+
 export async function GET() {
   try {
     const { data, error } = await supabase

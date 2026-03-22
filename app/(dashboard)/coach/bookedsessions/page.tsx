@@ -33,7 +33,7 @@ type Session = {
   status:     SessionStatus
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 function toDateKey(date: Date): string {
   const y = date.getFullYear()
@@ -42,37 +42,37 @@ function toDateKey(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
-/** Returns the Monday of the week containing `ref`, using LOCAL time */
+
 function getMondayOfWeek(ref: Date): Date {
   const d = new Date(ref)
-  const day = d.getDay()                          // 0 = Sun, 1 = Mon … 6 = Sat
-  const diff = day === 0 ? -6 : 1 - day          // how many days back to Monday
+  const day = d.getDay()                          
+  const diff = day === 0 ? -6 : 1 - day         
   d.setDate(d.getDate() + diff)
   d.setHours(0, 0, 0, 0)
   return d
 }
 
-/** Returns weekStart (Mon 00:00 local) and weekEnd (Sun 23:59:59 local) for the given offset */
+
 function getWeekRange(weekOffset: number): { weekStart: Date; weekEnd: Date } {
   const monday = getMondayOfWeek(new Date())
-  monday.setDate(monday.getDate() + weekOffset * 7)   // ✅ local setDate, not UTC
+  monday.setDate(monday.getDate() + weekOffset * 7)   
 
   const weekStart = new Date(monday)
   weekStart.setHours(0, 0, 0, 0)
 
   const weekEnd = new Date(monday)
-  weekEnd.setDate(monday.getDate() + 6)               // ✅ Sunday, local
+  weekEnd.setDate(monday.getDate() + 6)               
   weekEnd.setHours(23, 59, 59, 999)
 
   return { weekStart, weekEnd }
 }
 
-/** Returns 7 day descriptors Mon–Sun using LOCAL date math */
+
 function getWeekDays(weekStart: Date) {
   const todayKey = toDateKey(new Date())
   return Array.from({ length: 7 }, (_, i) => {
     const date = new Date(weekStart)
-    date.setDate(weekStart.getDate() + i)             // ✅ local setDate
+    date.setDate(weekStart.getDate() + i)            
     return {
       dateKey: toDateKey(date),
       short:   date.toLocaleDateString('en-US', { weekday: 'short' }),
@@ -89,7 +89,7 @@ const STATUS_CONFIG: Record<SessionStatus, { label: string; classes: string; ico
   completed:            { label: 'Completed',            classes: 'bg-blue-50 text-blue-600',     icon: CheckCircle },
 }
 
-// ─── WEEK STRIP ───────────────────────────────────────────────────────────────
+
 
 function WeekStrip({ activeDateKey, setActiveDateKey, weekOffset, setWeekOffset, sessions, loading }: {
   activeDateKey:    string
@@ -145,7 +145,7 @@ function WeekStrip({ activeDateKey, setActiveDateKey, weekOffset, setWeekOffset,
   )
 }
 
-// ─── CANCEL MODAL ─────────────────────────────────────────────────────────────
+
 
 function CancelModal({ session, onClose, onConfirm }: { session: Session; onClose: () => void; onConfirm: () => void }) {
   const [saving, setSaving] = useState(false)
@@ -190,7 +190,7 @@ function CancelModal({ session, onClose, onConfirm }: { session: Session; onClos
   )
 }
 
-// ─── SESSION MENU ─────────────────────────────────────────────────────────────
+
 
 function SessionMenu({ session, onReschedule }: { session: Session; onReschedule: () => void }) {
   const [open, setOpen] = useState(false)
@@ -225,7 +225,7 @@ function SessionMenu({ session, onReschedule }: { session: Session; onReschedule
   )
 }
 
-// ─── SESSION CARD ─────────────────────────────────────────────────────────────
+
 
 function SessionCard({ session, onConfirm, onReschedule, onCancel, onJoin }: {
   session:      Session
@@ -311,7 +311,7 @@ function SessionCard({ session, onConfirm, onReschedule, onCancel, onJoin }: {
   )
 }
 
-// ─── PAGE ─────────────────────────────────────────────────────────────────────
+
 
 export default function BookedSessionsPage() {
   const [sessions,      setSessions]      = useState<Session[]>([])

@@ -15,7 +15,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 )
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+
 
 interface Profile { first_name: string; last_name: string }
 
@@ -33,7 +33,7 @@ interface Message {
 
 interface PendingFile { file: File; previewUrl: string | null }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 const AVATAR_COLORS = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EC4899','#6366F1']
 function avatarColor(id: string) { return AVATAR_COLORS[id.charCodeAt(0) % AVATAR_COLORS.length] }
@@ -47,7 +47,7 @@ function formatTime(iso: string | null) {
     : d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
-// ✅ Separate key from coach so stars don't cross-contaminate
+
 const STARRED_KEY = 'athletyq_consultant_starred_convs'
 function loadStarred(): Set<string> {
   try { const r = localStorage.getItem(STARRED_KEY); return r ? new Set(JSON.parse(r)) : new Set() } catch { return new Set() }
@@ -56,7 +56,7 @@ function saveStarred(s: Set<string>) {
   try { localStorage.setItem(STARRED_KEY, JSON.stringify([...s])) } catch {}
 }
 
-// ─── Full Emoji Set ───────────────────────────────────────────────────────────
+
 
 const EMOJI_CATEGORIES: Record<string, string[]> = {
   '😀': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','💫','🤯','🤠','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'],
@@ -172,7 +172,7 @@ function DeleteModal({ name, onConfirm, onCancel, deleting }: {
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+
 
 export default function ConsultantChatsClient() {
   const searchParams         = useSearchParams()
@@ -240,12 +240,12 @@ export default function ConsultantChatsClient() {
 
   useEffect(() => { if (currentUserId) fetchConversations(currentUserId) }, [currentUserId, fetchConversations])
 
-  // ✅ Auto-open conversation from ?conversationId= query param
+
   useEffect(() => {
     if (autoOpened || !targetConversationId || conversations.length === 0) return
     const target = conversations.find((c) => c.id === targetConversationId)
     if (target) { openConversation(target); setAutoOpened(true) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+ 
   }, [conversations, targetConversationId, autoOpened])
 
   useEffect(() => {
@@ -258,7 +258,7 @@ export default function ConsultantChatsClient() {
     return () => { convChannelRef.current?.unsubscribe() }
   }, [currentUserId, fetchConversations])
 
-  // ✅ Starred float to top, then recency
+
   useEffect(() => {
     const q = search.toLowerCase()
     const base = q
@@ -335,7 +335,7 @@ export default function ConsultantChatsClient() {
         setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
         if (currentUserId && msg.sender_id !== currentUserId) markAsRead(activeConv.id, currentUserId)
       })
-    // ── Tick updates: fires when is_read flips to true ──
+   
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeConv.id}` },
       (payload) => {
         const updated = payload.new as Message
@@ -415,7 +415,7 @@ export default function ConsultantChatsClient() {
 
       <div className="flex h-[calc(100vh-64px)] bg-white overflow-hidden">
 
-        {/* ── Left panel ── */}
+       
         <div className={`flex flex-col w-full md:w-96 border-r border-gray-200 flex-shrink-0 bg-white ${showList ? 'flex' : 'hidden md:flex'}`}>
           <div className="px-5 pt-5 pb-4 border-b border-gray-100">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Messages</h2>
@@ -485,11 +485,11 @@ export default function ConsultantChatsClient() {
           </div>
         </div>
 
-        {/* ── Right panel ── */}
+       
         <div className={`flex-1 flex flex-col min-w-0 ${!showList ? 'flex' : 'hidden md:flex'}`}>
           {activeConv ? (
             <>
-              {/* Header — Star only, no three-dot */}
+              
               <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 flex-shrink-0">
                 <div className="flex items-center gap-3">
                   <button onClick={() => setShowList(true)} className="md:hidden p-1 rounded-lg hover:bg-gray-100 text-gray-500">
@@ -509,7 +509,7 @@ export default function ConsultantChatsClient() {
                 </button>
               </div>
 
-              {/* Messages */}
+              
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 bg-gray-50">
                 {loadingMsgs ? (
                   <div className="flex items-center justify-center h-full"><Loader2 className="w-5 h-5 text-blue-500 animate-spin" /></div>
@@ -562,7 +562,7 @@ export default function ConsultantChatsClient() {
                 }} />
               )}
 
-              {/* Input */}
+             
               <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3">
                 <div className="relative flex items-center gap-3">
                   <button onClick={() => fileInputRef.current?.click()}

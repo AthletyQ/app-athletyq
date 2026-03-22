@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(result);
   } catch (err: unknown) {
-    // Surface the real error message so it's visible in the browser network tab
+
     const message = err instanceof Error ? err.message : String(err);
     console.error("[/api/consultant-athlete]", message);
     return NextResponse.json(

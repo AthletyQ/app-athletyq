@@ -9,7 +9,7 @@ import {
 import { supabase } from '@/lib/supabase/client'
 import { VideoCall } from '@/components/dashboard/VideoCall'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 function initials(name: string) {
   return name.split(' ').filter(Boolean).map((n) => n[0]).join('').toUpperCase()
@@ -53,7 +53,7 @@ const MSG_COLORS = [
   'bg-green-100 text-green-700',
 ]
 
-// ─── Profile Card ─────────────────────────────────────────────────────────────
+
 
 function ProfileCard({ profile, consultantId }: { profile: any; consultantId: string }) {
   if (!profile) return null
@@ -115,7 +115,7 @@ function ProfileCard({ profile, consultantId }: { profile: any; consultantId: st
   )
 }
 
-// ─── Stat Cards ───────────────────────────────────────────────────────────────
+
 
 function StatCards({ stats }: { stats: any }) {
   const STATS = [
@@ -166,7 +166,6 @@ function StatCards({ stats }: { stats: any }) {
   )
 }
 
-// ─── Upcoming Sessions ────────────────────────────────────────────────────────
 
 function UpcomingSessions({ sessions, onJoin, onViewAll }: {
   sessions:  any[]
@@ -223,7 +222,7 @@ function UpcomingSessions({ sessions, onJoin, onViewAll }: {
   )
 }
 
-// ─── Earnings Summary ─────────────────────────────────────────────────────────
+
 
 function EarningsSummary({ earnings }: { earnings: string }) {
   return (
@@ -243,7 +242,7 @@ function EarningsSummary({ earnings }: { earnings: string }) {
   )
 }
 
-// ─── New Messages ─────────────────────────────────────────────────────────────
+
 
 function NewMessages({ messages, onViewAll }: { messages: any[]; onViewAll: () => void }) {
   const totalUnread = messages.reduce((sum, m) => sum + (m.unread_count ?? 0), 0)
@@ -292,7 +291,7 @@ function NewMessages({ messages, onViewAll }: { messages: any[]; onViewAll: () =
   )
 }
 
-// ─── Athlete Activity ─────────────────────────────────────────────────────────
+
 
 function AthleteActivity() {
   return (
@@ -306,7 +305,7 @@ function AthleteActivity() {
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+
 
 export default function ConsultantDashboard() {
   const router = useRouter()
@@ -327,7 +326,7 @@ export default function ConsultantDashboard() {
 
       setConsultantId(user.id)
 
-      // ── Profile ──────────────────────────────────────────────────────────
+      
       const { data: prof } = await supabase
         .from('profiles')
         .select('*, consultants(*)')
@@ -335,7 +334,7 @@ export default function ConsultantDashboard() {
         .single()
       setProfile(prof)
 
-      // ── Week / today boundaries (local time) ─────────────────────────────
+      
       const now        = new Date()
       const dayOfWeek  = now.getDay()
       const diffToMon  = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
@@ -347,7 +346,7 @@ export default function ConsultantDashboard() {
       const lastMonthS = new Date(now.getFullYear(), now.getMonth() - 1, 1)
       const lastMonthE = new Date(now.getFullYear(), now.getMonth(), 0, 23,59,59)
 
-      // ── Stats queries ─────────────────────────────────────────────────────
+      
       const [
         { data: confirmedSessions },
         { count: weekCount },
@@ -387,7 +386,7 @@ export default function ConsultantDashboard() {
         clientSatisfaction: '4.9',
       })
 
-      // ── Upcoming sessions (today + tomorrow, SL time) ─────────────────────
+      
       const SL_OFFSET_MS  = 330 * 60 * 1000
       const nowInSL       = new Date(now.getTime() + SL_OFFSET_MS)
       const slY = nowInSL.getUTCFullYear(), slM = nowInSL.getUTCMonth(), slD = nowInSL.getUTCDate()
@@ -416,7 +415,7 @@ export default function ConsultantDashboard() {
         return { ...s, athlete_profile: prf, sport_name: spt?.name ?? 'General' }
       }))
 
-      // ── Unread messages ───────────────────────────────────────────────────
+      
       const { data: convData } = await supabase
         .from('conversations')
         .select('id, unread_count, athlete_id, last_message, last_message_at')
@@ -484,7 +483,7 @@ export default function ConsultantDashboard() {
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
 
-      {/* ✅ Video call overlay — isCoach passed for consultant too */}
+      
       {activeCall && (
         <VideoCall
           sessionId={activeCall.sessionId}

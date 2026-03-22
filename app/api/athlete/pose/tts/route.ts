@@ -12,7 +12,7 @@ export async function POST(req: Request) {
         const command = new SynthesizeSpeechCommand({
             Text: text,
             OutputFormat: "mp3",
-            VoiceId: "Matthew",   // neural male voice — good for a coaching tone
+            VoiceId: "Matthew",   
             Engine: "neural",
             LanguageCode: "en-US",
         });
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
             return new Response("No audio returned from Polly", { status: 502 });
         }
 
-        // Collect the NodeJS ReadableStream into a single Buffer
+        
         const chunks: Uint8Array[] = [];
         for await (const chunk of response.AudioStream as AsyncIterable<Uint8Array>) {
             chunks.push(chunk);
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
             headers: {
                 "Content-Type": "audio/mpeg",
                 "Content-Length": String(audioBuffer.byteLength),
-                // Prevent caching — every coaching message is unique
+                
                 "Cache-Control": "no-store",
             },
         });

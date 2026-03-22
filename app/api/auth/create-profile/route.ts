@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-/**
- * POST /api/auth/create-profile
- *
- * Called from the client-side /confirm page after the magic-link is verified.
- * Inserts into `profiles` table + the actor-specific table
- * (`athletes`, `coaches`, or `consultants`).
- */
+
 export async function POST(request: NextRequest) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
@@ -22,7 +16,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Verify the caller's token ──
+
     const {
       data: { user },
       error: authError,
@@ -36,7 +30,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Extract metadata stored during signup ──
+
     const meta = user.user_metadata ?? {};
     const role = meta.role as string | undefined;
     const firstName = meta.firstName as string | undefined;
@@ -65,7 +59,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Idempotency: skip if profile already exists ──
+
     const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
       .select("id")
@@ -82,7 +76,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Insert into `profiles` ──
+ 
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .insert({
@@ -95,7 +89,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (profileError) {
-      // Duplicate-key → profile already exists (race-condition safe)
+  
       if (profileError.code === "23505") {
         return NextResponse.json(
           {
@@ -119,7 +113,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Insert into actor-specific table ──
+  
     let actorError: { message: string; code?: string } | null = null;
 
     if (role === "athlete") {
@@ -157,8 +151,7 @@ export async function POST(request: NextRequest) {
 
     if (actorError) {
       console.error(`Actor table insert error(${role}): `, actorError);
-      // Profile was created successfully — log the actor error but don't fail
-      // the whole request. The actor record can be populated later.
+
     }
 
     console.log("Profile + actor record created for:", user.id);

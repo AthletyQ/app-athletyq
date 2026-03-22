@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { MessageTicks } from '@/components/chat/MessageTicks'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+
 
 interface Profile { first_name: string; last_name: string; role: string }
 
@@ -29,7 +29,6 @@ interface Message {
 
 interface PendingFile { file: File; previewUrl: string | null }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EC4899','#6366F1']
 function avatarColor(id: string) { return AVATAR_COLORS[id.charCodeAt(0) % AVATAR_COLORS.length] }
@@ -43,7 +42,7 @@ function formatTime(iso: string | null) {
     : d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
-// ─── Emoji Set ────────────────────────────────────────────────────────────────
+
 
 const EMOJI_CATEGORIES: Record<string, string[]> = {
   '😀': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','💫','🤯','🤠','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'],
@@ -160,13 +159,13 @@ function DeleteModal({ name, onConfirm, onCancel, deleting }: {
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+
 
 export default function AthleteChatPageClient() {
   const searchParams = useSearchParams()
   const router       = useRouter()
 
-  // ── Capture contactId in a ref immediately so router.replace can't lose it ──
+
   const pendingContactId = useRef<string | null>(
     searchParams.get('contactId') ?? searchParams.get('consultantId')
   )
@@ -234,7 +233,7 @@ export default function AthleteChatPageClient() {
     if (currentUserId) fetchConversations(currentUserId)
   }, [currentUserId, fetchConversations])
 
-  // ── Realtime: conversation list ───────────────────────────────────────────
+
   useEffect(() => {
     if (!currentUserId) return
     convChannelRef.current?.unsubscribe()
@@ -245,7 +244,7 @@ export default function AthleteChatPageClient() {
     return () => { convChannelRef.current?.unsubscribe() }
   }, [currentUserId, fetchConversations])
 
-  // ── Search filter ─────────────────────────────────────────────────────────
+
   useEffect(() => {
     const q = search.toLowerCase()
     setFiltered(q
@@ -276,7 +275,7 @@ export default function AthleteChatPageClient() {
     if (currentUserId) await markAsRead(conv.id, currentUserId)
   }, [fetchMessages, markAsRead, currentUserId])
 
-  // ── Auto-open: uses ref so URL clearing doesn't break it ─────────────────
+
   useEffect(() => {
     const contactId = pendingContactId.current
     if (!contactId || !currentUserId || loadingConvs) return
@@ -289,7 +288,6 @@ export default function AthleteChatPageClient() {
     }
   }, [conversations, currentUserId, loadingConvs, openConversation, router])
 
-  // ── Delete conversation ───────────────────────────────────────────────────
   const handleDeleteConversation = async () => {
     if (!deleteTarget) return
     setDeleting(true)
@@ -302,7 +300,7 @@ export default function AthleteChatPageClient() {
     finally { setDeleting(false); setDeleteTarget(null) }
   }
 
-  // ── Delete message ────────────────────────────────────────────────────────
+
   const handleDeleteMessage = async (msgId: string) => {
     setDeletingMsgId(msgId)
     try {
@@ -312,7 +310,7 @@ export default function AthleteChatPageClient() {
     finally { setDeletingMsgId(null); setHoveredMsg(null) }
   }
 
-  // ── Realtime: new messages + tick updates ─────────────────────────────────
+
   useEffect(() => {
     if (!activeConv) return
     msgChannelRef.current?.unsubscribe()
@@ -373,7 +371,7 @@ export default function AthleteChatPageClient() {
     }
 
     setNewMessage('')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const payload: any = { conversation_id: activeConv.id, sender_id: currentUserId, content: text || '', is_read: false }
     if (attachmentUrl)  payload.attachment_url  = attachmentUrl
     if (attachmentName) payload.attachment_name = attachmentName
@@ -406,7 +404,7 @@ export default function AthleteChatPageClient() {
 
       <div className="flex h-[calc(100vh-64px)] bg-white overflow-hidden">
 
-        {/* ── Left panel ── */}
+        
         <div className={`flex flex-col w-full md:w-96 border-r border-gray-200 flex-shrink-0 bg-white ${showList ? 'flex' : 'hidden md:flex'}`}>
           <div className="px-5 pt-5 pb-4 border-b border-gray-100">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Messages</h2>
@@ -475,7 +473,7 @@ export default function AthleteChatPageClient() {
           </div>
         </div>
 
-        {/* ── Right panel ── */}
+     
         <div className={`flex-1 flex flex-col min-w-0 ${!showList ? 'flex' : 'hidden md:flex'}`}>
           {activeConv ? (
             <>

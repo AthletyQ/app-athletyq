@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// ─── PATCH /api/clients/[id] — accept or decline a pending client ─────────────
+
 
 export async function PATCH(
   request: NextRequest,

@@ -53,7 +53,7 @@ export function Navbar() {
             <p className="text-xs text-gray-500 mt-1 capitalize">{role}</p>
           </div>
 
-          {/* Avatar + Dropdown */}
+         
           <div className="relative" ref={ref}>
             <button
               onClick={() => setOpen(!open)}
@@ -64,7 +64,7 @@ export function Navbar() {
 
             {open && (
               <div className="absolute right-0 top-12 w-82 bg-white border border-gray-100 rounded-2xl shadow-lg py-2 z-50">
-                {/* User info inside dropdown */}
+           
                 <div className="px-4 py-5 border-b border-gray-100 mb-1">
                   <p className="text-sm font-bold text-gray-900 capitalize">{fullName}</p>
                   <p className="text-xs text-gray-400 capitalize">{role}</p>

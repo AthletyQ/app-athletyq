@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // 1. Try to find existing conversation
+
     const { data: existing, error: findError } = await supabase
       .from('conversations')
       .select('id')
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ conversationId: existing.id })
     }
 
-    // 2. Create new conversation
+
     const { data: created, error: createError } = await supabase
       .from('conversations')
       .insert({

@@ -52,14 +52,14 @@ function SuccessContent() {
         })))
         setLoading(false)
       })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [sessionIdsRaw])
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
       <div className="bg-white rounded-3xl shadow-xl max-w-md w-full p-8 text-center">
 
-        {/* Success icon */}
+        
         <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
           <CheckCircle className="w-10 h-10 text-green-500" strokeWidth={1.5} />
         </div>
@@ -70,7 +70,7 @@ function SuccessContent() {
           You'll receive a confirmation shortly.
         </p>
 
-        {/* Booked sessions */}
+        
         {loading ? (
           <div className="flex justify-center mb-8">
             <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />

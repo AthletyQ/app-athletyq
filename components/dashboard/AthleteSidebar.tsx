@@ -38,16 +38,16 @@ export function Sidebar() {
         overflow-hidden z-50
       "
     >
-      {/* ── Logo ── */}
+     
       <div className="h-20 flex items-center justify-center px-4 flex-shrink-0 overflow-hidden">
-        {/* Collapsed: AQ monogram */}
+        
         <Link
           href="/athlete/dashboard"
           className="w-12 h-12 flex items-center justify-center rounded-xl bg-white/10 text-white font-bold text-lg flex-shrink-0 group-hover/sidebar:hidden"
         >
           AQ
         </Link>
-        {/* Expanded: full logo */}
+        
         <Link
           href="/athlete/dashboard"
           className="hidden group-hover/sidebar:block text-3xl font-bold tracking-tight text-white whitespace-nowrap hover:opacity-90 transition-opacity"
@@ -56,10 +56,10 @@ export function Sidebar() {
         </Link>
       </div>
 
-      {/* ── Nav ── */}
+      
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-2">
 
-        {/* Main items */}
+       
         <nav className="px-2 space-y-4">
           {mainItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
@@ -87,10 +87,10 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Divider */}
+        
         <div className="my-3 mx-3 border-t border-white/10" />
 
-        {/* Explore section */}
+        
         <div className="px-2">
           <p className="hidden group-hover/sidebar:block text-[10px] font-bold uppercase tracking-widest text-white/40 px-2 mb-2">
             Explore
@@ -124,7 +124,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* ── Copyright ── */}
+      
       <div className="flex-shrink-0 border-t border-white/10 px-2 py-4 flex justify-center group-hover/sidebar:justify-start group-hover/sidebar:px-4">
         <div className="hidden group-hover/sidebar:block space-y-1">
           <div className="flex items-center gap-1.5 text-white/30">

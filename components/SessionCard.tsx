@@ -29,7 +29,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
 
   const steps = ['Time & Date', 'Confirmation']
 
-  // ── Fetch availability ──────────────────────────────────────────────────────
+
   const fetchAvailability = useCallback(async (selectedDate: Date) => {
     setLoadingAvailability(true)
     const { data, error } = await coachService.getAvailability(coach.id, selectedDate)
@@ -49,7 +49,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
     }
   }, [date, fetchAvailability])
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
+
   const handleNextStep = () => { if (step < steps.length - 1) setStep(step + 1) }
   const handlePrevStep = () => { if (step > 0) setStep(step - 1) }
 
@@ -66,7 +66,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
     return true
   }
 
-  // ── Complete booking → Stripe Checkout ──────────────────────────────────────
+ 
   const handleCompleteBooking = async () => {
     if (!date || selectedTimes.length === 0) return
 
@@ -82,7 +82,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         return
       }
 
-      // Initialise athlete profile if needed
+     
       const { data: { session: authSession } } = await supabase.auth.getSession()
       const initRes = await fetch('/api/athlete', {
         method: 'POST',
@@ -93,7 +93,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         throw new Error(errorData.error || 'Failed to initialize athlete profile')
       }
 
-      // Calculate duration from selected slots
+    
       const sortedTimes    = [...selectedTimes].sort()
       const startStr = selectedTimes[0]
       const [startHour, startMinute] = startStr.split(':').map(Number)
@@ -126,11 +126,11 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         location_type:    'online',
       }
 
-      // 1. Insert pending session into DB
+      
       const { error: bookError } = await coachService.bookSessions([session])
       if (bookError) throw new Error(bookError)
 
-      // 2. Retrieve the inserted session ID
+    
       const { data: inserted } = await supabase
         .from('sessions')
         .select('id')
@@ -148,7 +148,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
         throw new Error('Could not retrieve session ID for payment')
       }
 
-      // 3. Create Stripe Checkout session
+    
       const res = await fetch('/api/payments/create-checkout', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,7 +157,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
       const { url, error: checkoutError } = await res.json()
       if (checkoutError || !url) throw new Error(checkoutError ?? 'Failed to create checkout session')
 
-      // 4. Redirect to Stripe Checkout
+   
       window.location.href = url
 
     } catch (err) {
@@ -168,14 +168,14 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
     }
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300 pointer-events-auto">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto" onClick={onClose} />
 
       <div className="relative bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 slide-in-from-bottom-10 duration-500 max-h-[90vh] pointer-events-auto">
 
-        {/* HEADER */}
+        
         <div className="p-5 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
@@ -199,10 +199,10 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
           <Breadcrumb steps={steps} currentStep={step} className="px-0" />
         </div>
 
-        {/* CONTENT */}
+        
         <div className="flex-1 p-5 overflow-y-auto">
           <>
-            {/* STEP 0 — Date & Time */}
+           
             {step === 0 && (
               <div className="animate-in fade-in slide-in-from-right-4 relative scale-95 origin-top">
                 {loadingAvailability && (
@@ -231,7 +231,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
               </div>
             )}
 
-            {/* STEP 1 — Confirmation */}
+            
             {step === 1 && (
               <div className="flex flex-col items-center justify-center text-center space-y-4 py-4 animate-in zoom-in-95 duration-500">
                 <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
@@ -268,7 +268,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
                   </div>
                 </div>
 
-                {/* Stripe badge */}
+              
                 <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
                   <svg viewBox="0 0 40 16" className="h-4 w-auto" fill="none">
                     <path d="M12.956 4.228c0-.787.648-1.09 1.72-1.09 1.535 0 3.474.463 5.01 1.29V.72C18.038.273 16.42 0 14.676 0 10.73 0 8.1 2.055 8.1 5.53c0 5.388 7.427 4.525 7.427 6.847 0 .929-.808 1.23-1.933 1.23-1.672 0-3.808-.69-5.5-1.62v3.753c1.874.808 3.763 1.147 5.5 1.147 4.052 0 6.835-2.002 6.835-5.52-.015-5.82-7.473-4.78-7.473-7.139z" fill="#635BFF"/>
@@ -286,7 +286,7 @@ export function SessionCard({ coach, onClose }: SessionCardProps) {
           </>
         </div>
 
-        {/* FOOTER */}
+        
         <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between gap-3">
           <button
             onClick={handlePrevStep}

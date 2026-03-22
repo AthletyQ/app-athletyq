@@ -43,7 +43,7 @@ export default function AthleteSessionsPage() {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get athlete profile
+      
       const { data: profile } = await supabase
         .from("profiles")
         .select("id, first_name, last_name")
@@ -55,7 +55,7 @@ export default function AthleteSessionsPage() {
         setAthleteName(`${profile.first_name} ${profile.last_name}`);
       }
 
-      // Get athlete record
+      
       const { data: athlete } = await supabase
         .from("athletes")
         .select("id")
@@ -64,7 +64,7 @@ export default function AthleteSessionsPage() {
 
       if (!athlete) return;
 
-      // Fetch sessions
+      
       const { data: sessionData } = await supabase
         .from("sessions")
         .select(
@@ -109,7 +109,7 @@ export default function AthleteSessionsPage() {
 
   function handleCallEnd() {
     setActiveCall(null);
-    // Refresh sessions list
+    
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeCall?.session.id ? { ...s, status: "completed" } : s
@@ -145,8 +145,8 @@ export default function AthleteSessionsPage() {
   const joinable = sessions.filter((s) => {
     if (s.status !== "confirmed") return false;
     const start = new Date(s.scheduled_at);
-    const diff = (start.getTime() - now.getTime()) / 60000; // minutes
-    return diff <= 15 && diff >= -(s.duration_minutes + 5); // 15min early, 5min grace
+    const diff = (start.getTime() - now.getTime()) / 60000;
+    return diff <= 15 && diff >= -(s.duration_minutes + 5); 
   });
   const past = sessions.filter(
     (s) => s.status === "completed" || new Date(s.scheduled_at) < now
@@ -156,7 +156,7 @@ export default function AthleteSessionsPage() {
     <div className="p-6 max-w-4xl mx-auto space-y-8">
       <h1 className="text-2xl font-bold text-gray-900">My Sessions</h1>
 
-      {/* Joinable now */}
+      
       {joinable.length > 0 && (
         <section>
           <h2 className="text-sm font-semibold text-green-600 uppercase tracking-wider mb-3">
@@ -176,7 +176,6 @@ export default function AthleteSessionsPage() {
         </section>
       )}
 
-      {/* Upcoming */}
       {upcoming.filter((s) => !joinable.find((j) => j.id === s.id)).length > 0 && (
         <section>
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
@@ -209,7 +208,7 @@ export default function AthleteSessionsPage() {
   );
 }
 
-// ── Sub-component ────────────────────────────────────────────────────────────
+
 
 function SessionCard({
   session,
@@ -248,7 +247,7 @@ function SessionCard({
           : "border-gray-200 bg-white"
         }`}
     >
-      {/* Coach avatar */}
+      
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm shrink-0 overflow-hidden">
           {session.coachImage ? (
@@ -270,7 +269,7 @@ function SessionCard({
         </div>
       </div>
 
-      {/* Right side */}
+      
       <div className="flex items-center gap-3 shrink-0">
         <span
           className={`text-xs font-medium px-2 py-1 rounded-full capitalize ${statusColor[session.status] ?? "bg-gray-100 text-gray-600"

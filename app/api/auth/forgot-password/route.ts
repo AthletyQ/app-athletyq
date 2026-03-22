@@ -12,19 +12,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Construct the Localhost link
+
     const localUrl = "http://localhost:3000";
     const localRedirect = `${localUrl}/reset-password`;
 
-    // 2. Construct the Production link
     const prodUrl = process.env.NEXT_PUBLIC_SITE_URL || `https://${request.headers.get("host")}`;
     const prodRedirect = `${prodUrl}/reset-password`;
 
-    // Trigger Supabase reset. 
-    // Note: Supabase only sends ONE email per request. 
-    // To show two buttons, we must ensure BOTH URLs are valid in Supabase Redirect allow-list.
-    // We will send the Prod link as the primary 'redirectTo', 
-    // but in your Supabase Email Template, you can now use both.
+
     
     const result = await forgotPassword(email, prodRedirect);
 
