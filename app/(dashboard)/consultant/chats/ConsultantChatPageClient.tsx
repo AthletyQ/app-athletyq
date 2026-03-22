@@ -226,7 +226,7 @@ export default function ConsultantChatPageClient() {
         <DeleteModal name={fullName(deleteTarget.athlete)} onConfirm={handleDeleteConversation} onCancel={() => setDeleteTarget(null)} deleting={deleting} />
       )}
 
-      <div className="flex h-[calc(100vh-64px)] bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="flex h-full bg-white rounded-xl border border-gray-200 overflow-hidden">
 
         {/* ── Conversation List ── */}
         <div className={`flex flex-col w-full md:w-80 lg:w-96 border-r border-gray-100 flex-shrink-0 ${showList ? 'flex' : 'hidden md:flex'}`}>

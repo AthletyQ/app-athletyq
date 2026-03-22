@@ -418,7 +418,7 @@ export default function ConsultantChatsClient() {
       <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange}
         accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
 
-      <div className="flex h-[calc(100vh-64px)] bg-white overflow-hidden">
+      <div className="flex h-full bg-white overflow-hidden">
 
         {/* ── Left panel ── */}
         <div className={`flex flex-col w-full md:w-96 border-r border-gray-200 flex-shrink-0 bg-white ${showList ? 'flex' : 'hidden md:flex'}`}>
