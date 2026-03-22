@@ -4,7 +4,6 @@ export interface RepFormErrors {
   incompleteFlexion: boolean;
   incompleteExtension: boolean;
   elbowDrift: boolean;
-  torsoLean: boolean;
 }
 
 export function usePoseFeedback() {

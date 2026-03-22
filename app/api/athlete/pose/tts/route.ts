@@ -12,7 +12,7 @@ export async function POST(req: Request) {
         const command = new SynthesizeSpeechCommand({
             Text: text,
             OutputFormat: "mp3",
-            VoiceId: "Matthew",   
+            VoiceId: "Joanna",    // neural female voice — good for a coaching tone
             Engine: "neural",
             LanguageCode: "en-US",
         });
