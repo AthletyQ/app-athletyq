@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
-import { Search, Clock, CheckCircle, XCircle, MessageSquare } from 'lucide-react'
+import { Search, Clock, CheckCircle, XCircle, MessageSquare, Loader2 } from 'lucide-react'
 import { getCoachProfile, getClients, updateClientStatus } from '@/services/api'
 
 const supabase = createClient(
@@ -20,24 +20,80 @@ const SPORT_COLORS: Record<string, string> = {
   Strength: 'bg-red-100 text-red-600',
 }
 
-// ─── CLIENT CARD ─────────────────────────────────────────────────────────────
 
-function ClientCard({ client, pending = false, onAccept, onDecline }: {
-  client:    any
-  pending?:  boolean
-  onAccept?: (id: string) => void
-  onDecline?:(id: string) => void
+
+function ClientCard({ client, pending = false, coachUserId, onAccept, onDecline }: {
+  client:      any
+  pending?:    boolean
+  coachUserId: string
+  onAccept?:   (id: string) => void
+  onDecline?:  (id: string) => void
 }) {
   const router = useRouter()
+  const [messaging, setMessaging] = useState(false)
+  const [msgError,  setMsgError]  = useState<string | null>(null)
 
-  // ✅ use values directly from API
   const completedSessions = client.completedSessions ?? 0
   const progressPct       = client.progress          ?? 0
+
+  async function handleMessage() {
+    setMsgError(null)
+
+    if (!coachUserId) {
+      setMsgError('Coach session not loaded yet.')
+      return
+    }
+    if (!client.athleteUserId) {
+      setMsgError('Athlete ID missing.')
+      console.error('athleteUserId missing on client object:', client)
+      return
+    }
+
+    setMessaging(true)
+    try {
+      const res = await fetch('/api/messages/conversations/find-or-create', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ coachUserId, athleteUserId: client.athleteUserId }),
+      })
+
+     
+      const text = await res.text()
+
+      if (!res.ok) {
+        console.error('find-or-create HTTP error:', res.status, res.url, text.slice(0, 300))
+        setMsgError(`Server error ${res.status} — check console`)
+        return
+      }
+
+      let data: any
+      try {
+        data = JSON.parse(text)
+      } catch {
+        console.error('find-or-create non-JSON response:', text.slice(0, 300))
+        setMsgError('Unexpected response from server')
+        return
+      }
+
+      if (!data.conversationId) {
+        console.error('find-or-create missing conversationId:', data)
+        setMsgError('No conversation ID returned')
+        return
+      }
+
+      router.push(`/coach/chat?conversationId=${data.conversationId}`)
+    } catch (err: any) {
+      console.error('handleMessage network error:', err)
+      setMsgError('Network error — check console')
+    } finally {
+      setMessaging(false)
+    }
+  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
 
-      {/* Avatar + Name */}
+      
       <div className="flex items-center gap-3">
         {client.profileImageUrl ? (
           <img
@@ -63,10 +119,9 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
         </div>
       </div>
 
-      {/* Stats — active only */}
+      
       {!pending && (
         <>
-          {/* ✅ 3 stat boxes: Total, Upcoming, Completed */}
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs text-gray-400 mb-1">Total</p>
@@ -82,7 +137,6 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
             </div>
           </div>
 
-          {/* ✅ progress bar = completed / total */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-xs text-gray-500">Session Progress</p>
@@ -101,7 +155,7 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
         </>
       )}
 
-      {/* Pending info */}
+      
       {pending && (
         <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
           <p className="text-xs text-amber-700 font-medium">Awaiting your confirmation</p>
@@ -111,7 +165,7 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
         </div>
       )}
 
-      {/* Last active */}
+     
       <div className="flex items-center justify-between text-xs text-gray-400">
         <span className="flex items-center gap-1">
           <Clock className="w-3 h-3" />{client.lastActive}
@@ -119,7 +173,12 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
         <span>Joined {client.joined}</span>
       </div>
 
-      {/* Action buttons */}
+      
+      {msgError && (
+        <p className="text-xs text-red-500 text-center">{msgError}</p>
+      )}
+
+      
       <div className="flex gap-2">
         {pending ? (
           <>
@@ -141,12 +200,15 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
             <button className="flex-1 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">
               View Details
             </button>
-            {/* ✅ navigates to chats page */}
             <button
-              onClick={() => router.push('/coach/chat')}
-              className="flex-1 py-2 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1"
+              onClick={handleMessage}
+              disabled={messaging}
+              className="flex-1 py-2 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1 disabled:opacity-60"
             >
-              <MessageSquare className="w-3.5 h-3.5" /> Message
+              {messaging
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <><MessageSquare className="w-3.5 h-3.5" /> Message</>
+              }
             </button>
           </>
         )}
@@ -155,7 +217,7 @@ function ClientCard({ client, pending = false, onAccept, onDecline }: {
   )
 }
 
-// ─── PAGE ─────────────────────────────────────────────────────────────────────
+
 
 export default function ClientsPage() {
   const [activeTab,   setActiveTab]   = useState<'active' | 'pending'>('active')
@@ -165,12 +227,14 @@ export default function ClientsPage() {
   const [loading,     setLoading]     = useState(true)
   const [error,       setError]       = useState<string | null>(null)
   const [coachId,     setCoachId]     = useState<string | null>(null)
+  const [coachUserId, setCoachUserId] = useState<string>('')
 
   useEffect(() => {
     async function loadProfile() {
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         if (authError || !user) { setError('Not logged in.'); return }
+        setCoachUserId(user.id)
         const profileData = await getCoachProfile(user.id)
         if (!profileData || profileData.error) { setError('No coach profile found.'); return }
         setCoachId(profileData.id)
@@ -228,29 +292,24 @@ export default function ClientsPage() {
 
         {/* Tabs */}
         <div className="flex gap-6 border-b border-gray-200 mb-5">
-          <button
-            onClick={() => setActiveTab('active')}
-            className={`pb-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-              activeTab === 'active'
-                ? 'text-blue-600 border-blue-600'
-                : 'text-gray-400 border-transparent hover:text-gray-600'
-            }`}
-          >
-            Active Clients ({activeList.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={`pb-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-              activeTab === 'pending'
-                ? 'text-blue-600 border-blue-600'
-                : 'text-gray-400 border-transparent hover:text-gray-600'
-            }`}
-          >
-            Pending Clients ({pendingList.length})
-          </button>
+          {(['active', 'pending'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`pb-3 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+                activeTab === tab
+                  ? 'text-blue-600 border-blue-600'
+                  : 'text-gray-400 border-transparent hover:text-gray-600'
+              }`}
+            >
+              {tab === 'active'
+                ? `Active Clients (${activeList.length})`
+                : `Pending Clients (${pendingList.length})`}
+            </button>
+          ))}
         </div>
 
-        {/* Search */}
+        
         <div className="relative mb-6 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -262,7 +321,7 @@ export default function ClientsPage() {
           />
         </div>
 
-        {/* Content */}
+        
         {!coachId && !error ? (
           <div className="flex items-center justify-center h-40">
             <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -282,6 +341,7 @@ export default function ClientsPage() {
                 key={client.id}
                 client={client}
                 pending={activeTab === 'pending'}
+                coachUserId={coachUserId}
                 onAccept={handleAccept}
                 onDecline={handleDecline}
               />

@@ -7,7 +7,7 @@ function roleToDashboardPath(role: string | null | undefined) {
       return "/athlete/dashboard";
     case "coach":
       return "/coach/dashboard";
-    // "consultant" UI is stored as wellness_professional in auth/profile
+
     case "wellness_professional":
     case "consultant":
       return "/consultant/dashboard";
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password } = body;
 
-    // Validate input
+
     if (!email || !password) {
       return NextResponse.json(
         {
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate email format
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate password length
+    
     if (password.length < 6) {
       return NextResponse.json(
         {
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call service
+    
     const result = await login({ email, password });
 
     if (!result.ok) {
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     const role = (result.data.user.user_metadata?.role as string | undefined) ?? null;
     const dashboardPath = roleToDashboardPath(role);
 
-    // Success response
+
     return NextResponse.json(
       {
         ok: true,

@@ -53,7 +53,7 @@ export function Navbar() {
             <p className="text-xs text-gray-500 mt-1 capitalize">{role}</p>
           </div>
 
-          {/* Avatar + Dropdown */}
+         
           <div className="relative" ref={ref}>
             <button
               onClick={() => setOpen(!open)}
@@ -64,14 +64,22 @@ export function Navbar() {
 
             {open && (
               <div className="absolute right-0 top-12 w-82 bg-white border border-gray-100 rounded-2xl shadow-lg py-2 z-50">
-                {/* User info inside dropdown */}
+           
                 <div className="px-4 py-5 border-b border-gray-100 mb-1">
                   <p className="text-sm font-bold text-gray-900 capitalize">{fullName}</p>
                   <p className="text-xs text-gray-400 capitalize">{role}</p>
                 </div>
 
                 <button
-                  onClick={() => { setOpen(false); router.push("/dashboard/profile"); }}
+                  onClick={() => {
+                    setOpen(false);
+                    const roleRouteMap: Record<string, string> = {
+                      athlete: "/athlete/profile",
+                      coach: "/coach/profile",
+                      wellness_professional: "/consultant/profile",
+                    };
+                    router.push(roleRouteMap[profile?.role ?? ""] ?? "/athlete/profile");
+                  }}
                   className="w-full flex items-center gap-3 px-4 py-5 text-sm text-gray-700 hover:bg-gray-50 font-medium"
                 >
                   <User className="w-4 h-4 text-gray-400" />

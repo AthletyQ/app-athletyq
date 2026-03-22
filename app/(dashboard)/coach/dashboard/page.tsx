@@ -1,14 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import {
-  Users, User, Video, TrendingUp, DollarSign, Calendar, CheckCircle,
+  Users, User, Video, TrendingUp, DollarSign, Calendar,
+  CheckCircle, PhoneCall,
 } from 'lucide-react'
 import { createClient } from '@supabase/supabase-js'
 import {
   getCoachProfile, getDashboardStats,
   getDashboardSessions, getDashboardMessages,
 } from '@/services/api'
+import { VideoCall } from '@/components/dashboard/VideoCall'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,6 +21,8 @@ const supabase = createClient(
 function initials(name: string) {
   return name.split(' ').filter(Boolean).map((n) => n[0]).join('')
 }
+
+
 
 function ProfileCard({ profile }: { profile: any }) {
   if (!profile) return null
@@ -42,9 +47,6 @@ function ProfileCard({ profile }: { profile: any }) {
             <TrendingUp className="w-3 h-3" />
             {profile.sport?.toUpperCase() ?? 'GENERAL'}
           </span>
-          {profile.specialization && (
-            <span className="text-xs text-gray-500">{profile.specialization}</span>
-          )}
         </div>
         <div className="flex items-center gap-6">
           <div>
@@ -74,11 +76,14 @@ function ProfileCard({ profile }: { profile: any }) {
   )
 }
 
+
+
 function StatCards({ stats }: { stats: any }) {
   const STATS = [
     {
       label:    'Total Clients',
       value:    String(stats?.totalClients ?? '—'),
+     
       sub:      stats?.pendingClients > 0 ? `+${stats.pendingClients} pending` : 'No pending clients',
       subColor: stats?.pendingClients > 0 ? 'text-blue-500' : 'text-gray-400',
       icon:     Users,
@@ -123,20 +128,35 @@ function StatCards({ stats }: { stats: any }) {
   )
 }
 
-function UpcomingSessions({ sessions }: { sessions: any[] }) {
+
+
+function UpcomingSessions({
+  sessions,
+  onJoin,
+  onViewAll,
+}: {
+  sessions:  any[]
+  onJoin:    (sessionId: string, duration: string) => void
+  onViewAll: () => void
+}) {
   if (!sessions.length) {
     return (
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5">
-        <h2 className="font-bold text-gray-900 text-base mb-4">Upcoming Sessions</h2>
-        <p className="text-sm text-gray-400 text-center py-6">No upcoming sessions</p>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-gray-900 text-base">Upcoming Sessions</h2>
+          <button onClick={onViewAll} className="text-sm text-blue-600 font-medium hover:text-blue-700">View All</button>
+        </div>
+        <p className="text-sm text-gray-400 text-center py-6">No upcoming sessions today or tomorrow</p>
       </div>
     )
   }
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-bold text-gray-900 text-base">Upcoming Sessions</h2>
-        <button className="text-sm text-blue-600 font-medium hover:text-blue-700">View All</button>
+        
+        <button onClick={onViewAll} className="text-sm text-blue-600 font-medium hover:text-blue-700">View All</button>
       </div>
       <div className="space-y-3">
         {sessions.map((s) => (
@@ -152,9 +172,13 @@ function UpcomingSessions({ sessions }: { sessions: any[] }) {
               <p className="text-sm text-gray-700 font-medium">{s.time}</p>
               <p className="text-xs text-gray-400">{s.duration}</p>
             </div>
+            
             {s.mode === 'Online' && s.status === 'confirmed' && (
-              <button className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 flex-shrink-0">
-                Join
+              <button
+                onClick={() => onJoin(s.id, s.duration)}
+                className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 flex items-center gap-1.5 flex-shrink-0"
+              >
+                <PhoneCall className="w-3 h-3" /> Join
               </button>
             )}
             {s.status === 'pending' && (
@@ -168,6 +192,7 @@ function UpcomingSessions({ sessions }: { sessions: any[] }) {
     </div>
   )
 }
+
 
 function EarningsSummary({ earnings }: { earnings: string }) {
   return (
@@ -187,20 +212,26 @@ function EarningsSummary({ earnings }: { earnings: string }) {
   )
 }
 
-function NewMessages({ messages }: { messages: any[] }) {
+
+
+function NewMessages({ messages, onViewAll }: { messages: any[]; onViewAll: () => void }) {
+  
+  const totalUnread = messages.reduce((sum, m) => sum + (m.unreadCount ?? 1), 0)
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-bold text-gray-900 text-base">New Messages</h2>
+        
         <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">
-          {messages.length}
+          {totalUnread > 9 ? '9+' : totalUnread}
         </span>
       </div>
       {messages.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-4">No new messages</p>
       ) : (
         <div className="space-y-3 mb-4">
-          {messages.map(({ id, name, time, text, color }) => (
+          {messages.map(({ id, name, time, text, color, unreadCount }) => (
             <div key={id} className="flex gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer">
               <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${color}`}>
                 {initials(name)}
@@ -208,20 +239,34 @@ function NewMessages({ messages }: { messages: any[] }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-0.5">
                   <p className="text-sm font-semibold text-gray-900">{name}</p>
-                  <p className="text-xs text-gray-400 flex-shrink-0 ml-2">{time}</p>
+                  <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                    <p className="text-xs text-gray-400">{time}</p>
+                   
+                    {unreadCount > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 line-clamp-2">{text}</p>
+                <p className="text-xs text-gray-500 truncate">{text}</p>
               </div>
             </div>
           ))}
         </div>
       )}
-      <button className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 font-medium hover:bg-gray-50">
+   
+      <button
+        onClick={onViewAll}
+        className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 font-medium hover:bg-gray-50"
+      >
         View All Messages
       </button>
     </div>
   )
 }
+
+
 
 function AthleteActivity() {
   return (
@@ -235,13 +280,19 @@ function AthleteActivity() {
   )
 }
 
+
+
 export default function DashboardPage() {
-  const [profile,  setProfile]  = useState<any>(null)
-  const [stats,    setStats]    = useState<any>(null)
-  const [sessions, setSessions] = useState<any[]>([])
-  const [messages, setMessages] = useState<any[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [error,    setError]    = useState<string | null>(null)
+  const router = useRouter()
+
+  const [profile,    setProfile]    = useState<any>(null)
+  const [stats,      setStats]      = useState<any>(null)
+  const [sessions,   setSessions]   = useState<any[]>([])
+  const [messages,   setMessages]   = useState<any[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState<string | null>(null)
+  const [activeCall, setActiveCall] = useState<{ sessionId: string; durationMinutes: number } | null>(null)
+  const [coachId,    setCoachId]    = useState<string>('')
 
   useEffect(() => {
     async function load() {
@@ -252,6 +303,8 @@ export default function DashboardPage() {
         const profileData = await getCoachProfile(user.id)
         if (!profileData || profileData.error) { setError('No coach profile found.'); setLoading(false); return }
 
+        setCoachId(profileData.id)
+
         const [statsResult, sessionsResult, messagesResult] = await Promise.allSettled([
           getDashboardStats(profileData.id),
           getDashboardSessions(profileData.id),
@@ -259,9 +312,9 @@ export default function DashboardPage() {
         ])
 
         setProfile(profileData)
-        setStats(   statsResult.status    === 'fulfilled' ? statsResult.value    : null)
-        setSessions(sessionsResult.status === 'fulfilled' ? sessionsResult.value : [])
-        setMessages(messagesResult.status === 'fulfilled' ? messagesResult.value : [])
+        setStats(    statsResult.status    === 'fulfilled' ? statsResult.value    : null)
+        setSessions( sessionsResult.status === 'fulfilled' ? sessionsResult.value : [])
+        setMessages( messagesResult.status === 'fulfilled' ? messagesResult.value : [])
       } catch (err: any) {
         setError(err.message ?? 'Something went wrong.')
       } finally {
@@ -270,6 +323,31 @@ export default function DashboardPage() {
     }
     load()
   }, [])
+
+
+  function handleJoin(sessionId: string, durationStr: string) {
+    const durationMinutes = parseInt(durationStr) || 60
+    setActiveCall({ sessionId, durationMinutes })
+  }
+
+  async function handleCallEnd(durationSeconds: number) {
+    if (!activeCall) return
+    const requiredSeconds = activeCall.durationMinutes * 60 * 0.8
+    try {
+      const res  = await fetch(`/api/sessions/${activeCall.sessionId}/complete`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ coachId, durationSeconds, requiredSeconds }),
+      })
+      const data = await res.json()
+      if (data.completed) {
+        setSessions(prev => prev.filter(s => s.id !== activeCall.sessionId))
+      }
+    } catch (err) {
+      console.error('Call end error:', err)
+    }
+    setActiveCall(null)
+  }
 
   if (loading) return (
     <div className="flex items-center justify-center h-full bg-gray-50">
@@ -294,6 +372,18 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
+
+      
+      {activeCall && (
+        <VideoCall
+          sessionId={activeCall.sessionId}
+          coachId={coachId}
+          durationMinutes={activeCall.durationMinutes}
+          onEnd={handleCallEnd}
+          onClose={() => setActiveCall(null)}
+        />
+      )}
+
       <main className="flex-1 p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
@@ -301,15 +391,24 @@ export default function DashboardPage() {
             Welcome <span className="font-semibold text-gray-700">{profile?.fullName ?? 'Coach'}</span>! Here's what's happening with your coaching today.
           </p>
         </div>
+
         <ProfileCard profile={profile} />
         <StatCards   stats={stats} />
+
         <div className="grid grid-cols-3 gap-5">
           <div className="col-span-2">
-            <UpcomingSessions sessions={sessions} />
-            <EarningsSummary  earnings={stats?.monthlyEarnings ?? '—'} />
+            <UpcomingSessions
+              sessions={sessions}
+              onJoin={handleJoin}
+              onViewAll={() => router.push('/coach/bookedsessions')}  
+            />
+            <EarningsSummary earnings={stats?.monthlyEarnings ?? '—'} />
           </div>
           <div className="col-span-1">
-            <NewMessages    messages={messages} />
+            <NewMessages
+              messages={messages}
+              onViewAll={() => router.push('/coach/chat')}  
+            />
             <AthleteActivity />
           </div>
         </div>

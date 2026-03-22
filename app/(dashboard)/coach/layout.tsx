@@ -1,24 +1,20 @@
-'use client'
+import { Sidebar } from "@/components/dashboard/CoachSidebar";
+import { Navbar } from "@/components/dashboard/Navbar";
 
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { Sidebar } from '@/components/dashboard/CoachSidebar'
-import { CoachTopbar } from '@/components/dashboard/CoachTopbar'
-
-export default function CoachLayout({ children }: { children: React.ReactNode }) {
+export default function CoachLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <SidebarProvider
-      style={{ "--sidebar-background": "hsl(221 83% 53%)" } as React.CSSProperties}
-    >
-      <div id="main-layout-wrapper" className="min-h-screen flex w-full">
-        <Sidebar />
-        <SidebarInset className="flex flex-col flex-1 h-screen overflow-hidden">
-          {/* ✅ Global topbar — appears on all coach pages */}
-          <CoachTopbar />
-          <main className="flex-1 bg-gray-50 overflow-y-auto">
-            {children}
-          </main>
-        </SidebarInset>
+    <div className="flex h-screen overflow-hidden bg-gray-50 antialiased text-gray-900 w-full">
+      <Sidebar />
+      <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-hidden flex flex-col">
+          {children}
+        </main>
       </div>
-    </SidebarProvider>
-  )
+    </div>
+  );
 }

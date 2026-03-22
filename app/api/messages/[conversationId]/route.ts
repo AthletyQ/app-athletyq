@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   if (!coachId) return NextResponse.json({ error: 'coachId required' }, { status: 400 })
 
-  // ✅ removed .eq('is_archived', false) — some rows may have null
+
   const { data: convData, error: convError } = await supabase
     .from('conversations')
     .select(`
@@ -45,14 +45,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([])
   }
 
-  // get partner ids
+
   const partnerIds = convData.map((c: any) =>
     c.athlete_id === coachId ? c.contact_id : c.athlete_id
   ).filter(Boolean)
 
   console.log('partnerIds:', partnerIds)
 
-  // fetch partner profiles
+
   const { data: profilesData, error: profilesError } = await supabase
     .from('profiles')
     .select('id, first_name, last_name, profile_image_url')
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     (profilesData ?? []).map((p: any) => [p.id, p])
   )
 
-  // fetch latest messages
+
   const convIds = convData.map((c: any) => c.id)
   const { data: messagesData } = await supabase
     .from('messages')

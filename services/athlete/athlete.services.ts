@@ -3,16 +3,12 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { AthleteProfile, ServiceResponse } from "@/types/database.types";
 import { createClient } from "@supabase/supabase-js";
 
-/**
- * Ensures an entry exists in the 'athletes' table for the specified user ID.
- * Uses the admin client to bypass RLS, allowing Coaches and Consultants to also have 
- * an athlete record required for booking sessions.
- */
+
 export async function ensureAthleteProfile(userId: string): Promise<ServiceResponse<void>> {
   try {
     const supabaseAdmin = getSupabaseAdmin();
 
-    // 0. Ensure profile exists first (Foreign Key requirement)
+
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("id, role, first_name, last_name, email")
@@ -20,7 +16,7 @@ export async function ensureAthleteProfile(userId: string): Promise<ServiceRespo
       .single();
 
     if (profileError) {
-      // If profile doesn't exist, we must create it from auth metadata
+     
       const { data: { user }, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
       if (authError || !user) return { data: null, error: "User not found in auth" };
 
@@ -36,15 +32,15 @@ export async function ensureAthleteProfile(userId: string): Promise<ServiceRespo
       if (insertProfileError) return { data: null, error: insertProfileError.message };
     }
 
-    // 1. Check if athlete record already exists
+
     const { data: existing, error: checkError } = await supabaseAdmin
       .from("athletes")
       .select("user_id")
       .eq("user_id", userId)
       .single();
 
-    if (checkError && checkError.code === "PGRST116") { // PGRST116 = no rows returned
-      // Create a basic athlete entry
+    if (checkError && checkError.code === "PGRST116") { 
+   
       const { error: insertError } = await supabaseAdmin
         .from("athletes")
         .insert({ user_id: userId });
@@ -78,7 +74,6 @@ export async function getAthleteProfile(): Promise<ServiceResponse<AthleteProfil
           return { data: null, error: "Not authenticated" };
         }
 
-        // Step 2: Fetch profile row
        const { data: profile, error: profileError } = await supabaseAdmin
           .from("profiles")
           .select("*")
@@ -108,7 +103,7 @@ export async function getAthleteProfile(): Promise<ServiceResponse<AthleteProfil
       .single();
 
       if (athleteError) {
-      // athlete row might not exist yet (onboarding incomplete) — return profile only
+
       return {
         data: {
           ...profile,
@@ -124,9 +119,9 @@ export async function getAthleteProfile(): Promise<ServiceResponse<AthleteProfil
         };
       }
 
-      // Step 4: Merge into AthleteProfile
+
     const athleteProfile: AthleteProfile = {
-      // profile fields
+
       id: profile.id,
       email: profile.email,
       role: profile.role,
@@ -136,14 +131,14 @@ export async function getAthleteProfile(): Promise<ServiceResponse<AthleteProfil
       profile_image_url: profile.profile_image_url,
       created_at: profile.created_at,
       updated_at: profile.updated_at,
-      // athlete fields
+
       age: athlete.age,
       height_cm: athlete.height_cm,
       weight_kg: athlete.weight_kg,
       preferred_sport_id: athlete.preferred_sport_id,
       goals: athlete.goals,
       injuries: athlete.injuries,
-      // sport (joined — can be null if no preferred sport set)
+
       sport: Array.isArray(athlete.sport) ? athlete.sport[0] ?? null : athlete.sport ?? null,
     };
 

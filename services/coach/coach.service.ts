@@ -2,18 +2,15 @@ import { supabase } from "@/lib/supabase/client";
 import { Availability, Session, ServiceResponse } from "@/types/database.types";
 
 export const coachService = {
-  /**
-   * Fetches availability for a specific coach and date
-   */
+  
   async getAvailability(
     coachId: string,
     date: Date
   ): Promise<ServiceResponse<{ availableSlots: string[]; bookedSlots: string[] }>> {
     try {
-      const dayOfWeek = date.getDay(); // 0 is Sunday, 6 is Saturday
+      const dayOfWeek = date.getDay(); 
       const dateString = date.toISOString().split("T")[0];
 
-      // 1. Fetch general availability for this day of week OR specific date
       const { data: availabilityData, error: availabilityError } = await supabase
         .from("availability")
         .select("*")
@@ -28,7 +25,7 @@ export const coachService = {
 
       const relevantAvailability = specificDateEntries.length > 0 ? specificDateEntries : dayOfWeekEntries;
 
-      // 2. Fetch existing sessions
+  
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(date);
@@ -44,56 +41,76 @@ export const coachService = {
 
       if (sessionsError) throw sessionsError;
 
-      // 3. Process availability into slots
+
       const allPossibleSlots: string[] = [];
 
       if (relevantAvailability.length === 0) {
-        // --- DYNAMIC FALLBACK LOGIC ---
+   
         let currentHour = 8;
-        // 8 AM to 8 PM for online (20:00)
-        const endHour = 20;
+        let currentMinute = 0;
 
-        while (currentHour < endHour) {
-          allPossibleSlots.push(`${currentHour.toString().padStart(2, '0')}:00`);
-          currentHour++;
+        while (currentHour < 20 || (currentHour === 20 && currentMinute <= 30)) {
+          allPossibleSlots.push(
+            `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
+          );
+          currentMinute += 30;
+          if (currentMinute >= 60) {
+            currentHour++;
+            currentMinute = 0;
+          }
         }
       } else {
         relevantAvailability.forEach((avail: Availability) => {
           let currentHour = parseInt(avail.start_time.split(":")[0]);
+          let currentMinute = parseInt(avail.start_time.split(":")[1] || "0");
           const endHour = parseInt(avail.end_time.split(":")[0]);
-          while (currentHour < endHour) {
-            allPossibleSlots.push(`${currentHour.toString().padStart(2, '0')}:00`);
-            currentHour++;
+          const endMinute = parseInt(avail.end_time.split(":")[1] || "0");
+
+
+          while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
+            if (currentHour > 20 || (currentHour === 20 && currentMinute > 30)) break;
+            
+            allPossibleSlots.push(
+              `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
+            );
+            
+            currentMinute += 30;
+            if (currentMinute >= 60) {
+              currentHour++;
+              currentMinute = 0;
+            }
           }
         });
       }
 
-      // 4. Identify booked and PAST slots
+
       const bookedSlotsSet = new Set<string>();
-      // Add existing bookings from DB, accounting for duration
+
       sessionsData?.forEach((session: { scheduled_at: string; duration_minutes: number }) => {
         const startTime = new Date(session.scheduled_at);
-        const duration = session.duration_minutes || 60;
-        const startHour = startTime.getHours();
-        const slotsCount = Math.ceil(duration / 60);
+        const duration = session.duration_minutes || 30;
+        
+        let current = new Date(startTime);
+        const endTime = new Date(startTime.getTime() + duration * 60000);
 
-        for (let i = 0; i < slotsCount; i++) {
-          const slotHour = startHour + i;
-          if (slotHour < 24) {
-            bookedSlotsSet.add(`${slotHour.toString().padStart(2, '0')}:00`);
-          }
+        while (current < endTime) {
+          const slotStr = `${current.getHours().toString().padStart(2, '0')}:${current.getMinutes().toString().padStart(2, '0')}`;
+          bookedSlotsSet.add(slotStr);
+          current.setMinutes(current.getMinutes() + 30);
         }
       });
 
-      // --- DEACTIVATE PAST SLOTS ---
+
       const now = new Date();
       const isToday = date.toDateString() === now.toDateString();
       if (isToday) {
-        const currentHour = now.getHours();
         allPossibleSlots.forEach(slot => { 
-          const slotHour = parseInt(slot.split(':')[0]);
-          if (slotHour <= currentHour) {
-            bookedSlotsSet.add(slot); // Treat past slots as "booked" (disabled)
+          const [h, m] = slot.split(':').map(Number);
+          const slotTime = new Date(date);
+          slotTime.setHours(h, m, 0, 0);
+          
+          if (slotTime < now) {
+            bookedSlotsSet.add(slot); 
           }
         });
       }
@@ -114,9 +131,6 @@ export const coachService = {
     }
   },
 
-  /**
-   * Books one or more sessions
-   */
   async bookSessions(
     sessions: Partial<Session>[]
   ): Promise<ServiceResponse<Session[]>> {
@@ -139,16 +153,12 @@ export const coachService = {
     }
   },
 
-  /**
-   * Fetches real-time stats for a coach: 
-   * - Count of sessions from start until current time
-   * - Average rating (currently from coaches table as a fallback)
-   */
+
   async getCoachStats(coachId: string): Promise<ServiceResponse<{ totalSessions: number; averageRating: number }>> {
     try {
       const now = new Date().toISOString();
       
-      // 1. Fetch session count (from start to now), excluding cancelled sessions
+
       const { count, error: sessionError } = await supabase
         .from("sessions")
         .select("*", { count: "exact", head: true })
@@ -158,7 +168,7 @@ export const coachService = {
 
       if (sessionError) throw sessionError;
 
-      // 2. Fetch rating from coaches table
+   
       const { data: coachData, error: coachError } = await supabase
         .from("coaches")
         .select("rating")

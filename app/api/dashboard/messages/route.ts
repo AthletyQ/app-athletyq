@@ -11,49 +11,53 @@ export async function GET(request: NextRequest) {
   const coachId = searchParams.get('coachId')
   if (!coachId) return NextResponse.json({ error: 'coachId required' }, { status: 400 })
 
-  // Step 1 — find conversations this coach is part of
+
   const { data: convData, error: convError } = await supabase
     .from('conversations')
-    .select('id')
-    .or(`participant_one_id.eq.${coachId},participant_two_id.eq.${coachId}`)
+    .select('id, unread_count, athlete_id')
+    .eq('contact_id', coachId)         
+    .gt('unread_count', 0)             
     .order('last_message_at', { ascending: false })
-    .limit(10)
+    .limit(5)
 
   if (convError) {
     console.error('Conversations error:', convError.message)
-    return NextResponse.json([], { status: 200 }) // return empty rather than crash
-  }
-
-  if (!convData || convData.length === 0) {
     return NextResponse.json([])
   }
 
+  if (!convData || convData.length === 0) return NextResponse.json([])
+
+  
+  const athleteIds = convData.map((c: any) => c.athlete_id).filter(Boolean)
+
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('id, first_name, last_name')
+    .in('id', athleteIds)
+
+  const profileMap = Object.fromEntries(
+    (profileData ?? []).map((p: any) => [p.id, p])
+  )
+
+  
   const conversationIds = convData.map((c: any) => c.id)
 
-  // Step 2 — get latest message per conversation
-  const { data, error } = await supabase
+  const { data: msgData, error: msgError } = await supabase
     .from('messages')
-    .select(`
-      id,
-      conversation_id,
-      sender_id,
-      content,
-      is_read,
-      created_at,
-      profiles!messages_sender_id_fkey (
-        first_name,
-        last_name
-      )
-    `)
+    .select('id, conversation_id, sender_id, content, is_read, created_at')
     .in('conversation_id', conversationIds)
-    .neq('sender_id', coachId)           // only messages FROM others TO coach
+    .neq('sender_id', coachId)          
+    .eq('is_read', false)              
     .order('created_at', { ascending: false })
-    .limit(5)
 
-  if (error) {
-    console.error('Messages error:', error.message)
+  if (msgError) {
+    console.error('Messages error:', msgError.message)
     return NextResponse.json([])
   }
+
+  
+  const seenConvs = new Set<string>()
+  const messages: any[] = []
 
   const COLORS = [
     'bg-purple-100 text-purple-700',
@@ -62,25 +66,33 @@ export async function GET(request: NextRequest) {
     'bg-blue-100 text-blue-700',
   ]
 
-  const messages = (data ?? []).map((m: any, i: number) => {
-    const profile   = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
+  for (const m of (msgData ?? [])) {
+    if (seenConvs.has(m.conversation_id)) continue
+    seenConvs.add(m.conversation_id)
+
+    const conv      = convData.find((c: any) => c.id === m.conversation_id)
+    const profile   = profileMap[conv?.athlete_id]
     const firstName = profile?.first_name ?? ''
     const lastName  = profile?.last_name  ?? ''
-    const diff      = Math.floor((Date.now() - new Date(m.created_at).getTime()) / 60000)
-    const timeAgo   = diff < 1    ? 'Just now'
-                    : diff < 60   ? `${diff} min ago`
-                    : diff < 1440 ? `${Math.floor(diff / 60)} hour ago`
-                    : 'Yesterday'
 
-    return {
-      id:    m.id,
-      name:  `${firstName} ${lastName}`.trim() || 'Unknown',
-      time:  timeAgo,
-      text:  m.content ?? '',
-      color: COLORS[i % COLORS.length],
-      unread: m.is_read === false,
-    }
-  })
+    const diff    = Math.floor((Date.now() - new Date(m.created_at).getTime()) / 60000)
+    const timeAgo = diff < 1    ? 'Just now'
+                  : diff < 60   ? `${diff}m ago`
+                  : diff < 1440 ? `${Math.floor(diff / 60)}h ago`
+                  : 'Yesterday'
+
+    messages.push({
+      id:         m.id,
+      name:       `${firstName} ${lastName}`.trim() || 'Unknown',
+      time:       timeAgo,
+      text:       m.content ?? '',
+      color:      COLORS[messages.length % COLORS.length],
+      unread:     true,
+      unreadCount: conv?.unread_count ?? 1,
+    })
+
+    if (messages.length >= 5) break
+  }
 
   return NextResponse.json(messages)
 }

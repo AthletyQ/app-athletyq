@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // ✅ safely handle array or object from join
+
   const profile   = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles
   const sport     = Array.isArray(data.sports)   ? data.sports[0]   : data.sports
   const firstName = profile?.first_name ?? ''

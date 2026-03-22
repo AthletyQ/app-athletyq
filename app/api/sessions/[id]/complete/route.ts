@@ -23,7 +23,6 @@ export async function POST(
     return NextResponse.json({ error: 'Session not found' }, { status: 404 })
   }
 
-  // ✅ auto-complete only if attended 80%+ of scheduled duration
   const attendedPct = (durationSeconds / requiredSeconds) * 100
   if (attendedPct < 80) {
     return NextResponse.json({ completed: false, reason: 'insufficient_attendance', attendedPct })
@@ -44,7 +43,7 @@ export async function POST(
 
   const sport = Array.isArray(session.sports) ? session.sports[0] : session.sports
 
-  // Notify athlete
+
   await supabase.from('notifications').insert({
     user_id:     session.athlete_id,
     type:        'session_completed',
@@ -58,7 +57,7 @@ export async function POST(
     sent_push:   false,
   })
 
-  // Save call record to notifications table as call history
+
   await supabase.from('notifications').insert({
     user_id:     coachId,
     type:        'call_completed',

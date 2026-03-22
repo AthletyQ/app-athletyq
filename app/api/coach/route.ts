@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase/client";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
 
-  const sportId      = searchParams.get("sport");       // sports.id (integer)
+  const sportId      = searchParams.get("sport");      
   const search       = searchParams.get("search");
   const minPrice     = searchParams.get("minPrice");
   const maxPrice     = searchParams.get("maxPrice");
@@ -45,19 +45,19 @@ export async function GET(request: NextRequest) {
     )
     .range(from, to);
 
-  // Filter by sport id
+
   if (sportId) {
     query = query.eq("coaching_sport_id", parseInt(sportId));
   }
 
-  // Filter by hourly rate
+
   if (minPrice) query = query.gte("hourly_rate", parseFloat(minPrice));
   if (maxPrice) query = query.lte("hourly_rate", parseFloat(maxPrice));
 
-  // Filter by availability
+
   query = query.eq("is_available", true);
 
-  // Search by bio or specialization
+
   if (search) {
     query = query.or(`bio.ilike.%${search}%,specialization.ilike.%${search}%`);
   }
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  // Client-side name search fallback
+
   const filtered = search
     ? coaches.filter((c) =>
         `${c.firstName} ${c.lastName}`.toLowerCase().includes(search.toLowerCase())

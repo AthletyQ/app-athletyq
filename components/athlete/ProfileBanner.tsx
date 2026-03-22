@@ -33,12 +33,12 @@ export function ProfileBanner() {
 
     return (
         <div className="relative h-48 md:h-60 bg-white rounded-2xl w-full shadow-sm border border-gray-100 p-6 md:p-8 flex items-center justify-between overflow-hidden group">
-            {/* Background Accent */}
+            
             <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-blue-50/50 to-transparent pointer-events-none" />
             <div className="absolute bottom-0 left-1/4 w-32 h-32 bg-blue-100/20 blur-3xl rounded-full" />
 
             <div className="flex items-center relative z-10 w-full">
-                {/* Avatar */}
+               
                 <div className="relative w-28 h-28 md:w-36 md:h-36 mr-6 md:mr-10 flex-shrink-0">
                     <div className="w-full h-full rounded-full border-4 border-white shadow-lg bg-gray-100 flex items-center justify-center overflow-hidden">
                         {profile.profile_image_url ? (
@@ -52,11 +52,11 @@ export function ProfileBanner() {
                             <User className="w-1/2 h-1/2 text-gray-400" />
                         )}
                     </div>
-                    {/* Status Indicator */}
+                    
                     <div className="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-2 border-white rounded-full" />
                 </div>
 
-                {/* Info */}
+              
                 <div className="flex-grow">
                     <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight mb-2">
                         {profile.first_name} {profile.last_name}
@@ -90,7 +90,7 @@ export function ProfileBanner() {
                 </div>
             </div>
 
-            {/* Decorative Element */}
+           
             <div className="hidden lg:flex flex-col items-end justify-center h-full gap-2 relative z-10">
                 <div className="px-4 py-2 bg-gray-900 rounded-xl text-white shadow-xl flex items-center gap-2 transform transition hover:scale-105 cursor-default">
                     <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />

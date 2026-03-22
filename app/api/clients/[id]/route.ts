@@ -6,13 +6,15 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+
+
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }  // ← Promise type
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params                        // ← await params
+  const { id }     = await params
   const { action } = await request.json()
-  const newStatus = action === 'accept' ? 'confirmed' : 'cancelled'
+  const newStatus  = action === 'accept' ? 'confirmed' : 'cancelled'
 
   const { error } = await supabase
     .from('sessions')

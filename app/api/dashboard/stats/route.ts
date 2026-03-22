@@ -13,53 +13,53 @@ export async function GET(request: NextRequest) {
 
   const now = new Date()
 
-  // ✅ Monday-based week
-  const dayOfWeek = now.getDay()
+ 
+  const dayOfWeek = now.getUTCDay()
   const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
 
   const weekStart = new Date(now)
-  weekStart.setDate(now.getDate() + diffToMon)
-  weekStart.setHours(0, 0, 0, 0)
+  weekStart.setUTCDate(now.getUTCDate() + diffToMon)
+  weekStart.setUTCHours(0, 0, 0, 0)
 
   const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekStart.getDate() + 7)
-  weekEnd.setHours(0, 0, 0, 0)
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
+  weekEnd.setUTCHours(23, 59, 59, 999)
 
   const todayStart = new Date(now)
-  todayStart.setHours(0, 0, 0, 0)
+  todayStart.setUTCHours(0, 0, 0, 0)
   const todayEnd = new Date(now)
-  todayEnd.setHours(23, 59, 59, 999)
+  todayEnd.setUTCHours(23, 59, 59, 999)
 
-  const monthStart     = new Date(now.getFullYear(), now.getMonth(), 1)
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const lastMonthEnd   = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)
+  const monthStart     = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  const lastMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
+  const lastMonthEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999))
 
   const [
     { data: confirmedSessions },
     { count: sessionsThisWeek },
     { count: sessionsToday },
-    { data: pendingSessions },       // ✅ fetch all pending to deduplicate
+    { data: pendingSessions },
     { data: thisMonthPayments },
     { data: lastMonthPayments },
   ] = await Promise.all([
 
-    // unique confirmed clients
+   
     supabase
       .from('sessions')
       .select('athlete_id')
       .eq('provider_id', coachId)
       .eq('status', 'confirmed'),
 
-    // confirmed sessions this week
+ 
     supabase
       .from('sessions')
       .select('*', { count: 'exact', head: true })
       .eq('provider_id', coachId)
       .eq('status', 'confirmed')
       .gte('scheduled_at', weekStart.toISOString())
-      .lt('scheduled_at',  weekEnd.toISOString()),
+      .lte('scheduled_at', weekEnd.toISOString()),
 
-    // confirmed sessions today
+    
     supabase
       .from('sessions')
       .select('*', { count: 'exact', head: true })
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       .gte('scheduled_at', todayStart.toISOString())
       .lte('scheduled_at', todayEnd.toISOString()),
 
-    // ✅ fetch pending sessions with athlete_id to deduplicate
+   
     supabase
       .from('sessions')
       .select('athlete_id')
@@ -89,15 +89,18 @@ export async function GET(request: NextRequest) {
       .lte('created_at', lastMonthEnd.toISOString()),
   ])
 
-  // ✅ deduplicate confirmed athletes
-  const uniqueConfirmed = new Set(
+
+  const confirmedAthleteIds = new Set(
     (confirmedSessions ?? []).map((s: any) => s.athlete_id)
   )
 
-  // ✅ deduplicate pending athletes
-  const uniquePending = new Set(
+
+  const pendingAthleteIds = new Set(
     (pendingSessions ?? []).map((s: any) => s.athlete_id)
   )
+  const trueNewPendingCount = [...pendingAthleteIds].filter(
+    (id) => !confirmedAthleteIds.has(id)
+  ).length
 
   const thisMonthTotal = (thisMonthPayments ?? []).reduce(
     (sum: number, p: any) => sum + (p.amount ?? 0), 0
@@ -120,12 +123,12 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    totalClients:       uniqueConfirmed.size,
-    sessionsThisWeek:   sessionsThisWeek  ?? 0,
+    totalClients:       confirmedAthleteIds.size,
+    sessionsThisWeek:   sessionsThisWeek ?? 0,
     monthlyEarnings:    `$${thisMonthTotal.toLocaleString()}`,
     clientSatisfaction: '4.9',
-    pendingClients:     uniquePending.size,   // ✅ unique athletes not session count
-    sessionsToday:      sessionsToday     ?? 0,
+    pendingClients:     trueNewPendingCount,  
+    sessionsToday:      sessionsToday ?? 0,
     earningsChange,
   })
 }

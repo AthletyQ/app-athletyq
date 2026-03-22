@@ -61,21 +61,7 @@ export default function CoachFiltersBar({ filters, onChange }: Props) {
         options={sports.map((s) => ({ label: s.name, value: String(s.id) }))}
         onChange={(v) => update("sport", v)}
       />
-      {/* <FilterSelect
-        label="Price Range"
-        value={filters.minPrice ? `${filters.minPrice}-${filters.maxPrice}` : undefined}
-        options={[
-          { label: "Under $50",    value: "0-50"      },
-          { label: "$50 - $100",   value: "50-100"    },
-          { label: "$100 - $150",  value: "100-150"   },
-          { label: "$150+",        value: "150-99999" },
-        ]}
-        onChange={(v) => {
-          if (!v) { const { minPrice, maxPrice, ...rest } = filters; onChange(rest); return; }
-          const [min, max] = v.split("-");
-          onChange({ ...filters, minPrice: parseInt(min), maxPrice: parseInt(max) });
-        }}
-      /> */}
+      
       <button
         onClick={() => onChange({})}
         className={`p-2 rounded-lg border transition-colors ${
