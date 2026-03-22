@@ -328,14 +328,27 @@ export default function ConsultantChatsClient() {
   useEffect(() => {
     if (!activeConv) return
     msgChannelRef.current?.unsubscribe()
-    msgChannelRef.current = supabase.channel(`consultant-msgs-${activeConv.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeConv.id}` },
-        (payload) => {
-          const msg = payload.new as Message
-          setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
-          if (currentUserId && msg.sender_id !== currentUserId) markAsRead(activeConv.id, currentUserId)
-        })
-      .subscribe()
+    msgChannelRef.current = supabase
+  .channel(`...-msgs-${activeConv.id}`)
+  .on('postgres_changes', {
+    event: 'INSERT', schema: 'public',
+    table: 'messages', filter: `conversation_id=eq.${activeConv.id}`,
+  }, (payload) => {
+    const msg = payload.new as Message
+    setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
+    if (currentUserId && msg.sender_id !== currentUserId) markAsRead(activeConv.id, currentUserId)
+  })
+  // ── Listen for is_read updates (tick updates) ──
+  .on('postgres_changes', {
+    event: 'UPDATE', schema: 'public',
+    table: 'messages', filter: `conversation_id=eq.${activeConv.id}`,
+  }, (payload) => {
+    const updated = payload.new as Message
+    setMessages((prev) =>
+      prev.map((m) => m.id === updated.id ? { ...m, is_read: updated.is_read } : m)
+    )
+  })
+  .subscribe()
     return () => { msgChannelRef.current?.unsubscribe() }
   }, [activeConv, currentUserId, markAsRead])
 

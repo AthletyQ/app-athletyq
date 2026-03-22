@@ -1,37 +1,30 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { RealtimeChannel } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase/client'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { createClient, RealtimeChannel } from '@supabase/supabase-js'
 import {
-  Star, MoreVertical, Paperclip, Smile, Send,
-  Loader2, MessageSquare, ArrowLeft, Search, Trash2, X,
-  FileText, Film,
+  Send, Search, MessageSquare, Loader2, ArrowLeft,
+  MoreVertical, Trash2, X,
 } from 'lucide-react'
 import { MessageTicks } from '@/components/chat/MessageTicks'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+)
 
 interface Profile { first_name: string; last_name: string }
-
 interface Conversation {
   id: string; athlete_id: string; contact_id: string
   last_message: string | null; last_message_at: string | null
   unread_count: number; contact_unread_count: number; athlete: Profile | null
 }
-
 interface Message {
   id: string; conversation_id: string; sender_id: string
   content: string; created_at: string; is_read: boolean
-  attachment_url?: string | null; attachment_name?: string | null; attachment_type?: string | null
 }
 
-interface PendingFile { file: File; previewUrl: string | null }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const AVATAR_COLORS = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EC4899','#6366F1']
+const AVATAR_COLORS = ['#6366F1','#8B5CF6','#0EA5E9','#10B981','#F59E0B','#EC4899']
 function avatarColor(id: string) { return AVATAR_COLORS[id.charCodeAt(0) % AVATAR_COLORS.length] }
 function initials(p: Profile | null) { if (!p) return '?'; return `${p.first_name?.[0]??''}${p.last_name?.[0]??''}`.toUpperCase() }
 function fullName(p: Profile | null) { if (!p) return 'Unknown'; return `${p.first_name} ${p.last_name}`.trim() }
@@ -41,98 +34,6 @@ function formatTime(iso: string | null) {
   return d.toDateString() === now.toDateString()
     ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : d.toLocaleDateString([], { month: 'short', day: 'numeric' })
-}
-
-const STARRED_KEY = 'athletyq_consultant_starred_convs'
-function loadStarred(): Set<string> {
-  try { const r = localStorage.getItem(STARRED_KEY); return r ? new Set(JSON.parse(r)) : new Set() } catch { return new Set() }
-}
-function saveStarred(s: Set<string>) {
-  try { localStorage.setItem(STARRED_KEY, JSON.stringify([...s])) } catch {}
-}
-
-// ─── Full Emoji Set ───────────────────────────────────────────────────────────
-
-const EMOJI_CATEGORIES: Record<string, string[]> = {
-  '😀': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','💫','🤯','🤠','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'],
-  '👋': ['👋','🤚','🖐','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','🧠','🦷','🦴','👀','👁','👅','👄','🫦','👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵'],
-  '❤️': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','💕','💞','💓','💗','💖','💘','💝','💟','♥️','💋','💌','💤','💢','💬','💭','💯'],
-  '🎉': ['🎉','🎊','🎈','🎁','🎀','🎗','🎟','🎫','🏆','🥇','🥈','🥉','🏅','🎖','🏵','🎪','🤹','🎭','🎨','🎬','🎤','🎧','🎼','🎵','🎶','🎷','🪗','🎸','🎹','🎺','🎻','🪘','🥁','🎯','🎱','🎮','🕹','🎲','♟','🎰','🧩','🪀','🪁'],
-  '🌍': ['🌍','🌎','🌏','🌐','🗺','🧭','🏔','⛰','🌋','🗻','🏕','🏖','🏜','🏝','🏞','🏟','🏛','🏗','🧱','🛖','🏘','🏚','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩','🕋','⛲','⛺','🌁','🌃','🏙','🌄','🌅','🌆','🌇','🌉','🌌','🌠','🎇','🎆','🌈','⚡','❄️','☃️','⛄','🔥','💧','🌊'],
-  '🐶': ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐒','🦆','🐧','🐦','🐤','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷','🦂','🐢','🐍','🦎','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐕‍🦺','🐈','🐈‍⬛','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿','🦔'],
-  '🍎': ['🍎','🍊','🍋','🍇','🍓','🫐','🍈','🍑','🍒','🍌','🍉','🥭','🍍','🥝','🍅','🫒','🥥','🥑','🍆','🥔','🥕','🌽','🌶','🫑','🥒','🥬','🥦','🧄','🧅','🍄','🥜','🌰','🍞','🥐','🥖','🫓','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🌮','🌯','🥙','🧆','🍜','🍝','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥮','🍡','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🍯','🧃','🥤','🧋','☕','🍵','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧉','🍾'],
-  '✈️': ['✈️','🚀','🛸','🚁','🛶','⛵','🚤','🛥','🛳','🚢','🚂','🚃','🚄','🚅','🚆','🚇','🚈','🚉','🚊','🚝','🚞','🚋','🚌','🚍','🚎','🏎','🚐','🚑','🚒','🚓','🚔','🚕','🚖','🚗','🚘','🚙','🛻','🚚','🚛','🚜','🏍','🛵','🚲','🛴','🛹','🛼','⛽','🚨','🚥','🚦','🚧','⚓','🛟','🪂','💺','🚟','🚠','🚡'],
-  '💡': ['⌚','📱','📲','💻','⌨️','🖥','🖨','🖱','🖲','🕹','🗜','💾','💿','📀','📼','📷','📸','📹','🎥','📽','🎞','📞','☎️','📟','📠','📺','📻','🧭','⏱','⏲','⏰','🕰','⌛','⏳','📡','🔋','🪫','🔌','💡','🔦','🕯','🪔','🧯','💰','💴','💵','💶','💷','💸','💳','🪙','💹','📈','📉','📊','📋','🗒','🗓','📆','📅','🗑','📁','📂','🗂','📄','📃','📑','🧾','📌','📍','📎','🖇','📏','📐','✂️','🔍','🔎','🔏','🔐','🔒','🔓'],
-}
-
-function EmojiPicker({ onSelect, onClose }: { onSelect: (e: string) => void; onClose: () => void }) {
-  const [tab, setTab] = useState('😀')
-  const ref           = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    function handler(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) onClose() }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [onClose])
-  return (
-    <div ref={ref} className="absolute bottom-14 left-0 z-30 w-80 bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
-      <div className="flex border-b border-gray-100 px-1 pt-1.5 gap-0.5 overflow-x-auto">
-        {Object.keys(EMOJI_CATEGORIES).map((cat) => (
-          <button key={cat} onClick={() => setTab(cat)}
-            className={`flex-shrink-0 px-2 py-1.5 text-base rounded-lg transition-colors ${tab === cat ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-            {cat}
-          </button>
-        ))}
-      </div>
-      <div className="p-2 grid grid-cols-9 gap-0.5 max-h-52 overflow-y-auto">
-        {EMOJI_CATEGORIES[tab].map((emoji, i) => (
-          <button key={`${emoji}-${i}`} onClick={() => onSelect(emoji)}
-            className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 rounded-lg transition-colors">
-            {emoji}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function AttachmentBubble({ url, name, type, isMine }: { url: string; name: string; type: string; isMine: boolean }) {
-  if (type.startsWith('image/')) return (
-    <a href={url} target="_blank" rel="noreferrer" className="block mt-1 max-w-[200px]">
-      <img src={url} alt={name} className="rounded-xl border border-white/20 object-cover w-full" />
-    </a>
-  )
-  if (type.startsWith('video/')) return (
-    <a href={url} target="_blank" rel="noreferrer" className={`flex items-center gap-1.5 mt-1 text-xs underline ${isMine ? 'text-blue-100' : 'text-blue-600'}`}>
-      <Film className="w-3.5 h-3.5" />{name}
-    </a>
-  )
-  return (
-    <a href={url} target="_blank" rel="noreferrer"
-      className={`flex items-center gap-1.5 mt-1 text-xs font-medium px-3 py-2 rounded-xl ${isMine ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}`}>
-      <FileText className="w-4 h-4 flex-shrink-0" />
-      <span className="truncate max-w-[160px]">{name}</span>
-    </a>
-  )
-}
-
-function FilePreviewBar({ pending, onRemove }: { pending: PendingFile; onRemove: () => void }) {
-  const isImage = pending.file.type.startsWith('image/')
-  return (
-    <div className="flex items-center gap-3 px-4 py-2.5 bg-blue-50 border-t border-blue-100">
-      <div className="w-10 h-10 rounded-xl bg-white border border-blue-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-        {isImage && pending.previewUrl
-          ? <img src={pending.previewUrl} className="w-full h-full object-cover rounded-xl" alt="" />
-          : <FileText className="w-5 h-5 text-blue-400" />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-gray-800 truncate">{pending.file.name}</p>
-        <p className="text-xs text-gray-400">{(pending.file.size / 1024).toFixed(1)} KB</p>
-      </div>
-      <button onClick={onRemove} className="w-6 h-6 rounded-full bg-gray-200 hover:bg-red-100 flex items-center justify-center text-gray-500 hover:text-red-500 transition-colors flex-shrink-0">
-        <X className="w-3.5 h-3.5" />
-      </button>
-    </div>
-  )
 }
 
 function DeleteModal({ name, onConfirm, onCancel, deleting }: {
@@ -167,42 +68,29 @@ function DeleteModal({ name, onConfirm, onCancel, deleting }: {
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
-export default function ConsultantChatsClient() {
-  const searchParams         = useSearchParams()
-  const targetConversationId = searchParams.get('conversationId')
-
-  const [currentUserId,  setCurrentUserId]  = useState<string | null>(null)
-  const [conversations,  setConversations]  = useState<Conversation[]>([])
-  const [filtered,       setFiltered]       = useState<Conversation[]>([])
-  const [search,         setSearch]         = useState('')
-  const [activeConv,     setActiveConv]     = useState<Conversation | null>(null)
-  const [messages,       setMessages]       = useState<Message[]>([])
-  const [newMessage,     setNewMessage]     = useState('')
-  const [sending,        setSending]        = useState(false)
-  const [loadingConvs,   setLoadingConvs]   = useState(true)
-  const [loadingMsgs,    setLoadingMsgs]    = useState(false)
-  const [showList,       setShowList]       = useState(true)
-  const [autoOpened,     setAutoOpened]     = useState(false)
-  const [convMenuOpen,   setConvMenuOpen]   = useState<string | null>(null)
-  const [deleteTarget,   setDeleteTarget]   = useState<Conversation | null>(null)
-  const [deleting,       setDeleting]       = useState(false)
-  const [showEmoji,      setShowEmoji]      = useState(false)
-  const [pendingFile,    setPendingFile]    = useState<PendingFile | null>(null)
-  const [uploadingFile,  setUploadingFile]  = useState(false)
-  const [starred,        setStarred]        = useState<Set<string>>(new Set())
-  const [hoveredMsg,     setHoveredMsg]     = useState<string | null>(null)
-  const [deletingMsgId,  setDeletingMsgId]  = useState<string | null>(null)
+export default function ConsultantChatPageClient() {
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [filtered,      setFiltered]      = useState<Conversation[]>([])
+  const [search,        setSearch]        = useState('')
+  const [activeConv,    setActiveConv]    = useState<Conversation | null>(null)
+  const [messages,      setMessages]      = useState<Message[]>([])
+  const [newMessage,    setNewMessage]    = useState('')
+  const [sending,       setSending]       = useState(false)
+  const [loadingConvs,  setLoadingConvs]  = useState(true)
+  const [loadingMsgs,   setLoadingMsgs]   = useState(false)
+  const [showList,      setShowList]      = useState(true)
+  const [convMenuOpen,  setConvMenuOpen]  = useState<string | null>(null)
+  const [deleteTarget,  setDeleteTarget]  = useState<Conversation | null>(null)
+  const [deleting,      setDeleting]      = useState(false)
+  const [hoveredMsg,    setHoveredMsg]    = useState<string | null>(null)
+  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null)
 
   const bottomRef      = useRef<HTMLDivElement>(null)
   const msgChannelRef  = useRef<RealtimeChannel | null>(null)
   const convChannelRef = useRef<RealtimeChannel | null>(null)
   const inputRef       = useRef<HTMLInputElement>(null)
   const menuRef        = useRef<HTMLDivElement>(null)
-  const fileInputRef   = useRef<HTMLInputElement>(null)
-
-  useEffect(() => { setStarred(loadStarred()) }, [])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => { if (user) setCurrentUserId(user.id) })
@@ -225,20 +113,14 @@ export default function ConsultantChatsClient() {
       .eq('contact_id', userId)
       .order('last_message_at', { ascending: false })
     if (!error && data) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const shaped = data.map((c: any) => ({ ...c, athlete: Array.isArray(c.athlete) ? c.athlete[0] ?? null : c.athlete })) as Conversation[]
-      setConversations(shaped)
+      setConversations(shaped); setFiltered(shaped)
     }
     setLoadingConvs(false)
   }, [])
 
   useEffect(() => { if (currentUserId) fetchConversations(currentUserId) }, [currentUserId, fetchConversations])
-
-  useEffect(() => {
-    if (autoOpened || !targetConversationId || conversations.length === 0) return
-    const target = conversations.find((c) => c.id === targetConversationId)
-    if (target) { openConversation(target); setAutoOpened(true) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversations, targetConversationId, autoOpened])
 
   useEffect(() => {
     if (!currentUserId) return
@@ -252,37 +134,25 @@ export default function ConsultantChatsClient() {
 
   useEffect(() => {
     const q = search.toLowerCase()
-    const base = q
-      ? conversations.filter((c) =>
-          fullName(c.athlete).toLowerCase().includes(q) ||
-          (c.last_message ?? '').toLowerCase().includes(q))
-      : [...conversations]
-    base.sort((a, b) => {
-      const aS = starred.has(a.id) ? 1 : 0
-      const bS = starred.has(b.id) ? 1 : 0
-      if (bS !== aS) return bS - aS
-      return new Date(b.last_message_at ?? 0).getTime() - new Date(a.last_message_at ?? 0).getTime()
-    })
-    setFiltered(base)
-  }, [search, conversations, starred])
+    setFiltered(q ? conversations.filter((c) => fullName(c.athlete).toLowerCase().includes(q) || (c.last_message ?? '').toLowerCase().includes(q)) : conversations)
+  }, [search, conversations])
 
   const fetchMessages = useCallback(async (convId: string) => {
     setLoadingMsgs(true)
     const { data, error } = await supabase.from('messages')
-      .select('id, conversation_id, sender_id, content, created_at, is_read, attachment_url, attachment_name, attachment_type')
+      .select('id, conversation_id, sender_id, content, created_at, is_read')
       .eq('conversation_id', convId).order('created_at', { ascending: true })
     if (!error && data) setMessages(data as Message[])
     setLoadingMsgs(false)
   }, [])
 
   const markAsRead = useCallback(async (convId: string, userId: string) => {
-    await supabase.from('messages').update({ is_read: true })
-      .eq('conversation_id', convId).neq('sender_id', userId).eq('is_read', false)
+    await supabase.from('messages').update({ is_read: true }).eq('conversation_id', convId).neq('sender_id', userId).eq('is_read', false)
     await supabase.from('conversations').update({ contact_unread_count: 0 }).eq('id', convId)
   }, [])
 
   const openConversation = useCallback(async (conv: Conversation) => {
-    setActiveConv(conv); setShowList(false); setShowEmoji(false); setPendingFile(null)
+    setActiveConv(conv); setShowList(false)
     await fetchMessages(conv.id)
     if (currentUserId) await markAsRead(conv.id, currentUserId)
   }, [fetchMessages, markAsRead, currentUserId])
@@ -308,111 +178,71 @@ export default function ConsultantChatsClient() {
     finally { setDeletingMsgId(null); setHoveredMsg(null) }
   }
 
-  function toggleStar(convId: string) {
-    setStarred(prev => {
-      const next = new Set(prev)
-      next.has(convId) ? next.delete(convId) : next.add(convId)
-      saveStarred(next); return next
-    })
-  }
-
   useEffect(() => {
     if (!activeConv) return
     msgChannelRef.current?.unsubscribe()
-    msgChannelRef.current = supabase.channel(`consultant-msgs-${activeConv.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeConv.id}` },
-        (payload) => {
-          const msg = payload.new as Message
-          setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
-          if (currentUserId && msg.sender_id !== currentUserId) markAsRead(activeConv.id, currentUserId)
-        })
-      .subscribe()
+    msgChannelRef.current = supabase
+  .channel(`...-msgs-${activeConv.id}`)
+  .on('postgres_changes', {
+    event: 'INSERT', schema: 'public',
+    table: 'messages', filter: `conversation_id=eq.${activeConv.id}`,
+  }, (payload) => {
+    const msg = payload.new as Message
+    setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
+    if (currentUserId && msg.sender_id !== currentUserId) markAsRead(activeConv.id, currentUserId)
+  })
+  // ── Listen for is_read updates (tick updates) ──
+  .on('postgres_changes', {
+    event: 'UPDATE', schema: 'public',
+    table: 'messages', filter: `conversation_id=eq.${activeConv.id}`,
+  }, (payload) => {
+    const updated = payload.new as Message
+    setMessages((prev) =>
+      prev.map((m) => m.id === updated.id ? { ...m, is_read: updated.is_read } : m)
+    )
+  })
+  .subscribe()
     return () => { msgChannelRef.current?.unsubscribe() }
   }, [activeConv, currentUserId, markAsRead])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
-    setPendingFile({ file, previewUrl })
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
   const sendMessage = async () => {
-    const text = newMessage.trim()
-    if (!text && !pendingFile) return
-    if (!activeConv || !currentUserId || sending) return
-
-    setSending(true)
-    let attachmentUrl: string | undefined
-    let attachmentName: string | undefined
-    let attachmentType: string | undefined
-
-    if (pendingFile) {
-      setUploadingFile(true)
-      try {
-        const ext  = pendingFile.file.name.split('.').pop()
-        const path = `chat-attachments/${activeConv.id}/${Date.now()}.${ext}`
-        const { error: upErr } = await supabase.storage.from('attachments').upload(path, pendingFile.file)
-        if (upErr) throw upErr
-        const { data: { publicUrl } } = supabase.storage.from('attachments').getPublicUrl(path)
-        attachmentUrl = publicUrl; attachmentName = pendingFile.file.name; attachmentType = pendingFile.file.type
-        if (pendingFile.previewUrl) URL.revokeObjectURL(pendingFile.previewUrl)
-        setPendingFile(null)
-      } catch (err) { console.error('Upload failed:', err); setSending(false); setUploadingFile(false); return }
-      setUploadingFile(false)
-    }
-
-    setNewMessage('')
-    const payload: any = { conversation_id: activeConv.id, sender_id: currentUserId, content: text || '', is_read: false }
-    if (attachmentUrl)  payload.attachment_url  = attachmentUrl
-    if (attachmentName) payload.attachment_name = attachmentName
-    if (attachmentType) payload.attachment_type = attachmentType
-
-    const { error } = await supabase.from('messages').insert(payload)
+    const content = newMessage.trim()
+    if (!content || !activeConv || !currentUserId || sending) return
+    setSending(true); setNewMessage('')
+    const { error } = await supabase.from('messages').insert({ conversation_id: activeConv.id, sender_id: currentUserId, content, is_read: false })
     if (!error) {
-      await supabase.from('conversations').update({
-        last_message: text || (attachmentName ?? 'Attachment'),
-        last_message_at: new Date().toISOString(),
-        unread_count: (activeConv.unread_count ?? 0) + 1,
-      }).eq('id', activeConv.id)
+      await supabase.from('conversations').update({ last_message: content, last_message_at: new Date().toISOString(), unread_count: (activeConv.unread_count ?? 0) + 1 }).eq('id', activeConv.id)
     }
-    setSending(false)
-    inputRef.current?.focus()
+    setSending(false); inputRef.current?.focus()
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
-  }
+  const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }
 
   return (
     <>
       {deleteTarget && (
-        <DeleteModal name={fullName(deleteTarget.athlete)} onConfirm={handleDeleteConversation}
-          onCancel={() => setDeleteTarget(null)} deleting={deleting} />
+        <DeleteModal name={fullName(deleteTarget.athlete)} onConfirm={handleDeleteConversation} onCancel={() => setDeleteTarget(null)} deleting={deleting} />
       )}
-      <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange}
-        accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
 
-      <div className="flex h-[calc(100vh-64px)] bg-white overflow-hidden">
+      <div className="flex h-[calc(100vh-64px)] bg-white rounded-xl border border-gray-200 overflow-hidden">
 
-        {/* ── Left panel ── */}
-        <div className={`flex flex-col w-full md:w-96 border-r border-gray-200 flex-shrink-0 bg-white ${showList ? 'flex' : 'hidden md:flex'}`}>
-          <div className="px-5 pt-5 pb-4 border-b border-gray-100">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Messages</h2>
+        {/* ── Conversation List ── */}
+        <div className={`flex flex-col w-full md:w-80 lg:w-96 border-r border-gray-100 flex-shrink-0 ${showList ? 'flex' : 'hidden md:flex'}`}>
+          <div className="p-4 border-b border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900 mb-3">Messages</h2>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input type="text" placeholder="Search conversations..." value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 placeholder:text-gray-400" />
+                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50" />
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">
             {loadingConvs ? (
-              <div className="flex items-center justify-center h-32"><Loader2 className="w-5 h-5 text-blue-500 animate-spin" /></div>
+              <div className="flex items-center justify-center h-32"><Loader2 className="w-5 h-5 text-indigo-500 animate-spin" /></div>
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 gap-2 px-6 text-center">
                 <MessageSquare size={32} className="text-gray-200" />
@@ -420,33 +250,32 @@ export default function ConsultantChatsClient() {
               </div>
             ) : (
               filtered.map((conv) => {
-                const isActive  = activeConv?.id === conv.id
-                const unread    = conv.contact_unread_count ?? 0
-                const menuOpen  = convMenuOpen === conv.id
-                const isStarred = starred.has(conv.id)
+                const isActive = activeConv?.id === conv.id
+                const unread   = conv.contact_unread_count ?? 0
+                const menuOpen = convMenuOpen === conv.id
                 return (
                   <div key={conv.id}
-                    className={`group relative flex items-center gap-3 px-5 py-4 transition-colors hover:bg-gray-50 cursor-pointer border-b border-gray-50 ${isActive ? 'bg-blue-50' : ''}`}
+                    className={`group relative flex items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50 border-b border-gray-50 cursor-pointer ${isActive ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : ''}`}
                     onClick={() => openConversation(conv)}>
-                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                      style={{ backgroundColor: avatarColor(conv.athlete_id) }}>{initials(conv.athlete)}</div>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+                      style={{ backgroundColor: avatarColor(conv.athlete_id) }}>
+                      {initials(conv.athlete)}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <div className="flex items-center gap-1 min-w-0">
-                          <span className={`text-sm truncate ${unread > 0 ? 'font-semibold text-gray-900' : 'font-medium text-gray-800'}`}>{fullName(conv.athlete)}</span>
-                          {isStarred && <Star className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0" />}
-                        </div>
+                        <span className={`text-sm truncate ${unread > 0 ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>{fullName(conv.athlete)}</span>
                         <span className="text-xs text-gray-400 flex-shrink-0">{formatTime(conv.last_message_at)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-1 mt-0.5">
-                        <p className={`text-sm truncate ${unread > 0 ? 'text-gray-600 font-medium' : 'text-gray-400'}`}>{conv.last_message ?? 'No messages yet'}</p>
+                        <p className={`text-xs truncate ${unread > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>{conv.last_message ?? 'No messages yet'}</p>
                         {unread > 0 && (
-                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
                             {unread > 9 ? '9+' : unread}
                           </span>
                         )}
                       </div>
                     </div>
+                    {/* Three-dot menu */}
                     <div className="relative flex-shrink-0" ref={menuOpen ? menuRef : null}>
                       <button onClick={(e) => { e.stopPropagation(); setConvMenuOpen(menuOpen ? null : conv.id) }}
                         className={`w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-opacity ${menuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
@@ -468,34 +297,32 @@ export default function ConsultantChatsClient() {
           </div>
         </div>
 
-        {/* ── Right panel ── */}
+        {/* ── Message Window ── */}
         <div className={`flex-1 flex flex-col min-w-0 ${!showList ? 'flex' : 'hidden md:flex'}`}>
           {activeConv ? (
             <>
-              <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 flex-shrink-0">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setShowList(true)} className="md:hidden p-1 rounded-lg hover:bg-gray-100 text-gray-500">
-                    <ArrowLeft size={18} />
-                  </button>
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
-                    style={{ backgroundColor: avatarColor(activeConv.athlete_id) }}>{initials(activeConv.athlete)}</div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{fullName(activeConv.athlete)}</p>
-                    <p className="text-xs text-green-500 font-medium">Athlete</p>
-                  </div>
-                </div>
-                <button onClick={() => toggleStar(activeConv.id)}
-                  className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
-                  title={starred.has(activeConv.id) ? 'Unstar' : 'Star conversation'}>
-                  <Star className={`w-4 h-4 transition-colors ${starred.has(activeConv.id) ? 'text-amber-400 fill-amber-400' : 'text-gray-400'}`} />
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white">
+                <button onClick={() => setShowList(true)} className="md:hidden p-1 rounded-lg hover:bg-gray-100 text-gray-500">
+                  <ArrowLeft size={18} />
                 </button>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+                  style={{ backgroundColor: avatarColor(activeConv.athlete_id) }}>
+                  {initials(activeConv.athlete)}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{fullName(activeConv.athlete)}</p>
+                  <p className="text-xs text-green-500 font-medium">Athlete</p>
+                </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 bg-gray-50">
+              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-50">
                 {loadingMsgs ? (
-                  <div className="flex items-center justify-center h-full"><Loader2 className="w-5 h-5 text-blue-500 animate-spin" /></div>
+                  <div className="flex items-center justify-center h-full"><Loader2 className="w-5 h-5 text-indigo-500 animate-spin" /></div>
                 ) : messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full"><p className="text-sm text-gray-400">No messages yet. Say hello!</p></div>
+                  <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
+                    <MessageSquare size={32} className="text-gray-200" />
+                    <p className="text-sm text-gray-400">No messages yet. Say hello!</p>
+                  </div>
                 ) : (
                   messages.map((msg) => {
                     const isMine     = msg.sender_id === currentUserId
@@ -508,7 +335,9 @@ export default function ConsultantChatsClient() {
                         onMouseLeave={() => setHoveredMsg(null)}>
                         {!isMine && (
                           <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 mb-1"
-                            style={{ backgroundColor: avatarColor(activeConv.athlete_id) }}>{initials(activeConv.athlete)}</div>
+                            style={{ backgroundColor: avatarColor(activeConv.athlete_id) }}>
+                            {initials(activeConv.athlete)}
+                          </div>
                         )}
                         {isMine && (
                           <button onClick={() => handleDeleteMessage(msg.id)} disabled={isDeleting}
@@ -517,16 +346,12 @@ export default function ConsultantChatsClient() {
                           </button>
                         )}
                         <div className={`max-w-[70%] flex flex-col gap-0.5 ${isMine ? 'items-end' : 'items-start'}`}>
-                          <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMine ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-sm'}`}>
-                            {msg.content && <p>{msg.content}</p>}
-                            {msg.attachment_url && (
-                              <AttachmentBubble url={msg.attachment_url} name={msg.attachment_name ?? 'file'}
-                                type={msg.attachment_type ?? 'application/octet-stream'} isMine={isMine} />
-                            )}
+                          <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${isMine ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-sm'}`}>
+                            {msg.content}
                           </div>
                           <span className="text-[10px] text-gray-400 px-1 flex items-center gap-1">
                             {formatTime(msg.created_at)}
-                            {isMine && <MessageTicks status={msg.is_read ? 'read' : 'delivered'} />}
+                            {isMine && <MessageTicks status={msg.is_read ? 'read' : 'delivered'} className="ml-1" />}
                           </span>
                         </div>
                       </div>
@@ -536,53 +361,27 @@ export default function ConsultantChatsClient() {
                 <div ref={bottomRef} />
               </div>
 
-              {pendingFile && (
-                <FilePreviewBar pending={pendingFile} onRemove={() => {
-                  if (pendingFile.previewUrl) URL.revokeObjectURL(pendingFile.previewUrl)
-                  setPendingFile(null)
-                }} />
-              )}
-
-              <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3">
-                <div className="relative flex items-center gap-3">
-                  <button onClick={() => fileInputRef.current?.click()}
-                    className="text-gray-400 hover:text-blue-500 p-1 transition-colors flex-shrink-0">
-                    <Paperclip className="w-5 h-5" />
-                  </button>
-                  <div className="relative flex-shrink-0">
-                    <button onClick={() => setShowEmoji(prev => !prev)}
-                      className={`p-1 transition-colors ${showEmoji ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`}>
-                      <Smile className="w-5 h-5" />
-                    </button>
-                    {showEmoji && (
-                      <EmojiPicker
-                        onSelect={(emoji) => { setNewMessage(prev => prev + emoji); inputRef.current?.focus() }}
-                        onClose={() => setShowEmoji(false)}
-                      />
-                    )}
-                  </div>
-                  <input ref={inputRef} type="text" value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Type a message..."
-                    className="flex-1 text-sm text-gray-700 placeholder:text-gray-400 bg-transparent focus:outline-none"
+              <div className="px-4 py-3 border-t border-gray-100 bg-white">
+                <div className="flex items-center gap-2">
+                  <input ref={inputRef} type="text" placeholder="Type a message..." value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)} onKeyDown={handleKeyDown}
+                    className="flex-1 px-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     disabled={sending} />
-                  <button onClick={sendMessage}
-                    disabled={(!newMessage.trim() && !pendingFile) || sending || uploadingFile}
-                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${(newMessage.trim() || pendingFile) ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-400 cursor-default'}`}>
-                    {(sending || uploadingFile) ? <Loader2 size={16} className="animate-spin" /> : <Send className="w-4 h-4" />}
+                  <button onClick={sendMessage} disabled={!newMessage.trim() || sending}
+                    className="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white flex items-center justify-center transition-colors flex-shrink-0">
+                    {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                   </button>
                 </div>
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center bg-gray-50">
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
-                  <MessageSquare className="w-8 h-8 text-blue-300" />
-                </div>
-                <p className="text-base font-semibold text-gray-700 mb-1">Your messages</p>
-                <p className="text-sm text-gray-400">Select a conversation to start chatting</p>
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
+              <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center">
+                <MessageSquare size={28} className="text-indigo-400" />
+              </div>
+              <div>
+                <p className="text-base font-semibold text-gray-700">Your messages</p>
+                <p className="text-sm text-gray-400 mt-1">Select a conversation to start chatting</p>
               </div>
             </div>
           )}
