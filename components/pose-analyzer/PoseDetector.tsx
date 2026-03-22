@@ -33,7 +33,7 @@ interface ArmLandmarks {
 interface RepAccumulator {
   extensionAngle: number;     // max angle seen in the 'down' phase before this curl
   minAngle: number;           // min angle reached during the 'up' (curl) phase
-  maxElbowDrift: number;      // max (shoulder.z − elbow.z) during the curl
+  maxElbowDrift: number;      
 }
 
 const newRepAcc = (): RepAccumulator => ({
@@ -244,12 +244,10 @@ export default function PoseDetector() {
     }
 
     if (video.readyState !== 4) {
-      // Video not ready yet, keep waiting
       animationFrameRef.current = requestAnimationFrame(detectPose);
       return;
     }
 
-    // Set canvas size to match video (only log when size changes)
     if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
       console.log('[Detection] Setting canvas size:', {
         width: video.videoWidth,
@@ -264,27 +262,21 @@ export default function PoseDetector() {
     if (currentTime !== lastVideoTimeRef.current) {
       lastVideoTimeRef.current = currentTime;
 
-      // eslint-disable-next-line react-hooks/purity
       const detectStart = performance.now();
 
-      // Detect pose
-      // eslint-disable-next-line react-hooks/purity
       const results = poseLandmarkerRef.current.detectForVideo(video, performance.now());
 
       // eslint-disable-next-line react-hooks/purity
       const detectEnd = performance.now();
       const detectTime = detectEnd - detectStart;
 
-      // Clear canvas and draw video frame
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Draw pose landmarks — suppress the non-active arm when user stands side-on
       if (results.landmarks && results.landmarks.length > 0) {
         const drawingUtils = new DrawingUtils(ctx);
 
         for (const landmarks of results.landmarks) {
-          // Per-landmark visibility (shoulder/elbow/wrist for each side)
           const lShoulder = landmarks[11]?.visibility ?? 0;
           const lElbow    = landmarks[13]?.visibility ?? 0;
           const lWrist    = landmarks[15]?.visibility ?? 0;
@@ -292,12 +284,10 @@ export default function PoseDetector() {
           const rElbow    = landmarks[14]?.visibility ?? 0;
           const rWrist    = landmarks[16]?.visibility ?? 0;
 
-          // Use min: all three joints must be visible for the arm to count as "visible"
           const leftArmVis  = Math.min(lShoulder, lElbow, lWrist);
           const rightArmVis = Math.min(rShoulder, rElbow, rWrist);
           const gap = leftArmVis - rightArmVis;
 
-          // Debug log throttled to ~1/s (fpsCounterRef hasn't incremented for this frame yet)
           if (fpsCounterRef.current % 30 === 0) {
             console.log(
               '[ArmVis] L shoulder/elbow/wrist:',
@@ -316,7 +306,6 @@ export default function PoseDetector() {
           else if (gap < -SIDE_VIS_GAP) { inactiveSet = LEFT_ARM_INDICES;  if (fpsCounterRef.current % 30 === 0) console.log('[ArmVis] → suppressing LEFT arm skeleton');  }
           else                          {                                    if (fpsCounterRef.current % 30 === 0) console.log('[ArmVis] → gap too small, drawing both arms'); }
 
-          // Connections — drop any connection where both endpoints are on the inactive arm
           const connections = inactiveSet
             ? PoseLandmarker.POSE_CONNECTIONS.filter(
                 ({ start, end }) => !(inactiveSet!.has(start) && inactiveSet!.has(end))
@@ -324,7 +313,6 @@ export default function PoseDetector() {
             : PoseLandmarker.POSE_CONNECTIONS;
           drawingUtils.drawConnectors(landmarks, connections, { color: '#00FF00', lineWidth: 2 });
 
-          // Landmark dots — skip inactive arm's indices entirely
           const visibleLandmarks = inactiveSet
             ? landmarks.filter((_, i) => !inactiveSet!.has(i))
             : landmarks;
@@ -349,7 +337,6 @@ export default function PoseDetector() {
         const magES = Math.sqrt(ES.x * ES.x + ES.y * ES.y);
         const magEW = Math.sqrt(EW.x * EW.x + EW.y * EW.y);
 
-        // Clamp to [-1, 1] to guard against floating-point drift before acos
         const cosAngle = Math.max(-1, Math.min(1, dotProduct / (magES * magEW)));
         return Math.acos(cosAngle) * (180 / Math.PI);
       }
@@ -372,7 +359,6 @@ export default function PoseDetector() {
         ctx.fillText(text, px + 10, py - 10);
       }
 
-      // Calculate and display elbow angles for visible arms
       for (const landmarks of results.landmarks) {
         const rightArm: ArmLandmarks = {
           shoulder: landmarks[12],
@@ -399,7 +385,6 @@ export default function PoseDetector() {
           const elbowDrift = rightArm.shoulder.z - rightArm.elbow.z;
 
           if (rightCurlStateRef.current === 'down') {
-            // Track max extension while arm hangs
             rightMaxExtensionRef.current = Math.max(rightMaxExtensionRef.current, rightAngle);
             if (rightAngle < CURL_UP_THRESHOLD) {
               // Transition down → up: arm starting to curl, snapshot baseline
@@ -413,13 +398,11 @@ export default function PoseDetector() {
               rightMaxExtensionRef.current = 0;
             }
           } else {
-            // In 'up' phase: accumulate form metrics every frame
             const acc = rightRepAccRef.current;
             acc.minAngle      = Math.min(acc.minAngle, rightAngle);
             acc.maxElbowDrift = Math.max(acc.maxElbowDrift, elbowDrift);
 
             if (rightAngle > CURL_DOWN_THRESHOLD) {
-              // Transition up → down: rep complete — evaluate form
               rightCurlStateRef.current = 'down';
               rightRepCountRef.current += 1;
               setRightReps(rightRepCountRef.current);
@@ -487,9 +470,8 @@ export default function PoseDetector() {
         }
       }
 
-      // Calculate FPS + throttle display state updates to once per second
       fpsCounterRef.current++;
-      // eslint-disable-next-line react-hooks/purity
+
       const now = performance.now();
       if (now - fpsTimestampRef.current >= 1000) {
         const currentFps = fpsCounterRef.current;
@@ -498,7 +480,6 @@ export default function PoseDetector() {
         fpsCounterRef.current = 0;
         fpsTimestampRef.current = now;
 
-        // Throttled UI display updates
         setDisplayAngle(latestAngleRef.current);
         setSessionDuration(formatDuration(Date.now() - sessionStartRef.current));
         setEstimatedCalories(Math.round((rightRepCountRef.current + leftRepCountRef.current) * 5));
@@ -530,7 +511,6 @@ export default function PoseDetector() {
     sessionStartRef.current = Date.now();
     setIsDetecting(true);
 
-    // Wait for video to be ready before starting detection
     if (videoRef.current) {
       console.log('[Detection] Waiting for video metadata...');
       videoRef.current.onloadedmetadata = () => {
@@ -544,7 +524,6 @@ export default function PoseDetector() {
         detectPose();
       };
 
-      // Also add play event listener to ensure video is playing
       videoRef.current.onplay = () => {
         console.log('[Detection] Video playing');
       };
