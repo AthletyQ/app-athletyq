@@ -1,22 +1,20 @@
-"use client";
-
-import { SidebarInset } from "@/components/ui/sidebar";
 import { Sidebar } from "@/components/dashboard/ConsultantSidebar";
 import { Navbar } from "@/components/dashboard/Navbar";
 
-export default function ConsultantLayout({ children }: { children: React.ReactNode }) {
-    return (
-        <div id="main-layout-wrapper" className="min-h-screen flex w-full">
-            {/* Consultant Sidebar */}
-            <Sidebar />
-
-            {/* Right side */}
-            <SidebarInset className="flex flex-col flex-1">
-                <Navbar />
-                <main className="flex-1 bg-gray-50 p-6">
-                    {children}
-                </main>
-            </SidebarInset>
-        </div>
-    );
+export default function ConsultantLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex h-screen overflow-hidden bg-gray-50 antialiased text-gray-900 w-full">
+      <Sidebar />
+      <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-hidden flex flex-col">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
 }
