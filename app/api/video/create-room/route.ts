@@ -15,10 +15,10 @@ export async function POST(req: NextRequest) {
   const roomName = `athletyq-${sessionId}`
 
   try {
-    // ── 1. Get or create the Daily room ───────────────────────────────────────
+   
     let room
 
-    // Try to get existing room first
+    
     const getRes = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
       headers: { Authorization: `Bearer ${DAILY_API_KEY}` },
     })
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     if (getRes.ok) {
       room = await getRes.json()
     } else {
-      // Create new room
+      
       const createRes = await fetch('https://api.daily.co/v1/rooms', {
         method: 'POST',
         headers: {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
             enable_chat:          true,
             start_video_off:      false,
             start_audio_off:      false,
-            exp: Math.floor(Date.now() / 1000) + 60 * 60 * 3, // expires in 3 hours
+            exp: Math.floor(Date.now() / 1000) + 60 * 60 * 3, 
           },
         }),
       })
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
       room = await createRes.json()
     }
 
-    // ── 2. Create a meeting token for this participant ─────────────────────────
+
     const tokenRes = await fetch('https://api.daily.co/v1/meeting-tokens', {
       method: 'POST',
       headers: {
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         properties: {
           room_name:  roomName,
-          is_owner:   isCoach ?? false, // coach is room owner
+          is_owner:   isCoach ?? false, 
           exp:        Math.floor(Date.now() / 1000) + 60 * 60 * 3,
         },
       }),

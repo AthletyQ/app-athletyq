@@ -30,7 +30,7 @@ export default function ChatWindow({ conversation, currentUserId }: Props) {
   const bottomRef               = useRef<HTMLDivElement>(null);
   
 
-  // Fetch messages on conversation change
+
   useEffect(() => {
     fetch(`/api/messages?conversationId=${conversation.id}`)
       .then((r) => r.json())
@@ -49,7 +49,7 @@ export default function ChatWindow({ conversation, currentUserId }: Props) {
       .finally(() => setLoading(false));
   }, [conversation.id, currentUserId]);
 
-  // Supabase Realtime subscription
+
   useEffect(() => {
     const channel = supabase
       .channel(`messages:${conversation.id}`)
@@ -81,7 +81,6 @@ export default function ChatWindow({ conversation, currentUserId }: Props) {
     return () => { supabase.removeChannel(channel); };
   }, [conversation.id, currentUserId]);
 
-  // Auto scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -100,14 +99,14 @@ export default function ChatWindow({ conversation, currentUserId }: Props) {
         content,
       }),
     });
-    // Realtime will handle adding the message to state
+  
   };
 
   const { contact } = conversation;
 
   return (
     <div className="flex-1 flex flex-col bg-white min-w-0">
-      {/* Header */}
+      
       <div className="flex items-center justify-between px-6 py-3.5 border-b border-gray-100">
         <div className="flex items-center gap-3">
           <div
@@ -143,7 +142,7 @@ export default function ChatWindow({ conversation, currentUserId }: Props) {
         </div>
       </div>
 
-      {/* Messages */}
+      
       <div className="flex-1 overflow-y-auto px-6 py-4">
         {loading ? (
           <div className="flex items-center justify-center h-full">
@@ -174,7 +173,7 @@ export default function ChatWindow({ conversation, currentUserId }: Props) {
         )}
       </div>
 
-      {/* Input */}
+    
       <div className="px-6 py-3 border-t border-gray-100">
         <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-2.5">
           <button className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">

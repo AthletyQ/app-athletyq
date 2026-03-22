@@ -76,7 +76,7 @@ export default function AthleteProfilePage() {
         weight_kg: ath?.weight_kg ?? null,
         goals: ath?.goals ?? null,
         injuries: ath?.injuries ?? null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        
         sport_name: (ath as any)?.sports?.name ?? null,
       });
       setLoading(false);
@@ -111,7 +111,7 @@ export default function AthleteProfilePage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
-      {/* Back */}
+      
       <button
         onClick={() => router.back()}
         className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors"
@@ -120,12 +120,12 @@ export default function AthleteProfilePage() {
         Back
       </button>
 
-      {/* Header Card */}
+      
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex items-center gap-6">
         <div className="relative flex-shrink-0">
           <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600">
             {profile.profile_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
+              
               <img src={profile.profile_image_url} alt={fullName} className="w-full h-full rounded-full object-cover" />
             ) : initials}
           </div>
@@ -153,7 +153,7 @@ export default function AthleteProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Personal Info */}
+        
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Personal Information</h2>
           <InfoRow icon={User} label="Full Name" value={fullName} />
@@ -163,7 +163,7 @@ export default function AthleteProfilePage() {
           <InfoRow icon={Hash} label="User ID" value={profile.id.slice(0, 8).toUpperCase()} />
         </div>
 
-        {/* Athletic Info */}
+        
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Athletic Details</h2>
           <InfoRow icon={Trophy} label="Preferred Sport" value={profile.sport_name} />
@@ -175,7 +175,7 @@ export default function AthleteProfilePage() {
           )}
         </div>
 
-        {/* Goals */}
+       
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 flex items-center gap-2">
             <Target className="w-4 h-4 text-blue-500" /> Goals
@@ -187,7 +187,7 @@ export default function AthleteProfilePage() {
           )}
         </div>
 
-        {/* Injuries */}
+        
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 flex items-center gap-2">
             <Heart className="w-4 h-4 text-red-400" /> Injury History

@@ -10,7 +10,7 @@ export default function PaymentCancelPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
       <div className="bg-white rounded-3xl shadow-xl max-w-md w-full p-8 text-center">
 
-        {/* Cancel icon */}
+        
         <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-6">
           <XCircle className="w-10 h-10 text-red-400" strokeWidth={1.5} />
         </div>

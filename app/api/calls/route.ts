@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error('Calls error:', error.message)
-    // return empty array instead of crashing — calls may not exist yet
+
     return NextResponse.json([])
   }
 

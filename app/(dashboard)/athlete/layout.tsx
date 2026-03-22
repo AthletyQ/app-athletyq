@@ -8,10 +8,10 @@ export default function AthleteLayout({
 }) {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 antialiased text-gray-900 w-full">
-      {/* Custom hover-to-expand sidebar — no SidebarProvider needed */}
+     
       <Sidebar />
 
-      {/* Main content */}
+      
       <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
         <Navbar />
         <main className="flex-1 overflow-hidden flex flex-col">

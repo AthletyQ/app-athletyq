@@ -2,8 +2,6 @@ import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
 import AthleteChatPageClient from './AthleteChatPageClient'
 
-// Next.js requires a Suspense boundary around any component
-// that calls useSearchParams(), otherwise the page 404s.
 export default function ChatsPage() {
   return (
     <Suspense

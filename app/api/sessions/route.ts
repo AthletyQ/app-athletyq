@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   if (!coachId && !athleteId)
     return NextResponse.json({ error: 'coachId or athleteId required' }, { status: 400 })
 
-  // ── Week range ────────────────────────────────────────────────────────────
+  
   let weekStart: Date
   let weekEnd: Date
 
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     'bg-teal-50 text-teal-600',
   ]
 
-  const TZ = 'Asia/Colombo'   // ✅ UTC+5:30 — all display times in SL time
+  const TZ = 'Asia/Colombo'   
 
   const sessions = (data ?? []).map((s: any) => {
     const athlete   = Array.isArray(s.athletes) ? s.athletes[0] : s.athletes
@@ -109,11 +109,11 @@ export async function GET(request: NextRequest) {
     const date     = new Date(s.scheduled_at)
     const isOnline = s.location_type === 'online' || s.session_type === 'online'
 
-    // ✅ dateKey: use SL local date (not UTC date) so day boundaries match SL midnight
-    const slDateStr = date.toLocaleDateString('en-CA', { timeZone: TZ }) // "YYYY-MM-DD"
+   
+    const slDateStr = date.toLocaleDateString('en-CA', { timeZone: TZ }) 
     const dateKey   = slDateStr
 
-    // ✅ Display date + time both in SL timezone
+    
     const formattedDate = date.toLocaleDateString('en-US', {
       timeZone: TZ,
       weekday: 'short', month: 'short', day: 'numeric',
@@ -132,9 +132,9 @@ export async function GET(request: NextRequest) {
       sportColor: SPORT_COLORS[sportIdx],
       mode:       isOnline ? 'Online' : 'In-person',
       location:   s.location_details ?? (isOnline ? 'Online Session' : 'In-person'),
-      dateKey,            // ✅ SL-local date e.g. "2026-03-23"
+      dateKey,           
       date:       formattedDate,
-      time:       formattedTime,  // ✅ SL time e.g. "8:00 AM" not "2:30 AM"
+      time:       formattedTime,  
       duration:   `${s.duration_minutes ?? 60} min`,
       status:     s.status ?? 'pending',
     }

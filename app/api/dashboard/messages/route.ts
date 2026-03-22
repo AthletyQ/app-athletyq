@@ -11,12 +11,12 @@ export async function GET(request: NextRequest) {
   const coachId = searchParams.get('coachId')
   if (!coachId) return NextResponse.json({ error: 'coachId required' }, { status: 400 })
 
-  // ── Conversations where coach is contact_id ───────────────────────────────
+
   const { data: convData, error: convError } = await supabase
     .from('conversations')
     .select('id, unread_count, athlete_id')
-    .eq('contact_id', coachId)          // ✅ correct column (not participant_one_id)
-    .gt('unread_count', 0)              // ✅ only conversations with unread messages
+    .eq('contact_id', coachId)         
+    .gt('unread_count', 0)             
     .order('last_message_at', { ascending: false })
     .limit(5)
 
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
   if (!convData || convData.length === 0) return NextResponse.json([])
 
-  // ── Fetch athlete profiles for each conversation ──────────────────────────
+  
   const athleteIds = convData.map((c: any) => c.athlete_id).filter(Boolean)
 
   const { data: profileData } = await supabase
@@ -39,15 +39,15 @@ export async function GET(request: NextRequest) {
     (profileData ?? []).map((p: any) => [p.id, p])
   )
 
-  // ── Fetch latest unread message per conversation ──────────────────────────
+  
   const conversationIds = convData.map((c: any) => c.id)
 
   const { data: msgData, error: msgError } = await supabase
     .from('messages')
     .select('id, conversation_id, sender_id, content, is_read, created_at')
     .in('conversation_id', conversationIds)
-    .neq('sender_id', coachId)          // messages FROM athlete TO coach
-    .eq('is_read', false)               // ✅ unread only
+    .neq('sender_id', coachId)          
+    .eq('is_read', false)              
     .order('created_at', { ascending: false })
 
   if (msgError) {
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([])
   }
 
-  // ── One latest unread message per conversation ────────────────────────────
+  
   const seenConvs = new Set<string>()
   const messages: any[] = []
 

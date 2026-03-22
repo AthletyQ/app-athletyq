@@ -106,7 +106,7 @@ export default function ConsultantProfilePage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
-      {/* Back */}
+      
       <button
         onClick={() => router.back()}
         className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors"
@@ -115,12 +115,12 @@ export default function ConsultantProfilePage() {
         Back
       </button>
 
-      {/* Header Card */}
+      
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex items-center gap-6">
         <div className="relative flex-shrink-0">
           <div className="w-20 h-20 rounded-full bg-purple-100 flex items-center justify-center text-2xl font-bold text-purple-600">
             {profile.profile_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
+              
               <img src={profile.profile_image_url} alt={fullName} className="w-full h-full rounded-full object-cover" />
             ) : initials}
           </div>
@@ -148,7 +148,7 @@ export default function ConsultantProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Personal Info */}
+        
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Personal Information</h2>
           <InfoRow icon={User} label="Full Name" value={fullName} />
@@ -158,7 +158,7 @@ export default function ConsultantProfilePage() {
           <InfoRow icon={Hash} label="Consultant ID" value={profile.id.slice(0, 8).toUpperCase()} />
         </div>
 
-        {/* Professional Info */}
+        
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Professional Details</h2>
           <InfoRow icon={Stethoscope} label="Specialty" value={profile.specialty} />
@@ -169,7 +169,7 @@ export default function ConsultantProfilePage() {
           )}
         </div>
 
-        {/* Bio */}
+      
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 flex items-center gap-2">
             <User className="w-4 h-4 text-purple-500" /> Bio
@@ -181,7 +181,7 @@ export default function ConsultantProfilePage() {
           )}
         </div>
 
-        {/* Certifications */}
+        
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 flex items-center gap-2">
             <Award className="w-4 h-4 text-amber-500" /> Certifications

@@ -17,10 +17,9 @@ const FLEX_QUALITY_THRESHOLD = 40;    // minAngle during curl must be < this (de
 const EXTEND_QUALITY_THRESHOLD = 170; // maxAngle at bottom must be > this for full extension
 const ELBOW_DRIFT_THRESHOLD = 0.12;   // shoulder.z - elbow.z > this = elbow drifted forward
 
-// Landmark index sets per arm — used to suppress the non-active arm when user stands side-on
 const LEFT_ARM_INDICES  = new Set([11, 13, 15, 17, 19, 21]);
 const RIGHT_ARM_INDICES = new Set([12, 14, 16, 18, 20, 22]);
-// Minimum visibility gap to confidently decide which side is active (0 = always filter)
+
 const SIDE_VIS_GAP = 0.2;
 
 interface ArmLandmarks {
@@ -101,7 +100,7 @@ export default function PoseDetector() {
   const leftMaxExtensionRef = useRef<number>(0);
   const { requestFeedback, aiFeedback, isFetchingFeedback, isSpeaking, clearFeedback } = usePoseFeedback();
 
-  // UI display state
+
   const latestAngleRef = useRef<number>(0);
   const [displayAngle, setDisplayAngle] = useState<number>(0);
   const [lastRepFeedback, setLastRepFeedback] = useState<RepFormErrors | null>(null);
@@ -114,7 +113,7 @@ export default function PoseDetector() {
   useEffect(() => {
     console.log('[PoseDetector] Component mounted, initializing...');
 
-    // Initialize MediaPipe PoseLandmarker
+  
     const initializePoseLandmarker = async () => {
       try {
         console.log('[PoseDetector] Loading MediaPipe Vision tasks...');

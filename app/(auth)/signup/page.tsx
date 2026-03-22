@@ -74,7 +74,7 @@ export default function SignupPage() {
   const [sports, setSports] = useState<Sport[]>([]);
   const [sportsLoading, setSportsLoading] = useState(true);
 
-  // Submission state
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -189,7 +189,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F6F9] flex flex-col">
-      {/* ── Header ── */}
+
       <header className="px-4 sm:px-10 py-6 flex items-center justify-between">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push("/")}>
           <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md shadow-blue-200">
@@ -210,7 +210,7 @@ export default function SignupPage() {
         )}
       </header>
 
-      {/* ── Main ── */}
+
       <main className="flex-1 flex flex-col items-center px-6 py-10">
         {step === 1 && (
           <Step1
@@ -266,9 +266,7 @@ export default function SignupPage() {
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   STEP 1 — ROLE SELECTION
-══════════════════════════════════════════════════════════════ */
+
 function Step1({ selectedRole, onSelect, onContinue }: {
   selectedRole: Role; onSelect: (r: Role) => void; onContinue: () => void;
 }) {
@@ -337,9 +335,7 @@ function Step1({ selectedRole, onSelect, onContinue }: {
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   STEP 2A — ATHLETE
-══════════════════════════════════════════════════════════════ */
+
 function AthleteStep2({ form, onChange, sports, sportsLoading, onBack, onContinue }: {
   form: AthleteForm; onChange: (f: AthleteForm) => void;
   sports: Sport[]; sportsLoading: boolean;
@@ -412,9 +408,7 @@ function AthleteStep2({ form, onChange, sports, sportsLoading, onBack, onContinu
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   STEP 2B — COACH
-══════════════════════════════════════════════════════════════ */
+
 function CoachStep2({ form, onChange, sports, sportsLoading, onBack, onContinue }: {
   form: CoachForm; onChange: (f: CoachForm) => void;
   sports: Sport[]; sportsLoading: boolean;
@@ -483,27 +477,12 @@ function CoachStep2({ form, onChange, sports, sportsLoading, onBack, onContinue 
         </div>
       )}
 
-      {/* <SectionLabel className="mt-6">Qualifications & Certifications</SectionLabel>
-      <div className="space-y-4">
-        {form.qualifications.map((q, i) => (
-          <QualCard key={i} index={i} qual={q} accentClass="text-emerald-600"
-            borderClass="border-emerald-200" bgClass="bg-emerald-50" uploadColor="#059669"
-            onChange={(k, v) => updQ(i, k, v)}
-            onRemove={form.qualifications.length > 1 ? () => removeQ(i) : undefined}
-          />
-        ))}
-        <button type="button" onClick={addQ}
-          className="flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors mt-1">
-          <Plus size={15} /> Add another qualification
-        </button>
-      </div> */}
+      
     </FormShell>
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   STEP 2C — CONSULTANT (WELLNESS PROFESSIONAL)
-══════════════════════════════════════════════════════════════ */
+
 function WellnessStep2({ form, onChange, onBack, onContinue }: {
   form: WellnessForm; onChange: (f: WellnessForm) => void; onBack: () => void; onContinue: () => void;
 }) {
@@ -575,27 +554,12 @@ function WellnessStep2({ form, onChange, onBack, onContinue }: {
         })}
       </div>
 
-      {/* <SectionLabel className="mt-6">Qualifications & Certifications</SectionLabel>
-      <div className="space-y-4">
-        {form.qualifications.map((q, i) => (
-          <QualCard key={i} index={i} qual={q} accentClass="text-violet-600"
-            borderClass="border-violet-200" bgClass="bg-violet-50" uploadColor="#7C3AED"
-            onChange={(k, v) => updQ(i, k, v)}
-            onRemove={form.qualifications.length > 1 ? () => removeQ(i) : undefined}
-          />
-        ))}
-        <button type="button" onClick={addQ}
-          className="flex items-center gap-2 text-sm font-medium text-violet-600 hover:text-violet-700 transition-colors mt-1">
-          <Plus size={15} /> Add another qualification
-        </button>
-      </div> */}
+      
     </FormShell>
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   STEP 3 — REVIEW & SUBMIT
-══════════════════════════════════════════════════════════════ */
+
 function ReviewStep({ role, form, sports, isSubmitting, error, onBack, onSubmit }: {
   role: NonNullable<Role>;
   form: AthleteForm | CoachForm | WellnessForm;
@@ -632,7 +596,7 @@ function ReviewStep({ role, form, sports, isSubmitting, error, onBack, onSubmit 
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-        {/* Personal info */}
+   
         <SectionLabel>Personal Details</SectionLabel>
         <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm mb-6">
           <ReviewRow label="First Name" value={form.firstName} />
@@ -641,7 +605,7 @@ function ReviewStep({ role, form, sports, isSubmitting, error, onBack, onSubmit 
           <ReviewRow label="Phone" value={form.phone || "—"} />
         </div>
 
-        {/* Role-specific */}
+    
         {role === "athlete" && (
           <>
             <SectionLabel>Athlete Details</SectionLabel>
@@ -677,14 +641,14 @@ function ReviewStep({ role, form, sports, isSubmitting, error, onBack, onSubmit 
           </>
         )}
 
-        {/* Error */}
+
         {error && (
           <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
             {error}
           </div>
         )}
 
-        {/* Navigation */}
+
         <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-6">
           <button onClick={onBack} disabled={isSubmitting}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors">
@@ -705,9 +669,7 @@ function ReviewStep({ role, form, sports, isSubmitting, error, onBack, onSubmit 
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   STEP 3 — SUCCESS (Check your email)
-══════════════════════════════════════════════════════════════ */
+
 function SuccessStep({ email, onGoToLogin }: { email: string; onGoToLogin: () => void }) {
   const maskEmail = (e: string) => {
     const [user, domain] = e.split("@");
@@ -720,7 +682,7 @@ function SuccessStep({ email, onGoToLogin }: { email: string; onGoToLogin: () =>
       <ProgressBar step={3} />
 
       <div className="mt-12 bg-white rounded-2xl border border-gray-200 shadow-sm p-10 flex flex-col items-center">
-        {/* Mail icon */}
+        
         <div className="relative mb-6">
           <div className="w-24 h-24 rounded-full bg-blue-50 border-4 border-blue-100 flex items-center justify-center">
             <div className="w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-200">
@@ -764,9 +726,7 @@ function SuccessStep({ email, onGoToLogin }: { email: string; onGoToLogin: () =>
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SHARED — REVIEW ROW
-══════════════════════════════════════════════════════════════ */
+
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -776,9 +736,7 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SHARED — QUAL CARD
-══════════════════════════════════════════════════════════════ */
+
 function QualCard({ index, qual, accentClass, borderClass, bgClass, uploadColor, onChange, onRemove }: {
   index: number; qual: Qualification;
   accentClass: string; borderClass: string; bgClass: string; uploadColor: string;
@@ -810,7 +768,7 @@ function QualCard({ index, qual, accentClass, borderClass, bgClass, uploadColor,
           placeholder="e.g. 2021" />
       </div>
 
-      {/* PDF upload */}
+   
       <div className="mt-4">
         <p className="text-sm font-medium text-gray-700 mb-2">
           Upload Certificate <span className="text-gray-400 font-normal">(PDF)</span>
@@ -843,9 +801,7 @@ function QualCard({ index, qual, accentClass, borderClass, bgClass, uploadColor,
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SHARED — FORM SHELL
-══════════════════════════════════════════════════════════════ */
+
 function FormShell({ step, title, subtitle, roleTag, children, onBack, onContinue, isValid }: {
   step: number; title: string; subtitle: string;
   roleTag: { label: string; cls: string };
@@ -883,9 +839,7 @@ function FormShell({ step, title, subtitle, roleTag, children, onBack, onContinu
   );
 }
 
-/* ══════════════════════════════════════════════════════════════
-   PRIMITIVES
-══════════════════════════════════════════════════════════════ */
+
 function ProgressBar({ step }: { step: number }) {
   return (
     <div className="flex gap-2">

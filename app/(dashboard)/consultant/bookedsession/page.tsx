@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase/client'
 import { updateSession } from '@/services/api'
 import { VideoCall } from '@/components/dashboard/VideoCall'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+
 
 type SessionStatus = 'confirmed' | 'pending' | 'reschedule_requested' | 'completed'
 
@@ -30,7 +30,7 @@ type Session = {
   status:     SessionStatus
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 const TZ = 'Asia/Colombo'
 
@@ -90,7 +90,7 @@ const SPORT_COLORS = [
   'bg-pink-50 text-pink-600', 'bg-teal-50 text-teal-600',
 ]
 
-// ─── WEEK STRIP ───────────────────────────────────────────────────────────────
+
 
 function WeekStrip({ activeDateKey, setActiveDateKey, weekOffset, setWeekOffset, sessions, loading }: {
   activeDateKey:    string
@@ -141,7 +141,6 @@ function WeekStrip({ activeDateKey, setActiveDateKey, weekOffset, setWeekOffset,
   )
 }
 
-// ─── CANCEL MODAL ─────────────────────────────────────────────────────────────
 
 function CancelModal({ session, onClose, onConfirm }: { session: Session; onClose: () => void; onConfirm: () => void }) {
   const [saving, setSaving] = useState(false)
@@ -183,7 +182,7 @@ function CancelModal({ session, onClose, onConfirm }: { session: Session; onClos
   )
 }
 
-// ─── SESSION MENU ─────────────────────────────────────────────────────────────
+
 
 function SessionMenu({ session, onReschedule }: { session: Session; onReschedule: () => void }) {
   const [open, setOpen] = useState(false)
@@ -211,7 +210,6 @@ function SessionMenu({ session, onReschedule }: { session: Session; onReschedule
   )
 }
 
-// ─── SESSION CARD ─────────────────────────────────────────────────────────────
 
 function SessionCard({ session, onConfirm, onReschedule, onCancel, onJoin }: {
   session:      Session
@@ -291,7 +289,7 @@ function SessionCard({ session, onConfirm, onReschedule, onCancel, onJoin }: {
   )
 }
 
-// ─── PAGE ─────────────────────────────────────────────────────────────────────
+
 
 export default function ConsultantBookedSessionsPage() {
   const [sessions,      setSessions]      = useState<Session[]>([])
@@ -311,13 +309,13 @@ export default function ConsultantBookedSessionsPage() {
     setTimeout(() => setToast(null), 4000)
   }
 
-  // ── Fetch sessions for current week using coach route with consultantId ───
+
   const fetchSessions = useCallback(async (id: string, offset: number) => {
     setLoading(true)
     try {
       const { weekStart, weekEnd } = getWeekRange(offset)
       const params = new URLSearchParams({
-        coachId:   id,            // consultant is provider_id just like coach
+        coachId:   id,            
         weekStart: weekStart.toISOString(),
         weekEnd:   weekEnd.toISOString(),
       })
@@ -327,7 +325,7 @@ export default function ConsultantBookedSessionsPage() {
       if (Array.isArray(data)) {
         setSessions(data)
       } else {
-        // API returned raw sessions without shaping — shape them here
+       
         const raw = Array.isArray(data) ? data : []
         setSessions(raw.map((s: any) => {
           const athlete  = Array.isArray(s.athletes) ? s.athletes[0] : s.athletes
@@ -366,7 +364,7 @@ export default function ConsultantBookedSessionsPage() {
     }
   }, [])
 
-  // ── Initial load ───────────────────────────────────────────────────────────
+  
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) { setError('Not logged in.'); setLoading(false); return }
@@ -375,13 +373,13 @@ export default function ConsultantBookedSessionsPage() {
     })
   }, [fetchSessions])
 
-  // ── Re-fetch on week change ────────────────────────────────────────────────
+  
   useEffect(() => {
     if (!consultantId) return
     fetchSessions(consultantId, weekOffset)
   }, [weekOffset, consultantId, fetchSessions])
 
-  // ── Actions — reuse same updateSession from services/api ──────────────────
+
 
   async function handleConfirm(sessionId: string) {
     setActionLoading(sessionId)
@@ -493,7 +491,7 @@ export default function ConsultantBookedSessionsPage() {
           <p className="text-sm text-gray-500 mt-0.5">Manage and track all your consulting sessions.</p>
         </div>
 
-        {/* Summary cards */}
+        
         <div className="grid grid-cols-5 gap-3 mb-5">
           {[
             { label: 'Total',      value: totalAll,         color: 'text-gray-900'   },

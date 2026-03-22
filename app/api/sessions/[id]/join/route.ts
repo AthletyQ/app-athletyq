@@ -1,5 +1,4 @@
-// app/api/sessions/route.ts  (GET)
-// Supports ?coachId=... (existing) AND ?athleteId=... (new)
+
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -14,7 +13,7 @@ export async function GET(req: NextRequest) {
   const athleteId = searchParams.get("athleteId");
 
   if (coachId) {
-    // Existing coach query — keep your current logic here
+   
     const { data, error } = await supabase
       .from("sessions")
       .select(`
@@ -32,7 +31,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (athleteId) {
-    // New athlete query — athleteId here is the athletes.id (not user_id)
+    
     const { data, error } = await supabase
       .from("sessions")
       .select(`

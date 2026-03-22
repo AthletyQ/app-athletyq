@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { MessageTicks } from '@/components/chat/MessageTicks'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+
 
 interface Profile { first_name: string; last_name: string; role: string }
 
@@ -29,7 +29,6 @@ interface Message {
 
 interface PendingFile { file: File; previewUrl: string | null }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EC4899','#6366F1']
 function avatarColor(id: string) { return AVATAR_COLORS[id.charCodeAt(0) % AVATAR_COLORS.length] }
@@ -43,7 +42,7 @@ function formatTime(iso: string | null) {
     : d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
-// ─── Full Emoji Set ───────────────────────────────────────────────────────────
+
 
 const EMOJI_CATEGORIES: Record<string, string[]> = {
   '😀': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','💫','🤯','🤠','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'],
@@ -160,12 +159,16 @@ function DeleteModal({ name, onConfirm, onCancel, deleting }: {
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+
 
 export default function AthleteChatPageClient() {
   const searchParams = useSearchParams()
   const router       = useRouter()
-  const openWith     = searchParams.get('contactId') ?? searchParams.get('consultantId')
+
+
+  const pendingContactId = useRef<string | null>(
+    searchParams.get('contactId') ?? searchParams.get('consultantId')
+  )
 
   const [currentUserId,  setCurrentUserId]  = useState<string | null>(null)
   const [conversations,  setConversations]  = useState<Conversation[]>([])
@@ -178,7 +181,6 @@ export default function AthleteChatPageClient() {
   const [loadingConvs,   setLoadingConvs]   = useState(true)
   const [loadingMsgs,    setLoadingMsgs]    = useState(false)
   const [showList,       setShowList]       = useState(true)
-  const [autoOpenDone,   setAutoOpenDone]   = useState(false)
   const [convMenuOpen,   setConvMenuOpen]   = useState<string | null>(null)
   const [deleteTarget,   setDeleteTarget]   = useState<Conversation | null>(null)
   const [deleting,       setDeleting]       = useState(false)
@@ -196,15 +198,17 @@ export default function AthleteChatPageClient() {
   const fileInputRef   = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => { if (user) setCurrentUserId(user.id) })
-  }, [])
-
-  useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setConvMenuOpen(null)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setCurrentUserId(user.id)
+    })
   }, [])
 
   const fetchConversations = useCallback(async (userId: string) => {
@@ -225,14 +229,10 @@ export default function AthleteChatPageClient() {
     setLoadingConvs(false)
   }, [])
 
-  useEffect(() => { if (currentUserId) fetchConversations(currentUserId) }, [currentUserId, fetchConversations])
-
   useEffect(() => {
-    if (!openWith || !currentUserId || autoOpenDone || loadingConvs) return
-    const existing = conversations.find((c) => c.contact_id === openWith)
-    if (existing) { openConversation(existing); setAutoOpenDone(true); router.replace('/athlete/chats') }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openWith, currentUserId, conversations, loadingConvs, autoOpenDone])
+    if (currentUserId) fetchConversations(currentUserId)
+  }, [currentUserId, fetchConversations])
+
 
   useEffect(() => {
     if (!currentUserId) return
@@ -243,6 +243,7 @@ export default function AthleteChatPageClient() {
       .subscribe()
     return () => { convChannelRef.current?.unsubscribe() }
   }, [currentUserId, fetchConversations])
+
 
   useEffect(() => {
     const q = search.toLowerCase()
@@ -274,6 +275,19 @@ export default function AthleteChatPageClient() {
     if (currentUserId) await markAsRead(conv.id, currentUserId)
   }, [fetchMessages, markAsRead, currentUserId])
 
+
+  useEffect(() => {
+    const contactId = pendingContactId.current
+    if (!contactId || !currentUserId || loadingConvs) return
+
+    const existing = conversations.find((c) => c.contact_id === contactId)
+    if (existing) {
+      pendingContactId.current = null          // clear so it only fires once
+      router.replace('/athlete/chats')         // clean URL
+      openConversation(existing)               // open the conversation
+    }
+  }, [conversations, currentUserId, loadingConvs, openConversation, router])
+
   const handleDeleteConversation = async () => {
     if (!deleteTarget) return
     setDeleting(true)
@@ -286,6 +300,7 @@ export default function AthleteChatPageClient() {
     finally { setDeleting(false); setDeleteTarget(null) }
   }
 
+
   const handleDeleteMessage = async (msgId: string) => {
     setDeletingMsgId(msgId)
     try {
@@ -295,7 +310,7 @@ export default function AthleteChatPageClient() {
     finally { setDeletingMsgId(null); setHoveredMsg(null) }
   }
 
-  // ── Realtime: new messages + is_read tick updates ─────────────────────────
+
   useEffect(() => {
     if (!activeConv) return
     msgChannelRef.current?.unsubscribe()
@@ -309,15 +324,12 @@ export default function AthleteChatPageClient() {
         setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
         if (currentUserId && msg.sender_id !== currentUserId) markAsRead(activeConv.id, currentUserId)
       })
-      // ── Tick updates: fires when is_read flips to true ──
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public',
         table: 'messages', filter: `conversation_id=eq.${activeConv.id}`,
       }, (payload) => {
         const updated = payload.new as Message
-        setMessages((prev) =>
-          prev.map((m) => m.id === updated.id ? { ...m, is_read: updated.is_read } : m)
-        )
+        setMessages((prev) => prev.map((m) => m.id === updated.id ? { ...m, is_read: updated.is_read } : m))
       })
       .subscribe()
     return () => { msgChannelRef.current?.unsubscribe() }
@@ -359,7 +371,7 @@ export default function AthleteChatPageClient() {
     }
 
     setNewMessage('')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const payload: any = { conversation_id: activeConv.id, sender_id: currentUserId, content: text || '', is_read: false }
     if (attachmentUrl)  payload.attachment_url  = attachmentUrl
     if (attachmentName) payload.attachment_name = attachmentName
@@ -392,7 +404,7 @@ export default function AthleteChatPageClient() {
 
       <div className="flex h-[calc(100vh-64px)] bg-white overflow-hidden">
 
-        {/* ── Left panel ── */}
+        
         <div className={`flex flex-col w-full md:w-96 border-r border-gray-200 flex-shrink-0 bg-white ${showList ? 'flex' : 'hidden md:flex'}`}>
           <div className="px-5 pt-5 pb-4 border-b border-gray-100">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Messages</h2>
@@ -461,7 +473,7 @@ export default function AthleteChatPageClient() {
           </div>
         </div>
 
-        {/* ── Right panel ── */}
+     
         <div className={`flex-1 flex flex-col min-w-0 ${!showList ? 'flex' : 'hidden md:flex'}`}>
           {activeConv ? (
             <>

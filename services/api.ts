@@ -135,7 +135,7 @@ export async function getCallRecords(coachId: string) {
   } catch (err) { console.error('getCallRecords fetch failed:', err); return [] }
 }
 
-// Updated: now passes role: "coach" to the unified join route
+
 export async function joinSession(sessionId: string) {
   try {
     const res = await fetch(`/api/sessions/${sessionId}/join`, {
@@ -173,7 +173,7 @@ export async function completeSession(
   }
 }
 
-// ── Athlete functions ────────────────────────────────────────────────────────
+
 
 export async function getAthleteSessions(athleteId: string) {
   try {
@@ -193,7 +193,7 @@ export async function joinSessionAsAthlete(sessionId: string) {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed to join session')
-    return data // { roomUrl, session }
+    return data 
   } catch (err) {
     console.error('joinSessionAsAthlete fetch failed:', err)
     throw err
@@ -209,7 +209,7 @@ export async function joinSessionAsCoach(sessionId: string) {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed to join session')
-    return data // { roomUrl, session }
+    return data 
   } catch (err) {
     console.error('joinSessionAsCoach fetch failed:', err)
     throw err

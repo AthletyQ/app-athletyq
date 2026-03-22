@@ -31,7 +31,7 @@ export function Sidebar() {
         overflow-hidden z-50
       "
     >
-      {/* ── Logo ── */}
+  
       <div className="h-20 flex items-center justify-center px-4 flex-shrink-0 overflow-hidden">
         <Link
           href="/coach/dashboard"
@@ -47,7 +47,7 @@ export function Sidebar() {
         </Link>
       </div>
 
-      {/* ── Nav ── */}
+    
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-2">
         <nav className="px-2 space-y-">
           {mainItems.map((item) => {
@@ -77,7 +77,6 @@ export function Sidebar() {
         </nav>
       </div>
 
-      {/* ── Copyright ── */}
       <div className="flex-shrink-0 border-t border-white/10 px-2 py-4 flex justify-center group-hover/sidebar:justify-start group-hover/sidebar:px-4">
         <div className="hidden group-hover/sidebar:block space-y-1">
           <div className="flex items-center gap-1.5 text-white/30">

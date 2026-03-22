@@ -41,7 +41,7 @@ export function VideoCall({
     return `${m}:${s}`
   }
 
-  // ── Get room from API ─────────────────────────────────────────────────────
+  
   useEffect(() => {
     async function getRoom() {
       try {
@@ -61,7 +61,7 @@ export function VideoCall({
         setToken(data.token)
         setLoading(false)
 
-        // Start timer once room is ready
+        
         timerRef.current = setInterval(() => {
           setElapsed(prev => prev + 1)
         }, 1000)
@@ -87,12 +87,12 @@ export function VideoCall({
     onEnd(elapsed)
   }
 
-  // Build the Daily Prebuilt iframe URL with token
+ 
   const iframeSrc = roomUrl && token
     ? `${roomUrl}?t=${token}`
     : roomUrl ?? ''
 
-  // ── Error ─────────────────────────────────────────────────────────────────
+
   if (error) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
@@ -111,7 +111,7 @@ export function VideoCall({
     )
   }
 
-  // ── Loading ───────────────────────────────────────────────────────────────
+
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950">
@@ -124,7 +124,7 @@ export function VideoCall({
     )
   }
 
-  // ── End confirm ───────────────────────────────────────────────────────────
+
   const EndConfirmModal = showEndConfirm && (
     <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/70">
       <div className="bg-white rounded-2xl p-6 max-w-xs mx-4 text-center">
@@ -158,7 +158,7 @@ export function VideoCall({
     </div>
   )
 
-  // ── Minimized ─────────────────────────────────────────────────────────────
+
   if (minimized) {
     return (
       <div className="fixed bottom-4 right-4 z-50 w-72 rounded-2xl overflow-hidden shadow-2xl border border-white/20">
@@ -195,11 +195,11 @@ export function VideoCall({
     )
   }
 
-  // ── Full view ─────────────────────────────────────────────────────────────
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-gray-950">
 
-      {/* Top bar */}
+    
       <div className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -207,7 +207,6 @@ export function VideoCall({
           <span className="text-gray-400 text-sm">{durationMinutes} min scheduled</span>
         </div>
 
-        {/* Timer */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-black/40 rounded-xl px-3 py-1.5">
             <Clock className="w-3.5 h-3.5 text-blue-400" />
@@ -215,7 +214,7 @@ export function VideoCall({
             <span className="text-gray-500 text-xs">/ {formatTime(totalSeconds)}</span>
           </div>
 
-          {/* Progress bar */}
+          
           <div className="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-1000 ${canAutoComplete ? 'bg-green-500' : 'bg-blue-500'}`}
@@ -245,7 +244,7 @@ export function VideoCall({
         </div>
       </div>
 
-      {/* Daily Prebuilt iframe — full screen */}
+
       <div className="flex-1 relative">
         <iframe
           src={iframeSrc}
