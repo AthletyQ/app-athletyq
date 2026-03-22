@@ -43,7 +43,7 @@ function formatTime(iso: string | null) {
     : d.toLocaleDateString([], { month: 'short', day: 'numeric' })
 }
 
-// ─── Full Emoji Set ───────────────────────────────────────────────────────────
+// ─── Emoji Set ────────────────────────────────────────────────────────────────
 
 const EMOJI_CATEGORIES: Record<string, string[]> = {
   '😀': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','💫','🤯','🤠','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'],
@@ -165,7 +165,11 @@ function DeleteModal({ name, onConfirm, onCancel, deleting }: {
 export default function AthleteChatPageClient() {
   const searchParams = useSearchParams()
   const router       = useRouter()
-  const openWith     = searchParams.get('contactId') ?? searchParams.get('consultantId')
+
+  // ── Capture contactId in a ref immediately so router.replace can't lose it ──
+  const pendingContactId = useRef<string | null>(
+    searchParams.get('contactId') ?? searchParams.get('consultantId')
+  )
 
   const [currentUserId,  setCurrentUserId]  = useState<string | null>(null)
   const [conversations,  setConversations]  = useState<Conversation[]>([])
@@ -178,7 +182,6 @@ export default function AthleteChatPageClient() {
   const [loadingConvs,   setLoadingConvs]   = useState(true)
   const [loadingMsgs,    setLoadingMsgs]    = useState(false)
   const [showList,       setShowList]       = useState(true)
-  const [autoOpenDone,   setAutoOpenDone]   = useState(false)
   const [convMenuOpen,   setConvMenuOpen]   = useState<string | null>(null)
   const [deleteTarget,   setDeleteTarget]   = useState<Conversation | null>(null)
   const [deleting,       setDeleting]       = useState(false)
@@ -196,15 +199,17 @@ export default function AthleteChatPageClient() {
   const fileInputRef   = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => { if (user) setCurrentUserId(user.id) })
-  }, [])
-
-  useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setConvMenuOpen(null)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setCurrentUserId(user.id)
+    })
   }, [])
 
   const fetchConversations = useCallback(async (userId: string) => {
@@ -225,15 +230,11 @@ export default function AthleteChatPageClient() {
     setLoadingConvs(false)
   }, [])
 
-  useEffect(() => { if (currentUserId) fetchConversations(currentUserId) }, [currentUserId, fetchConversations])
-
   useEffect(() => {
-    if (!openWith || !currentUserId || autoOpenDone || loadingConvs) return
-    const existing = conversations.find((c) => c.contact_id === openWith)
-    if (existing) { openConversation(existing); setAutoOpenDone(true); router.replace('/athlete/chats') }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openWith, currentUserId, conversations, loadingConvs, autoOpenDone])
+    if (currentUserId) fetchConversations(currentUserId)
+  }, [currentUserId, fetchConversations])
 
+  // ── Realtime: conversation list ───────────────────────────────────────────
   useEffect(() => {
     if (!currentUserId) return
     convChannelRef.current?.unsubscribe()
@@ -244,6 +245,7 @@ export default function AthleteChatPageClient() {
     return () => { convChannelRef.current?.unsubscribe() }
   }, [currentUserId, fetchConversations])
 
+  // ── Search filter ─────────────────────────────────────────────────────────
   useEffect(() => {
     const q = search.toLowerCase()
     setFiltered(q
@@ -274,6 +276,20 @@ export default function AthleteChatPageClient() {
     if (currentUserId) await markAsRead(conv.id, currentUserId)
   }, [fetchMessages, markAsRead, currentUserId])
 
+  // ── Auto-open: uses ref so URL clearing doesn't break it ─────────────────
+  useEffect(() => {
+    const contactId = pendingContactId.current
+    if (!contactId || !currentUserId || loadingConvs) return
+
+    const existing = conversations.find((c) => c.contact_id === contactId)
+    if (existing) {
+      pendingContactId.current = null          // clear so it only fires once
+      router.replace('/athlete/chats')         // clean URL
+      openConversation(existing)               // open the conversation
+    }
+  }, [conversations, currentUserId, loadingConvs, openConversation, router])
+
+  // ── Delete conversation ───────────────────────────────────────────────────
   const handleDeleteConversation = async () => {
     if (!deleteTarget) return
     setDeleting(true)
@@ -286,6 +302,7 @@ export default function AthleteChatPageClient() {
     finally { setDeleting(false); setDeleteTarget(null) }
   }
 
+  // ── Delete message ────────────────────────────────────────────────────────
   const handleDeleteMessage = async (msgId: string) => {
     setDeletingMsgId(msgId)
     try {
@@ -295,7 +312,7 @@ export default function AthleteChatPageClient() {
     finally { setDeletingMsgId(null); setHoveredMsg(null) }
   }
 
-  // ── Realtime: new messages + is_read tick updates ─────────────────────────
+  // ── Realtime: new messages + tick updates ─────────────────────────────────
   useEffect(() => {
     if (!activeConv) return
     msgChannelRef.current?.unsubscribe()
@@ -309,15 +326,12 @@ export default function AthleteChatPageClient() {
         setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])
         if (currentUserId && msg.sender_id !== currentUserId) markAsRead(activeConv.id, currentUserId)
       })
-      // ── Tick updates: fires when is_read flips to true ──
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public',
         table: 'messages', filter: `conversation_id=eq.${activeConv.id}`,
       }, (payload) => {
         const updated = payload.new as Message
-        setMessages((prev) =>
-          prev.map((m) => m.id === updated.id ? { ...m, is_read: updated.is_read } : m)
-        )
+        setMessages((prev) => prev.map((m) => m.id === updated.id ? { ...m, is_read: updated.is_read } : m))
       })
       .subscribe()
     return () => { msgChannelRef.current?.unsubscribe() }
