@@ -16,7 +16,6 @@ const CURL_DOWN_THRESHOLD = 160; // angle must rise above this to register "down
 const FLEX_QUALITY_THRESHOLD = 40;    // minAngle during curl must be < this (deeper = better)
 const EXTEND_QUALITY_THRESHOLD = 170; // maxAngle at bottom must be > this for full extension
 const ELBOW_DRIFT_THRESHOLD = 0.12;   // shoulder.z - elbow.z > this = elbow drifted forward
-const TORSO_LEAN_THRESHOLD = 0.05;    // change in (shoulder.z - hipMid.z) > this = torso lean
 
 // Landmark index sets per arm — used to suppress the non-active arm when user stands side-on
 const LEFT_ARM_INDICES  = new Set([11, 13, 15, 17, 19, 21]);
@@ -35,16 +34,12 @@ interface RepAccumulator {
   extensionAngle: number;     // max angle seen in the 'down' phase before this curl
   minAngle: number;           // min angle reached during the 'up' (curl) phase
   maxElbowDrift: number;      // max (shoulder.z − elbow.z) during the curl
-  baselineTorsoZ: number;     // shoulder.z − hipMid.z at curl start
-  maxTorsoLeanDelta: number;  // max deviation from baseline during curl
 }
 
 const newRepAcc = (): RepAccumulator => ({
   extensionAngle: 0,
   minAngle: Infinity,
   maxElbowDrift: 0,
-  baselineTorsoZ: 0,
-  maxTorsoLeanDelta: 0,
 });
 
 const isArmVisible = (arm: ArmLandmarks): boolean =>
@@ -395,9 +390,6 @@ export default function PoseDetector() {
 
        // console.log("leftArm", leftArm);
 
-        // Hip midpoint z — used for torso lean detection
-        const hipMidZ = ((landmarks[23]?.z ?? 0) + (landmarks[24]?.z ?? 0)) / 2;
-
         if (isArmVisible(rightArm)) {
           const rawAngle = calculateAngle(rightArm.shoulder, rightArm.elbow, rightArm.wrist);
           rightAngleBufferRef.current.push(rawAngle);
@@ -405,7 +397,6 @@ export default function PoseDetector() {
           const rightAngle = rightAngleBufferRef.current.reduce((a, b) => a + b, 0) / rightAngleBufferRef.current.length;
 
           const elbowDrift = rightArm.shoulder.z - rightArm.elbow.z;
-          const torsoZ     = rightArm.shoulder.z - hipMidZ;
 
           if (rightCurlStateRef.current === 'down') {
             // Track max extension while arm hangs
@@ -418,16 +409,14 @@ export default function PoseDetector() {
                 extensionAngle: rightMaxExtensionRef.current,
                 minAngle: rightAngle,
                 maxElbowDrift: elbowDrift,
-                baselineTorsoZ: torsoZ,
               };
               rightMaxExtensionRef.current = 0;
             }
           } else {
             // In 'up' phase: accumulate form metrics every frame
             const acc = rightRepAccRef.current;
-            acc.minAngle          = Math.min(acc.minAngle, rightAngle);
-            acc.maxElbowDrift     = Math.max(acc.maxElbowDrift, elbowDrift);
-            acc.maxTorsoLeanDelta = Math.max(acc.maxTorsoLeanDelta, Math.abs(torsoZ - acc.baselineTorsoZ));
+            acc.minAngle      = Math.min(acc.minAngle, rightAngle);
+            acc.maxElbowDrift = Math.max(acc.maxElbowDrift, elbowDrift);
 
             if (rightAngle > CURL_DOWN_THRESHOLD) {
               // Transition up → down: rep complete — evaluate form
@@ -438,11 +427,10 @@ export default function PoseDetector() {
                 incompleteFlexion:   acc.minAngle > FLEX_QUALITY_THRESHOLD,
                 incompleteExtension: acc.extensionAngle < EXTEND_QUALITY_THRESHOLD,
                 elbowDrift:          acc.maxElbowDrift > ELBOW_DRIFT_THRESHOLD,
-                torsoLean:           acc.maxTorsoLeanDelta > TORSO_LEAN_THRESHOLD,
               };
               setLastRepFeedback(errors);
               setLastRepTime(Date.now());
-              setFormScore(Math.round(((4 - Object.values(errors).filter(Boolean).length) / 4) * 100));
+              setFormScore(Math.round(((3 - Object.values(errors).filter(Boolean).length) / 3) * 100));
               console.log('[Form] Right rep', rightRepCountRef.current, errors);
               requestFeedback('right', rightRepCountRef.current, errors);
             }
@@ -459,7 +447,6 @@ export default function PoseDetector() {
           const leftAngle = leftAngleBufferRef.current.reduce((a, b) => a + b, 0) / leftAngleBufferRef.current.length;
 
           const elbowDrift = leftArm.shoulder.z - leftArm.elbow.z;
-          const torsoZ     = leftArm.shoulder.z - hipMidZ;
 
           if (leftCurlStateRef.current === 'down') {
             leftMaxExtensionRef.current = Math.max(leftMaxExtensionRef.current, leftAngle);
@@ -470,15 +457,13 @@ export default function PoseDetector() {
                 extensionAngle: leftMaxExtensionRef.current,
                 minAngle: leftAngle,
                 maxElbowDrift: elbowDrift,
-                baselineTorsoZ: torsoZ,
               };
               leftMaxExtensionRef.current = 0;
             }
           } else {
             const acc = leftRepAccRef.current;
-            acc.minAngle          = Math.min(acc.minAngle, leftAngle);
-            acc.maxElbowDrift     = Math.max(acc.maxElbowDrift, elbowDrift);
-            acc.maxTorsoLeanDelta = Math.max(acc.maxTorsoLeanDelta, Math.abs(torsoZ - acc.baselineTorsoZ));
+            acc.minAngle      = Math.min(acc.minAngle, leftAngle);
+            acc.maxElbowDrift = Math.max(acc.maxElbowDrift, elbowDrift);
 
             if (leftAngle > CURL_DOWN_THRESHOLD) {
               leftCurlStateRef.current = 'down';
@@ -488,11 +473,10 @@ export default function PoseDetector() {
                 incompleteFlexion:   acc.minAngle > FLEX_QUALITY_THRESHOLD,
                 incompleteExtension: acc.extensionAngle < EXTEND_QUALITY_THRESHOLD,
                 elbowDrift:          acc.maxElbowDrift > ELBOW_DRIFT_THRESHOLD,
-                torsoLean:           acc.maxTorsoLeanDelta > TORSO_LEAN_THRESHOLD,
               };
               setLastRepFeedback(errors);
               setLastRepTime(Date.now());
-              setFormScore(Math.round(((4 - Object.values(errors).filter(Boolean).length) / 4) * 100));
+              setFormScore(Math.round(((3 - Object.values(errors).filter(Boolean).length) / 3) * 100));
               console.log('[Form] Left rep', leftRepCountRef.current, errors);
               requestFeedback('left', leftRepCountRef.current, errors);
             }
@@ -641,8 +625,42 @@ export default function PoseDetector() {
         {/* LEFT: video + controls */}
         <div className="flex-1 min-w-0 flex flex-col gap-3">
 
-          {/* Video container */}
-          <div className="relative bg-black rounded-2xl overflow-hidden aspect-video">
+          {/* Controls bar — above video so it's always visible */}
+          <div className="flex items-center justify-between px-1">
+            <button className="flex items-center gap-2 px-4 py-2 text-sm text-gray-500 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Adjust Calibration
+            </button>
+
+            {!isDetecting ? (
+              <button
+                onClick={handleStartDetection}
+                disabled={!isDetectorReady}
+                className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+                {isDetectorReady ? 'Start Training' : 'Loading Model…'}
+              </button>
+            ) : (
+              <button
+                onClick={handleStopDetection}
+                className="flex items-center gap-2 px-6 py-2.5 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12" />
+                </svg>
+                Stop Detection
+              </button>
+            )}
+          </div>
+
+          {/* Video container — flex-1 fills available height, aspect-ratio preserved by canvas */}
+          <div className="relative bg-black rounded-2xl overflow-hidden aspect-video w-full" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             <video ref={videoRef} autoPlay playsInline muted style={{ display: 'none' }} />
             <canvas
               ref={canvasRef}
@@ -682,40 +700,6 @@ export default function PoseDetector() {
                   {isDetectorReady ? 'Press Start Training to begin' : 'Loading model…'}
                 </p>
               </div>
-            )}
-          </div>
-
-          {/* Controls bar */}
-          <div className="flex items-center justify-between px-1">
-            <button className="flex items-center gap-2 px-4 py-2 text-sm text-gray-500 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Adjust Calibration
-            </button>
-
-            {!isDetecting ? (
-              <button
-                onClick={handleStartDetection}
-                disabled={!isDetectorReady}
-                className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                {isDetectorReady ? 'Start Training' : 'Loading Model…'}
-              </button>
-            ) : (
-              <button
-                onClick={handleStopDetection}
-                className="flex items-center gap-2 px-6 py-2.5 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 transition-colors"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="6" y="6" width="12" height="12" />
-                </svg>
-                Stop Detection
-              </button>
             )}
           </div>
 
@@ -781,13 +765,6 @@ export default function PoseDetector() {
                   description={lastRepFeedback.elbowDrift
                     ? 'Keep your elbow pinned to your side throughout.'
                     : 'Good elbow control throughout the rep.'}
-                />
-                <FeedbackItem
-                  ok={!lastRepFeedback.torsoLean}
-                  title={lastRepFeedback.torsoLean ? 'Torso leaning back' : 'Torso upright'}
-                  description={lastRepFeedback.torsoLean
-                    ? 'Keep your shoulders back and engage your glutes for stability.'
-                    : 'Excellent posture maintained.'}
                 />
               </div>
             </div>
