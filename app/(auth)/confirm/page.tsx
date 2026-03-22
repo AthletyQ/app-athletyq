@@ -17,15 +17,15 @@ function ConfirmPageContent() {
   useEffect(() => {
     async function handleConfirmation() {
       try {
-        // Get the hash fragment from the URL (contains access_token, refresh_token, etc.)
+
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get("access_token");
         const refreshToken = hashParams.get("refresh_token");
         const type = hashParams.get("type");
 
-        // If we have tokens in the hash, Supabase has already confirmed the email
+
         if (accessToken && refreshToken && (type === "signup" || type === "recovery")) {
-          // Set the session using the tokens
+
           const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
@@ -39,31 +39,30 @@ function ConfirmPageContent() {
             return;
           }
 
-          // Call API to create profile + actor record (idempotent)
-          // All role-specific data is stored in user_metadata
+     
           const response = await fetch("/api/auth/create-profile", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${sessionData.session?.access_token}`,
             },
-            body: JSON.stringify({}), // All data comes from user_metadata on the server
+            body: JSON.stringify({}), 
           });
 
           if (!response.ok) {
             const errorData = await response.text();
             console.error("Profile creation error:", errorData);
-            // Still mark as success — profile can be retried later
+         
           }
 
           setStatus("success");
         } else {
-          // Check if we have token_hash in query params (alternative flow)
+          
           const tokenHash = searchParams.get("token_hash");
           const typeParam = searchParams.get("type");
 
           if (tokenHash && typeParam) {
-            // Verify OTP token
+            
             const { data, error } = await supabase.auth.verifyOtp({
               token_hash: tokenHash,
               type: typeParam as "signup" | "email",
@@ -72,13 +71,10 @@ function ConfirmPageContent() {
             if (error) throw error;
             if (!data.user) throw new Error("User not found after confirmation");
 
-            // Use the session returned directly by verifyOtp.
-            // Do NOT call getSession() here — in PKCE flow (used by hosted Supabase)
-            // the session may not yet be persisted to storage when getSession() runs,
-            // causing the Authorization header to be omitted and profile creation to fail.
+       
             if (!data.session) throw new Error("No session returned after OTP verification");
 
-            // Create profile + actor record
+         
             const response = await fetch("/api/auth/create-profile", {
               method: "POST",
               headers: {
