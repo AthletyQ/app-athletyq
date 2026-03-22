@@ -82,7 +82,7 @@ export default function CoachProfilePage() {
         is_available: coach?.is_available ?? false,
         rating: coach?.rating ?? 0,
         total_sessions: coach?.total_sessions ?? 0,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
         sport_name: (coach as any)?.sports?.name ?? null,
       });
       setLoading(false);
@@ -117,7 +117,7 @@ export default function CoachProfilePage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
-      {/* Back */}
+      
       <button
         onClick={() => router.back()}
         className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors"
@@ -126,12 +126,12 @@ export default function CoachProfilePage() {
         Back
       </button>
 
-      {/* Header Card */}
+      
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex items-center gap-6">
         <div className="relative flex-shrink-0">
           <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600">
             {profile.profile_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
+              
               <img src={profile.profile_image_url} alt={fullName} className="w-full h-full rounded-full object-cover" />
             ) : initials}
           </div>
@@ -155,7 +155,7 @@ export default function CoachProfilePage() {
           </div>
         </div>
 
-        {/* Stats */}
+       
         <div className="hidden sm:flex gap-4 flex-shrink-0">
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">{profile.rating.toFixed(1)}</p>
@@ -172,7 +172,7 @@ export default function CoachProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Personal Info */}
+        
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Personal Information</h2>
           <InfoRow icon={User} label="Full Name" value={fullName} />
@@ -182,7 +182,7 @@ export default function CoachProfilePage() {
           <InfoRow icon={Hash} label="Coach ID" value={profile.id.slice(0, 8).toUpperCase()} />
         </div>
 
-        {/* Professional Info */}
+        
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Professional Details</h2>
           <InfoRow icon={Trophy} label="Coaching Sport" value={profile.sport_name} />
@@ -194,7 +194,7 @@ export default function CoachProfilePage() {
           )}
         </div>
 
-        {/* Bio */}
+        
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 flex items-center gap-2">
             <User className="w-4 h-4 text-blue-500" /> Bio
@@ -206,7 +206,7 @@ export default function CoachProfilePage() {
           )}
         </div>
 
-        {/* Certifications */}
+        
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 flex items-center gap-2">
             <Award className="w-4 h-4 text-amber-500" /> Certifications

@@ -189,7 +189,7 @@ export async function getConsultants(params?: {
   minPrice?:  number;
   maxPrice?:  number;
 }) {
-  // 1. Fetch consultants with filters
+
   let query = supabase
     .from("consultants")
     .select("user_id, specialty, bio, hourly_rate, certifications, rating, years_of_experience", { count: "exact" });
@@ -205,8 +205,7 @@ export async function getConsultants(params?: {
   if (!consultantRows || consultantRows.length === 0) {
     return { consultants: [], total: 0 };
   }
- 
-  // 2. Fetch matching profiles using the collected user_ids
+
   const userIds = consultantRows.map((r) => r.user_id);
  
   const { data: profileRows, error: profileError } = await supabase
@@ -216,7 +215,7 @@ export async function getConsultants(params?: {
  
   if (profileError) throw new Error(profileError.message);
  
-  // 3. Fetch session counts for each consultant
+
   const { data: sessionCounts, error: sessionCountsError } = await supabase
     .from("sessions")
     .select("provider_id")
@@ -311,7 +310,7 @@ export async function getConsultantAvailability(
   const allPossibleSlots: string[] = [];
   let currentHour = 8;
   let currentMinute = 0;
-  // 8 AM to 8:30 PM (20:30)
+
   while (currentHour < 20 || (currentHour === 20 && currentMinute <= 30)) {
     allPossibleSlots.push(
       `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
@@ -323,7 +322,7 @@ export async function getConsultantAvailability(
     }
   }
 
-  // Handle past slots for today
+
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
   if (isToday) {

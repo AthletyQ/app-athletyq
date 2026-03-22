@@ -25,8 +25,8 @@ export default function CoachCard({ coach }: { coach: Coach }) {
   const router = useRouter();
   const [isBooking,     setIsBooking]     = useState(false);
   const [messaging,     setMessaging]     = useState(false);
-  const [isAthlete,     setIsAthlete]     = useState(true);   // optimistic
-  const [roleLoaded,    setRoleLoaded]    = useState(false);  // true once fetch resolves
+  const [isAthlete,     setIsAthlete]     = useState(true);   
+  const [roleLoaded,    setRoleLoaded]    = useState(false);  
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const fullName    = `${coach.firstName} ${coach.lastName}`;
@@ -51,7 +51,7 @@ export default function CoachCard({ coach }: { coach: Coach }) {
     return () => { document.body.style.overflow = "unset"; };
   }, [isBooking]);
 
-  // Show buttons optimistically; hide only after confirmed non-athlete or own card
+  
   const showActions = (!roleLoaded || isAthlete) && currentUserId !== coach.id;
 
   const handleMessage = async () => {
@@ -96,7 +96,7 @@ export default function CoachCard({ coach }: { coach: Coach }) {
     <>
       <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow duration-200 flex flex-col gap-4 relative">
 
-        {/* Header */}
+        
         <div className="flex items-start gap-3">
           <div
             className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
@@ -124,7 +124,7 @@ export default function CoachCard({ coach }: { coach: Coach }) {
           </div>
         </div>
 
-        {/* Stats */}
+      
         <div className="space-y-1.5">
           {coach.rating !== null && (
             <div className="flex items-center gap-1.5">
@@ -148,14 +148,14 @@ export default function CoachCard({ coach }: { coach: Coach }) {
           )}
         </div>
 
-        {/* Bio */}
+        
         {coach.bio ? (
           <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{coach.bio}</p>
         ) : (
           <p className="text-xs text-gray-300 italic">No bio available</p>
         )}
 
-        {/* Certifications */}
+        
         {coach.certifications.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {coach.certifications.slice(0, 2).map((cert) => (
@@ -166,7 +166,7 @@ export default function CoachCard({ coach }: { coach: Coach }) {
           </div>
         )}
 
-        {/* Actions */}
+       
         {showActions && (
           <div className="flex gap-2 mt-auto">
             <button

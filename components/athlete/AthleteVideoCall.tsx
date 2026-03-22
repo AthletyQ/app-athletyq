@@ -1,4 +1,4 @@
-// components/athlete/AthleteVideoCall.tsx
+
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -47,7 +47,7 @@ export default function AthleteVideoCall({
   const progress = Math.min((elapsedSeconds / totalSeconds) * 100, 100);
   const requiredSeconds = totalSeconds * 0.8;
 
-  // Format elapsed time
+  
   const formatTime = (sec: number) => {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
@@ -72,7 +72,7 @@ export default function AthleteVideoCall({
   }, [onEnd]);
 
   useEffect(() => {
-    // Load Daily.co script
+  
     const script = document.createElement("script");
     script.src = "https://unpkg.com/@daily-co/daily-js";
     script.async = true;
@@ -86,7 +86,7 @@ export default function AthleteVideoCall({
         callRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   function initCall() {
@@ -115,7 +115,7 @@ export default function AthleteVideoCall({
       })
       .on("participant-joined", (e: any) => {
         setParticipantCount((c) => c + 1);
-        // If another participant joins, assume it's the coach
+       
         if (e.participant && !e.participant.local) {
           setCoachJoined(true);
         }
@@ -155,7 +155,7 @@ export default function AthleteVideoCall({
 
   return (
     <div className="fixed inset-0 bg-gray-950 z-50 flex flex-col">
-      {/* Header */}
+      
       <div className="flex items-center justify-between px-6 py-4 bg-gray-900 border-b border-gray-800">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-blue-900 flex items-center justify-center text-blue-300 font-semibold text-sm overflow-hidden">
@@ -175,7 +175,7 @@ export default function AthleteVideoCall({
           </div>
         </div>
 
-        {/* Timer */}
+        
         <div className="text-center">
           <p className="text-white font-mono text-xl font-bold tracking-wider">
             {formatTime(elapsedSeconds)}
@@ -185,7 +185,7 @@ export default function AthleteVideoCall({
           </p>
         </div>
 
-        {/* Participant count */}
+        
         <div className="flex items-center gap-2 text-gray-400 text-sm">
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
             <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
@@ -194,7 +194,7 @@ export default function AthleteVideoCall({
         </div>
       </div>
 
-      {/* Video area */}
+      
       <div className="flex-1 relative">
         {callState === "loading" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
@@ -205,7 +205,7 @@ export default function AthleteVideoCall({
         <div ref={containerRef} className="absolute inset-0" />
       </div>
 
-      {/* Progress bar */}
+      
       <div className="px-6 py-2 bg-gray-900">
         <div className="flex items-center gap-3">
           <span className="text-gray-500 text-xs w-8">
@@ -223,9 +223,9 @@ export default function AthleteVideoCall({
         </div>
       </div>
 
-      {/* Controls */}
+      
       <div className="flex items-center justify-center gap-4 px-6 py-5 bg-gray-900 border-t border-gray-800">
-        {/* Mute */}
+       
         <button
           onClick={toggleMute}
           className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
@@ -253,7 +253,7 @@ export default function AthleteVideoCall({
           )}
         </button>
 
-        {/* Cam */}
+        
         <button
           onClick={toggleCam}
           className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
@@ -274,7 +274,7 @@ export default function AthleteVideoCall({
           </svg>
         </button>
 
-        {/* Leave */}
+        
         <button
           onClick={handleLeave}
           className="w-14 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-colors"

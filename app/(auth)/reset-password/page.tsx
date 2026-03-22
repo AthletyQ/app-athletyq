@@ -18,9 +18,9 @@ export default function ResetPasswordPage() {
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
-    // Check if we have a session (the reset link should have set it)
+
     const checkSession = async () => {
-      // Small delay to allow Supabase to parse URL hash if it just landed
+
       await new Promise(resolve => setTimeout(resolve, 500));
       
       const { data: { session } } = await supabase.auth.getSession();
@@ -61,7 +61,7 @@ export default function ResetPasswordPage() {
       }
 
       setSuccess(true);
-      // Wait a bit then redirect to login
+
       setTimeout(() => {
         router.push('/login');
       }, 3000);

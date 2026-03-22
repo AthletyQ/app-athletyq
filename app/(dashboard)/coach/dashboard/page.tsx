@@ -22,7 +22,7 @@ function initials(name: string) {
   return name.split(' ').filter(Boolean).map((n) => n[0]).join('')
 }
 
-// ─── Profile Card ─────────────────────────────────────────────────────────────
+
 
 function ProfileCard({ profile }: { profile: any }) {
   if (!profile) return null
@@ -76,14 +76,14 @@ function ProfileCard({ profile }: { profile: any }) {
   )
 }
 
-// ─── Stat Cards ───────────────────────────────────────────────────────────────
+
 
 function StatCards({ stats }: { stats: any }) {
   const STATS = [
     {
       label:    'Total Clients',
       value:    String(stats?.totalClients ?? '—'),
-      // ✅ Only show pending count for athletes with NO approved session
+     
       sub:      stats?.pendingClients > 0 ? `+${stats.pendingClients} pending` : 'No pending clients',
       subColor: stats?.pendingClients > 0 ? 'text-blue-500' : 'text-gray-400',
       icon:     Users,
@@ -128,7 +128,7 @@ function StatCards({ stats }: { stats: any }) {
   )
 }
 
-// ─── Upcoming Sessions ────────────────────────────────────────────────────────
+
 
 function UpcomingSessions({
   sessions,
@@ -155,7 +155,7 @@ function UpcomingSessions({
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-bold text-gray-900 text-base">Upcoming Sessions</h2>
-        {/* ✅ View All navigates to Booked Sessions page */}
+        
         <button onClick={onViewAll} className="text-sm text-blue-600 font-medium hover:text-blue-700">View All</button>
       </div>
       <div className="space-y-3">
@@ -172,7 +172,7 @@ function UpcomingSessions({
               <p className="text-sm text-gray-700 font-medium">{s.time}</p>
               <p className="text-xs text-gray-400">{s.duration}</p>
             </div>
-            {/* ✅ Join button triggers video call */}
+            
             {s.mode === 'Online' && s.status === 'confirmed' && (
               <button
                 onClick={() => onJoin(s.id, s.duration)}
@@ -193,7 +193,6 @@ function UpcomingSessions({
   )
 }
 
-// ─── Earnings Summary ─────────────────────────────────────────────────────────
 
 function EarningsSummary({ earnings }: { earnings: string }) {
   return (
@@ -213,17 +212,17 @@ function EarningsSummary({ earnings }: { earnings: string }) {
   )
 }
 
-// ─── New Messages ─────────────────────────────────────────────────────────────
+
 
 function NewMessages({ messages, onViewAll }: { messages: any[]; onViewAll: () => void }) {
-  // ✅ Total unread count across all conversations
+  
   const totalUnread = messages.reduce((sum, m) => sum + (m.unreadCount ?? 1), 0)
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-bold text-gray-900 text-base">New Messages</h2>
-        {/* ✅ Badge shows real unread count */}
+        
         <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">
           {totalUnread > 9 ? '9+' : totalUnread}
         </span>
@@ -242,7 +241,7 @@ function NewMessages({ messages, onViewAll }: { messages: any[]; onViewAll: () =
                   <p className="text-sm font-semibold text-gray-900">{name}</p>
                   <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
                     <p className="text-xs text-gray-400">{time}</p>
-                    {/* ✅ Per-conversation unread badge */}
+                   
                     {unreadCount > 0 && (
                       <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
                         {unreadCount > 9 ? '9+' : unreadCount}
@@ -256,7 +255,7 @@ function NewMessages({ messages, onViewAll }: { messages: any[]; onViewAll: () =
           ))}
         </div>
       )}
-      {/* ✅ View All Messages navigates to chats */}
+   
       <button
         onClick={onViewAll}
         className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 font-medium hover:bg-gray-50"
@@ -267,7 +266,7 @@ function NewMessages({ messages, onViewAll }: { messages: any[]; onViewAll: () =
   )
 }
 
-// ─── Athlete Activity ─────────────────────────────────────────────────────────
+
 
 function AthleteActivity() {
   return (
@@ -281,7 +280,7 @@ function AthleteActivity() {
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -325,7 +324,7 @@ export default function DashboardPage() {
     load()
   }, [])
 
-  // ── Join call handler ────────────────────────────────────────────────────
+
   function handleJoin(sessionId: string, durationStr: string) {
     const durationMinutes = parseInt(durationStr) || 60
     setActiveCall({ sessionId, durationMinutes })
@@ -374,7 +373,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
 
-      {/* ✅ Video call overlay */}
+      
       {activeCall && (
         <VideoCall
           sessionId={activeCall.sessionId}
@@ -401,14 +400,14 @@ export default function DashboardPage() {
             <UpcomingSessions
               sessions={sessions}
               onJoin={handleJoin}
-              onViewAll={() => router.push('/coach/bookedsessions')}  // ✅ View All → Booked Sessions
+              onViewAll={() => router.push('/coach/bookedsessions')}  
             />
             <EarningsSummary earnings={stats?.monthlyEarnings ?? '—'} />
           </div>
           <div className="col-span-1">
             <NewMessages
               messages={messages}
-              onViewAll={() => router.push('/coach/chat')}  // ✅ View All Messages → Chats
+              onViewAll={() => router.push('/coach/chat')}  
             />
             <AthleteActivity />
           </div>

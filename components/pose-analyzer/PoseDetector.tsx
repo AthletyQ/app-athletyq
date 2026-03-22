@@ -8,19 +8,15 @@ import type { RepFormErrors } from '@/hooks/usePoseFeedback';
 const VISIBILITY_THRESHOLD = 0.7;
 const ANGLE_BUFFER_SIZE = 5;
 
-// Bicep curl rep detection thresholds (degrees)
-const CURL_UP_THRESHOLD = 50;    // angle must drop below this to register "up"
-const CURL_DOWN_THRESHOLD = 160; // angle must rise above this to register "down" (= 1 rep)
 
 // Form quality thresholds
 const FLEX_QUALITY_THRESHOLD = 40;    // minAngle during curl must be < this (deeper = better)
 const EXTEND_QUALITY_THRESHOLD = 170; // maxAngle at bottom must be > this for full extension
 const ELBOW_DRIFT_THRESHOLD = 0.12;   // shoulder.z - elbow.z > this = elbow drifted forward
 
-// Landmark index sets per arm — used to suppress the non-active arm when user stands side-on
 const LEFT_ARM_INDICES  = new Set([11, 13, 15, 17, 19, 21]);
 const RIGHT_ARM_INDICES = new Set([12, 14, 16, 18, 20, 22]);
-// Minimum visibility gap to confidently decide which side is active (0 = always filter)
+
 const SIDE_VIS_GAP = 0.2;
 
 interface ArmLandmarks {
@@ -101,7 +97,7 @@ export default function PoseDetector() {
   const leftMaxExtensionRef = useRef<number>(0);
   const { requestFeedback, aiFeedback, isFetchingFeedback, isSpeaking, clearFeedback } = usePoseFeedback();
 
-  // UI display state
+
   const latestAngleRef = useRef<number>(0);
   const [displayAngle, setDisplayAngle] = useState<number>(0);
   const [lastRepFeedback, setLastRepFeedback] = useState<RepFormErrors | null>(null);
@@ -114,7 +110,7 @@ export default function PoseDetector() {
   useEffect(() => {
     console.log('[PoseDetector] Component mounted, initializing...');
 
-    // Initialize MediaPipe PoseLandmarker
+  
     const initializePoseLandmarker = async () => {
       try {
         console.log('[PoseDetector] Loading MediaPipe Vision tasks...');
@@ -179,7 +175,7 @@ export default function PoseDetector() {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
 
-        // Log video track settings
+        
         const videoTrack = stream.getVideoTracks()[0];
         if (videoTrack) {
           const settings = videoTrack.getSettings();
@@ -191,7 +187,7 @@ export default function PoseDetector() {
           });
         }
 
-        // Explicitly play the video to ensure it starts
+     
         try {
           await videoRef.current.play();
           console.log('[Webcam] Video play() called successfully');

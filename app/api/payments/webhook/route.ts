@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: NextRequest) {
-  // ── Initialize inside handler so env vars are available at request time ──
+
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,12 +31,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  // ── Handle events ──────────────────────────────────────────────────────────
+
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
-    // Only process paid sessions
+
     if (session.payment_status !== "paid") {
       return NextResponse.json({ received: true });
     }
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    // Update sessions: mark as paid + confirmed
+
     const { error } = await supabaseAdmin
       .from("sessions")
       .update({
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Record payment in payments table (if you have one)
+
     const athleteId   = session.metadata?.athlete_id;
     const amountTotal = session.amount_total ?? 0;
 
@@ -70,11 +70,11 @@ export async function POST(req: NextRequest) {
       await supabaseAdmin.from("payments").insert({
         stripe_checkout_id: session.id,
         athlete_id:         athleteId,
-        amount:             amountTotal / 100, // convert cents → dollars
+        amount:             amountTotal / 100, 
         currency:           session.currency?.toUpperCase() ?? "USD",
         status:             "succeeded",
         session_ids:        sessionIds,
-      }).select(); // ignore error if payments table doesn't exist
+      }).select(); 
     }
 
     console.log(`[webhook] Payment confirmed for sessions: ${sessionIds.join(", ")}`);
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
     const sessionIds = session.metadata?.session_ids?.split(",").filter(Boolean);
 
     if (sessionIds?.length) {
-      // Mark sessions as cancelled if checkout expired
+  
       await supabaseAdmin
         .from("sessions")
         .update({ status: "cancelled", payment_status: "unpaid" })

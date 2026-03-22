@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/client";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-/**
- * GET /api/auth/confirm
- *
- * Alternative email confirmation handler using token_hash query params.
- * After verifying the token, it creates the profile + actor record
- * via the same logic as create-profile, then redirects.
- */
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const tokenHash = searchParams.get("token_hash");
@@ -25,7 +19,7 @@ export async function GET(request: NextRequest) {
   try {
 
     const supabaseAdmin = getSupabaseAdmin();
-    // Verify the email confirmation token
+
     const { data, error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
       type: type as "signup" | "email" | "recovery",
@@ -44,7 +38,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if profile already exists
+
     const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
       .select("id")
@@ -54,7 +48,7 @@ export async function GET(request: NextRequest) {
     if (!existingProfile) {
       const meta = data.user.user_metadata ?? {};
 
-      // Insert profile
+    
       await supabaseAdmin.from("profiles").insert({
         id: data.user.id,
         email: data.user.email,
@@ -64,7 +58,7 @@ export async function GET(request: NextRequest) {
         phone_number: meta.phone || null,
       });
 
-      // Insert actor-specific record
+
       if (meta.role === "athlete") {
         await supabaseAdmin.from("athletes").insert({
           user_id: data.user.id,
@@ -90,7 +84,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Redirect to the specified URL
+
     return NextResponse.redirect(new URL(redirectTo, request.url));
   } catch (error) {
     console.error("Email confirmation error:", error);

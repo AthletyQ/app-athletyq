@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Search, Clock, CheckCircle, XCircle, MessageSquare, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 const AVATAR_COLORS = [
   'bg-blue-100 text-blue-700',
@@ -39,7 +39,6 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 }
 
-// ─── CLIENT CARD ─────────────────────────────────────────────────────────────
 
 function ClientCard({ client, pending = false, consultantUserId, onAccept, onDecline }: {
   client:           any
@@ -96,7 +95,7 @@ function ClientCard({ client, pending = false, consultantUserId, onAccept, onDec
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
 
-      {/* Avatar + Name */}
+     
       <div className="flex items-center gap-3">
         {client.profiles?.profile_image_url ? (
           <img
@@ -122,7 +121,7 @@ function ClientCard({ client, pending = false, consultantUserId, onAccept, onDec
         </div>
       </div>
 
-      {/* Stats — active only */}
+      
       {!pending && (
         <>
           <div className="grid grid-cols-3 gap-2">
@@ -158,7 +157,7 @@ function ClientCard({ client, pending = false, consultantUserId, onAccept, onDec
         </>
       )}
 
-      {/* Pending badge */}
+      
       {pending && (
         <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
           <p className="text-xs text-amber-700 font-medium">Awaiting your confirmation</p>
@@ -168,7 +167,7 @@ function ClientCard({ client, pending = false, consultantUserId, onAccept, onDec
         </div>
       )}
 
-      {/* Footer */}
+      
       <div className="flex items-center justify-between text-xs text-gray-400">
         <span className="flex items-center gap-1">
           <Clock className="w-3 h-3" /> Recently active
@@ -176,10 +175,10 @@ function ClientCard({ client, pending = false, consultantUserId, onAccept, onDec
         <span>Joined {client.created_at ? formatDate(client.created_at) : '—'}</span>
       </div>
 
-      {/* Error */}
+      
       {msgError && <p className="text-xs text-red-500 text-center">{msgError}</p>}
 
-      {/* Actions */}
+      
       <div className="flex gap-2">
         {pending ? (
           <>
@@ -218,7 +217,7 @@ function ClientCard({ client, pending = false, consultantUserId, onAccept, onDec
   )
 }
 
-// ─── PAGE ─────────────────────────────────────────────────────────────────────
+
 
 export default function ConsultantClientsPage() {
   const [activeTab,        setActiveTab]        = useState<'active' | 'pending'>('active')
@@ -249,7 +248,7 @@ export default function ConsultantClientsPage() {
       .finally(() => setLoading(false))
   }, [consultantUserId])
 
-  // ✅ Enrich each client with confirmedSessions count from Supabase
+
   useEffect(() => {
     if (!clients.length || !consultantUserId) {
       setEnriched(clients)
@@ -267,7 +266,7 @@ export default function ConsultantClientsPage() {
         .eq('status', 'confirmed')
         .in('athlete_id', athleteIds)
 
-      // Build a set of athlete IDs that have at least one confirmed session
+     
       const confirmedSet = new Set((data ?? []).map((s: any) => s.athlete_id))
 
       setEnriched(clients.map((c) => ({
@@ -279,8 +278,7 @@ export default function ConsultantClientsPage() {
     fetchConfirmedCounts()
   }, [clients, consultantUserId])
 
-  // ✅ Active = has at least one confirmed session
-  // ✅ Pending = no confirmed sessions (only pending requests)
+  
   const activeList  = enriched.filter((c) => c.hasConfirmedSession === true)
   const pendingList = enriched.filter((c) => c.hasConfirmedSession === false)
 
@@ -292,7 +290,7 @@ export default function ConsultantClientsPage() {
   })
 
   function handleAccept(userId: string) {
-    // Optimistically move from pending → active
+
     setEnriched(prev => prev.map(c =>
       c.user_id === userId ? { ...c, hasConfirmedSession: true } : c
     ))
@@ -311,7 +309,7 @@ export default function ConsultantClientsPage() {
           <p className="text-sm text-gray-500 mt-0.5">Manage your athletes and view their progress.</p>
         </div>
 
-        {/* Tabs */}
+        
         <div className="flex gap-6 border-b border-gray-200 mb-5">
           {(['active', 'pending'] as const).map((tab) => (
             <button
@@ -330,7 +328,7 @@ export default function ConsultantClientsPage() {
           ))}
         </div>
 
-        {/* Search */}
+       
         <div className="relative mb-6 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -342,7 +340,7 @@ export default function ConsultantClientsPage() {
           />
         </div>
 
-        {/* Content */}
+        
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />

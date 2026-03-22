@@ -19,7 +19,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 )
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+
 
 interface AthleteProfile {
   id: string
@@ -54,7 +54,7 @@ interface Conversation {
   contact: { first_name: string; last_name: string; role: string } | null
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 const AVATAR_COLORS = [
   'bg-purple-100 text-purple-700',
@@ -80,7 +80,7 @@ function formatTime(iso: string) {
   return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeStr}`
 }
 
-// ─── Session Action Modal ─────────────────────────────────────────────────────
+
 
 function SessionActionModal({
   session,
@@ -101,7 +101,7 @@ function SessionActionModal({
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
 
-        {/* Header */}
+       
         <div className="p-5 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${avatarColor(session.provider?.first_name ?? '')}`}>
@@ -117,7 +117,7 @@ function SessionActionModal({
           </button>
         </div>
 
-        {/* Session details */}
+       
         <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 space-y-1.5">
           <div className="flex justify-between text-xs">
             <span className="text-gray-500">Scheduled</span>
@@ -135,7 +135,7 @@ function SessionActionModal({
           </div>
         </div>
 
-        {/* Actions */}
+       
         <div className="p-5 space-y-3">
           {isOnline ? (
             <button
@@ -164,7 +164,6 @@ function SessionActionModal({
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AthleteDashboard() {
   const router = useRouter()
@@ -195,7 +194,7 @@ export default function AthleteDashboard() {
         first_name: prof.first_name,
         last_name: prof.last_name,
         email: prof.email,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      
         preferred_sport: (ath as any)?.sports?.name ?? null,
         age: ath?.age ?? null,
         height_cm: ath?.height_cm ?? null,
@@ -252,7 +251,7 @@ export default function AthleteDashboard() {
       .limit(4)
 
     if (convData) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      
       setConversations(convData.map((c: any) => ({
         ...c,
         contact: Array.isArray(c.contact) ? c.contact[0] ?? null : c.contact,
@@ -357,7 +356,7 @@ router.push(`/athlete/chats?contactId=${providerId}`)
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
 
-      {/* ── Video Call overlay ── */}
+      
       {activeCall && (
         <VideoCall
           sessionId={activeCall.id}
@@ -368,7 +367,7 @@ router.push(`/athlete/chats?contactId=${providerId}`)
         />
       )}
 
-      {/* ── Session Action Modal ── */}
+      
       {selectedSession && !activeCall && (
         <SessionActionModal
           session={selectedSession}
@@ -380,7 +379,7 @@ router.push(`/athlete/chats?contactId=${providerId}`)
 
       <main className="flex-1 overflow-y-auto p-6">
 
-        {/* ── Header ── */}
+        
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">
@@ -388,7 +387,7 @@ router.push(`/athlete/chats?contactId=${providerId}`)
           </p>
         </div>
 
-        {/* ── Profile Card ── */}
+        
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6 flex items-center gap-6">
           <div className="relative flex-shrink-0">
             <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold ${avatarColor(profile?.first_name ?? '')}`}>
@@ -453,7 +452,7 @@ router.push(`/athlete/chats?contactId=${providerId}`)
           )}
         </div>
 
-        {/* ── Stats Row ── */}
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {stats.map(({ label, value, sub, subColor, icon: Icon }) => (
             <div key={label} className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
@@ -467,13 +466,13 @@ router.push(`/athlete/chats?contactId=${providerId}`)
           ))}
         </div>
 
-        {/* ── Main Grid ── */}
+        
         <div className="grid grid-cols-3 gap-5">
 
-          {/* Left col (2/3) */}
+          
           <div className="col-span-2 space-y-5">
 
-            {/* Upcoming Sessions */}
+           
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-bold text-gray-900 text-base">Upcoming Sessions</h2>
@@ -559,7 +558,7 @@ router.push(`/athlete/chats?contactId=${providerId}`)
               )}
             </div>
 
-            {/* My Team */}
+            
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-bold text-gray-900 text-base">My Team</h2>
@@ -611,10 +610,10 @@ router.push(`/athlete/chats?contactId=${providerId}`)
             </div>
           </div>
 
-          {/* Right col (1/3) */}
+          
           <div className="col-span-1 space-y-4">
 
-            {/* New Messages */}
+            
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-bold text-gray-900 text-base">New Messages</h2>
@@ -662,7 +661,7 @@ router.push(`/athlete/chats?contactId=${providerId}`)
               </button>
             </div>
 
-            {/* Quick Stats */}
+            
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
               <h2 className="font-bold text-gray-900 text-base mb-4">Quick Stats</h2>
               <div className="space-y-3">

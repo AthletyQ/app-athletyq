@@ -1,12 +1,10 @@
-// ============================================================
-// DATABASE TYPES — mirrors your exact Supabase schema
-// ============================================================
+
 
 export type UserRole = "athlete" | "coach" | "wellness_professional";
 
-// ── profiles ────────────────────────────────────────────────
+
 export interface Profile {
-  id: string;                        // UUID — matches auth.users(id)
+  id: string;                        
   email: string;
   role: UserRole;
   first_name: string;
@@ -17,7 +15,7 @@ export interface Profile {
   updated_at: string;
 }
 
-// ── sports ──────────────────────────────────────────────────
+
 export interface Sport {
   id: number;
   name: string;
@@ -26,21 +24,21 @@ export interface Sport {
   created_at: string;
 }
 
-// ── athletes ────────────────────────────────────────────────
+
 export interface Athlete {
-  user_id: string;                   // FK → profiles(id)
+  user_id: string;                   
   age: number | null;
   height_cm: number | null;
   weight_kg: number | null;
-  preferred_sport_id: number | null; // FK → sports(id)
+  preferred_sport_id: number | null; 
   goals: string | null;
   injuries: string | null;
   created_at: string;
 }
 
-// ── coaches ─────────────────────────────────────────────────
+
 export interface Coach {
-  user_id: string;                   // FK → profiles(id)
+  user_id: string;                   
   coaching_sport_id: number | null;
   specialization: string | null;
   bio: string | null;
@@ -53,7 +51,7 @@ export interface Coach {
   created_at: string;
 }
 
-// ── wellness_professionals ───────────────────────────────────
+
 export interface WellnessProfessional {
   user_id: string;
   specialty: string | null;
@@ -63,7 +61,7 @@ export interface WellnessProfessional {
   created_at: string;
 }
 
-// ── availability ─────────────────────────────────────────────
+
 export interface Availability {
   id: number;
   provider_id: string;
@@ -77,7 +75,7 @@ export interface Availability {
   updated_at: string;
 }
 
-// ── sessions ────────────────────────────────────────────────
+
 export interface Session {
   id: number;
   athlete_id: string;
@@ -105,14 +103,9 @@ export interface Session {
   cancelled_by: string | null;
 }
 
-// ============================================================
-// JOINED / COMPOSITE TYPES
-// ── These are what services return after joining tables
-// ============================================================
 
-// Full athlete profile — profiles JOIN athletes JOIN sports
 export interface AthleteProfile {
-  // from profiles
+
   id: string;
   email: string;
   role: UserRole;
@@ -122,21 +115,18 @@ export interface AthleteProfile {
   profile_image_url: string | null;
   created_at: string;
   updated_at: string;
-  // from athletes
+
   age: number | null;
   height_cm: number | null;
   weight_kg: number | null;
   preferred_sport_id: number | null;
   goals: string | null;
   injuries: string | null;
-  // from sports (joined)
+
   sport: Sport | null;
 }
 
-// ============================================================
-// UPDATE PAYLOAD TYPES
-// ── Only the fields the athlete can actually edit
-// ============================================================
+
 
 export interface UpdateProfilePayload {
   first_name?: string;
@@ -154,10 +144,7 @@ export interface UpdateAthletePayload {
   injuries?: string;
 }
 
-// ============================================================
-// SERVICE RESPONSE WRAPPER
-// ── Every service returns { data, error } — never throws
-// ============================================================
+
 
 export interface ServiceResponse<T> {
   data: T | null;

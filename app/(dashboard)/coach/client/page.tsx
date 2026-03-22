@@ -20,7 +20,7 @@ const SPORT_COLORS: Record<string, string> = {
   Strength: 'bg-red-100 text-red-600',
 }
 
-// ─── CLIENT CARD ─────────────────────────────────────────────────────────────
+
 
 function ClientCard({ client, pending = false, coachUserId, onAccept, onDecline }: {
   client:      any
@@ -57,7 +57,7 @@ function ClientCard({ client, pending = false, coachUserId, onAccept, onDecline 
         body:    JSON.stringify({ coachUserId, athleteUserId: client.athleteUserId }),
       })
 
-      // Read as text first — safe regardless of content-type
+     
       const text = await res.text()
 
       if (!res.ok) {
@@ -93,7 +93,7 @@ function ClientCard({ client, pending = false, coachUserId, onAccept, onDecline 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
 
-      {/* Avatar + Name */}
+      
       <div className="flex items-center gap-3">
         {client.profileImageUrl ? (
           <img
@@ -119,7 +119,7 @@ function ClientCard({ client, pending = false, coachUserId, onAccept, onDecline 
         </div>
       </div>
 
-      {/* Stats — active only */}
+      
       {!pending && (
         <>
           <div className="grid grid-cols-3 gap-2">
@@ -155,7 +155,7 @@ function ClientCard({ client, pending = false, coachUserId, onAccept, onDecline 
         </>
       )}
 
-      {/* Pending info */}
+      
       {pending && (
         <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
           <p className="text-xs text-amber-700 font-medium">Awaiting your confirmation</p>
@@ -165,7 +165,7 @@ function ClientCard({ client, pending = false, coachUserId, onAccept, onDecline 
         </div>
       )}
 
-      {/* Last active */}
+     
       <div className="flex items-center justify-between text-xs text-gray-400">
         <span className="flex items-center gap-1">
           <Clock className="w-3 h-3" />{client.lastActive}
@@ -173,12 +173,12 @@ function ClientCard({ client, pending = false, coachUserId, onAccept, onDecline 
         <span>Joined {client.joined}</span>
       </div>
 
-      {/* Error message */}
+      
       {msgError && (
         <p className="text-xs text-red-500 text-center">{msgError}</p>
       )}
 
-      {/* Action buttons */}
+      
       <div className="flex gap-2">
         {pending ? (
           <>
@@ -217,7 +217,7 @@ function ClientCard({ client, pending = false, coachUserId, onAccept, onDecline 
   )
 }
 
-// ─── PAGE ─────────────────────────────────────────────────────────────────────
+
 
 export default function ClientsPage() {
   const [activeTab,   setActiveTab]   = useState<'active' | 'pending'>('active')
@@ -309,7 +309,7 @@ export default function ClientsPage() {
           ))}
         </div>
 
-        {/* Search */}
+        
         <div className="relative mb-6 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -321,7 +321,7 @@ export default function ClientsPage() {
           />
         </div>
 
-        {/* Content */}
+        
         {!coachId && !error ? (
           <div className="flex items-center justify-center h-40">
             <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />

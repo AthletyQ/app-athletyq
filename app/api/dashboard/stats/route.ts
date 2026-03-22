@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   const now = new Date()
 
-  // ── Current week (UTC) ────────────────────────────────────────────────────
+ 
   const dayOfWeek = now.getUTCDay()
   const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
 
@@ -43,14 +43,14 @@ export async function GET(request: NextRequest) {
     { data: lastMonthPayments },
   ] = await Promise.all([
 
-    // all confirmed sessions → unique confirmed athletes
+   
     supabase
       .from('sessions')
       .select('athlete_id')
       .eq('provider_id', coachId)
       .eq('status', 'confirmed'),
 
-    // confirmed sessions this week
+ 
     supabase
       .from('sessions')
       .select('*', { count: 'exact', head: true })
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       .gte('scheduled_at', weekStart.toISOString())
       .lte('scheduled_at', weekEnd.toISOString()),
 
-    // confirmed sessions today
+    
     supabase
       .from('sessions')
       .select('*', { count: 'exact', head: true })
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       .gte('scheduled_at', todayStart.toISOString())
       .lte('scheduled_at', todayEnd.toISOString()),
 
-    // all pending sessions → athlete_ids
+   
     supabase
       .from('sessions')
       .select('athlete_id')
@@ -89,12 +89,12 @@ export async function GET(request: NextRequest) {
       .lte('created_at', lastMonthEnd.toISOString()),
   ])
 
-  // Athletes with at least one confirmed session
+
   const confirmedAthleteIds = new Set(
     (confirmedSessions ?? []).map((s: any) => s.athlete_id)
   )
 
-  // ✅ Pending clients = athletes who have pending sessions but NO confirmed session at all
+
   const pendingAthleteIds = new Set(
     (pendingSessions ?? []).map((s: any) => s.athlete_id)
   )
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
     sessionsThisWeek:   sessionsThisWeek ?? 0,
     monthlyEarnings:    `$${thisMonthTotal.toLocaleString()}`,
     clientSatisfaction: '4.9',
-    pendingClients:     trueNewPendingCount,  // ✅ only athletes with NO confirmed session
+    pendingClients:     trueNewPendingCount,  
     sessionsToday:      sessionsToday ?? 0,
     earningsChange,
   })

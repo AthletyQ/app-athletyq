@@ -41,7 +41,6 @@ export async function login(input: LoginInput): Promise<LoginResult> {
     };
   }
 
-  // Ensure role is in user_metadata for consistent redirection
   if (!data.user.user_metadata?.role) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -50,7 +49,7 @@ export async function login(input: LoginInput): Promise<LoginResult> {
       .single();
     
     if (profile?.role) {
-      // Update local user object for this response
+   
       data.user.user_metadata = {
         ...data.user.user_metadata,
         role: profile.role

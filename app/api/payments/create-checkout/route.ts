@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: NextRequest) {
-  // ── Initialize inside handler so env vars are available at request time ──
+
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No session IDs provided" }, { status: 400 });
     }
 
-    // Fetch session details from Supabase
+   
     const { data: sessions, error } = await supabaseAdmin
       .from("sessions")
       .select(`
@@ -40,8 +40,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Sessions not found" }, { status: 404 });
     }
 
-    // Build line items — one per session slot
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = sessions.map((s: any) => {
       const provider = Array.isArray(s.profiles) ? s.profiles[0] : s.profiles;
       const providerName = provider
@@ -54,7 +53,7 @@ export async function POST(req: NextRequest) {
       return {
         price_data: {
           currency:     (s.currency ?? "lkr").toLowerCase(),
-          unit_amount:  Math.round(Number(s.price) * 100), // Stripe uses cents
+          unit_amount:  Math.round(Number(s.price) * 100),
           product_data: {
             name:        `Session with ${providerName}`,
             description: `${s.provider_type === "coach" ? "Coaching" : "Consultation"} · ${s.duration_minutes} min · ${scheduledDate}`,
@@ -67,7 +66,7 @@ export async function POST(req: NextRequest) {
     const totalAmount = sessions.reduce((sum, s) => sum + Number(s.price), 0);
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-    // Create Stripe Checkout Session
+  
     const checkoutSession = await stripe.checkout.sessions.create({
       mode:        "payment",
       line_items:  lineItems,

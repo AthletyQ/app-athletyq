@@ -41,7 +41,7 @@ function FilterSelect({
 export default function ConsultantFiltersBar({ filters, onChange }: Props) {
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
 
-  // Pull distinct specialty values from the consultants table
+
   useEffect(() => {
     fetch("/api/specializations")
       .then((r) => r.json())
@@ -56,7 +56,7 @@ export default function ConsultantFiltersBar({ filters, onChange }: Props) {
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      {/* Specialty filter – values come from the real DB */}
+      
       <FilterSelect
         label="Specialty"
         value={filters.specialty}
@@ -67,33 +67,7 @@ export default function ConsultantFiltersBar({ filters, onChange }: Props) {
         onChange={(v) => update("specialty", v)}
       />
 
-      {/* Price range */}
-      {/* <FilterSelect
-        label="Price Range"
-        value={
-          filters.minPrice !== undefined
-            ? `${filters.minPrice}-${filters.maxPrice}`
-            : undefined
-        }
-        options={[
-          { label: "Under LKR 1000",   value: "0-1000"       },
-          { label: "LKR 1000 – 5000",  value: "1000-5000"     },
-          { label: "LKR 5000 – 10000", value: "5000-10000"    },
-          { label: "LKR 10000+",       value: "10000-99999"  },
-        ]}
-        onChange={(v) => {
-          if (!v) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { minPrice, maxPrice, ...rest } = filters;
-            onChange(rest);
-            return;
-          }
-          const [min, max] = v.split("-");
-          onChange({ ...filters, minPrice: parseInt(min), maxPrice: parseInt(max) });
-        }}
-      /> */}
-
-      {/* Clear filters */}
+      
       <button
         onClick={() => onChange({})}
         className={`p-2 rounded-lg border transition-colors ${

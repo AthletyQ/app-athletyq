@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const coachId = searchParams.get('coachId')
   if (!coachId) return NextResponse.json({ error: 'coachId required' }, { status: 400 })
 
-  // conversations where the coach is either athlete_id or contact_id
+
   const { data: convData, error: convError } = await supabase
     .from('conversations')
     .select(`
@@ -38,12 +38,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([])
   }
 
-  // get the partner id for each conversation (the other person)
+
   const partnerIds = convData.map((c: any) =>
     c.athlete_id === coachId ? c.contact_id : c.athlete_id
   )
 
-  // fetch all partner profiles in one query
+
   const { data: profilesData, error: profilesError } = await supabase
     .from('profiles')
     .select('id, first_name, last_name, profile_image_url')
@@ -54,12 +54,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([])
   }
 
-  // map profiles by id for quick lookup
+
   const profileMap = new Map(
     (profilesData ?? []).map((p: any) => [p.id, p])
   )
 
-  // fetch last message content for each conversation
+
   const convIds = convData.map((c: any) => c.id)
   const { data: messagesData } = await supabase
     .from('messages')
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     .in('conversation_id', convIds)
     .order('created_at', { ascending: false })
 
-  // get latest message per conversation
+
   const latestMessageMap = new Map<string, any>()
   ;(messagesData ?? []).forEach((m: any) => {
     if (!latestMessageMap.has(m.conversation_id)) {
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     const lastName  = profile?.last_name  ?? ''
     const lastMsg   = latestMessageMap.get(c.id)
 
-    // time ago
+
     const msgTime   = lastMsg?.created_at ?? c.last_message_at
     const diff      = msgTime
       ? Math.floor((Date.now() - new Date(msgTime).getTime()) / 60000)
