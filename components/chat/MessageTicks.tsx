@@ -1,8 +1,3 @@
-// WhatsApp-style message status ticks
-// sent      → single grey tick   (in transit / optimistic)
-// delivered → double grey tick   (saved to DB, is_read = false)
-// read      → double blue tick   (is_read = true)
-
 interface MessageTicksProps {
   status: 'sent' | 'delivered' | 'read'
   className?: string
