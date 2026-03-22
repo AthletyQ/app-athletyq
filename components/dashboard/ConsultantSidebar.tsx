@@ -3,33 +3,32 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-    LayoutDashboard,
-    Calendar,
-    Users,
-    MessageSquare,
-    PanelLeftClose,
-    PanelLeftOpen,
+  LayoutDashboard,
+  Calendar,
+  Users,
+  MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
-
 import {
-    Sidebar as BaseSidebar,
-    SidebarContent,
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-    SidebarRail,
-    useSidebar,
+  Sidebar as BaseSidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 const menuItems = [
-    { icon: LayoutDashboard, label: "Dashboard", href: "/consultant/dashboard" },
-    //{ icon: Users, label: "Coaches", href: "/consultant/coaches" },
-    { icon: Users, label: "Clients", href: "/consultant/clients" },
-    { icon: Calendar, label: "Booked Sessions", href: "/consultant/bookedsession" },
-    { icon: MessageSquare, label: "Chats", href: "/consultant/chats" },
+  { icon: LayoutDashboard, label: "Dashboard",       href: "/consultant/dashboard"     },
+  { icon: Users,           label: "Clients",         href: "/consultant/clients"       },
+  { icon: Calendar,        label: "Booked Sessions", href: "/consultant/bookedsession" },
+  { icon: MessageSquare,   label: "Chats",           href: "/consultant/chats"         },
 ];
 
 function CollapseButton() {
@@ -53,13 +52,16 @@ export function Sidebar({ ...props }: React.ComponentProps<typeof BaseSidebar>) 
   const { open } = useSidebar();
 
   return (
-    <BaseSidebar collapsible="icon" className="border-r-0" {...props}>
-
-      {/* ── Header: logo left, collapse button right ── */}
-      <SidebarHeader className="h-20 px-4">
-        <div className="flex items-center justify-between h-full w-full">
-          {/* Logo — only visible when expanded */}
-          <div className={`transition-all duration-200 overflow-hidden ${open ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
+    <BaseSidebar
+      collapsible="icon"
+      className="border-r-0 bg-[#1e2d3d]"
+      style={{ "--sidebar-background": "#1e2d3d" } as React.CSSProperties}
+      {...props}
+    >
+      {/* ── Header ── */}
+      <SidebarHeader className={cn("h-20", open ? "px-4" : "px-2")}>
+        <div className={cn("flex items-center h-full w-full", open ? "justify-between" : "justify-center")}>
+          <div className={cn("transition-all duration-200 overflow-hidden", open ? "opacity-100 w-auto" : "opacity-0 w-0")}>
             <Link
               href="/consultant/dashboard"
               className="text-2xl font-bold tracking-tight text-white hover:opacity-90 transition-opacity whitespace-nowrap"
@@ -67,42 +69,44 @@ export function Sidebar({ ...props }: React.ComponentProps<typeof BaseSidebar>) 
               AthletyQ
             </Link>
           </div>
-
-          {/* Collapse toggle — always visible, pushed to the right */}
           <CollapseButton />
         </div>
       </SidebarHeader>
-            <SidebarContent className="px-2">
-                <SidebarGroup>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {menuItems.map((item) => {
-                                const isActive = pathname === item.href;
-                                return (
-                                    <SidebarMenuItem key={item.href}>
-                                        <SidebarMenuButton
-                                            asChild
-                                            isActive={isActive}
-                                            tooltip={item.label}
-                                            className={
-                                                isActive
-                                                    ? "bg-white !text-[var(--athletyq-white)] hover:bg-white/90 shadow-sm"
-                                                    : "text-white/90 hover:bg-white/10 hover:text-white transition-colors"
-                                            }
-                                        >
-                                            <Link href={item.href} className="flex items-center gap-3">
-                                                <item.icon className="w-5 h-5 shrink-0" />
-                                                <span className="font-medium text-base">{item.label}</span>
-                                            </Link>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
-                                );
-                            })}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-            </SidebarContent>
-            <SidebarRail className="hover:after:bg-white/20" />
-        </BaseSidebar>
-    );
+
+      <SidebarContent className="px-2 pt-2">
+        <SidebarGroup className="p-0">
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              {menuItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <SidebarMenuItem key={item.href} className={cn(!open && "flex justify-center")}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.label}
+                      className={cn(
+                        "transition-all duration-150",
+                        open ? "rounded-xl w-full px-4 py-2 h-12" : "!w-10 !h-10 rounded-full flex items-center justify-center p-0",
+                        isActive
+                          ? "!bg-white !text-blue-600 font-semibold shadow-sm hover:!bg-white/95"
+                          : "text-white/70 hover:bg-white/10 hover:text-white"
+                      )}
+                    >
+                      <Link href={item.href} className={cn(open ? "w-full flex items-center gap-3" : "flex items-center justify-center")}>
+                        <item.icon className={cn("shrink-0", open ? "w-5 h-5" : "w-5 h-5")} />
+                        {open && <span className="font-medium text-[15px]">{item.label}</span>}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarRail className="hover:after:bg-white/20" />
+    </BaseSidebar>
+  );
 }
