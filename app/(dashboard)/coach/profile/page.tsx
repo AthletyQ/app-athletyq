@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   User, Mail, Phone, BookOpen, Briefcase, DollarSign,
   Star, Trophy, Calendar, Hash, Award, CheckCircle, ArrowLeft,
+  Pencil, X, Check,
 } from "lucide-react";
 
 interface CoachProfileData {
@@ -48,11 +49,18 @@ export default function CoachProfilePage() {
   const [profile, setProfile] = useState<CoachProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [editingRate, setEditingRate] = useState(false);
+  const [rateInput, setRateInput] = useState("");
+  const [savingRate, setSavingRate] = useState(false);
+  const [rateError, setRateError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) { router.push("/login"); return; }
+
+      setUserId(user.id);
 
       const [{ data: prof, error: profErr }, { data: coach }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).single(),
@@ -89,6 +97,22 @@ export default function CoachProfilePage() {
     }
     load();
   }, [router]);
+
+  async function saveHourlyRate() {
+    if (!userId) return;
+    const val = parseFloat(rateInput);
+    if (isNaN(val) || val <= 0) { setRateError("Enter a valid positive number."); return; }
+    setSavingRate(true);
+    setRateError(null);
+    const { error: updateErr } = await supabase
+      .from("coaches")
+      .update({ hourly_rate: val })
+      .eq("user_id", userId);
+    setSavingRate(false);
+    if (updateErr) { setRateError("Failed to save. Please try again."); return; }
+    setProfile(prev => prev ? { ...prev, hourly_rate: val } : prev);
+    setEditingRate(false);
+  }
 
   if (loading) {
     return (
@@ -188,7 +212,52 @@ export default function CoachProfilePage() {
           <InfoRow icon={Trophy} label="Coaching Sport" value={profile.sport_name} />
           <InfoRow icon={Briefcase} label="Specialization" value={profile.specialization} />
           <InfoRow icon={BookOpen} label="Experience" value={profile.years_of_experience ? `${profile.years_of_experience} years` : null} />
-          <InfoRow icon={DollarSign} label="Hourly Rate" value={profile.hourly_rate ? `$${profile.hourly_rate} / hr` : null} />
+
+          {/* Hourly Rate — editable */}
+          <div className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <DollarSign className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Hourly Rate</p>
+              {editingRate ? (
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    value={rateInput}
+                    onChange={e => setRateInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") saveHourlyRate(); if (e.key === "Escape") setEditingRate(false); }}
+                    placeholder="e.g. 50"
+                    className="w-28 text-sm border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoFocus
+                  />
+                  <span className="text-xs text-gray-400">LKR / hr</span>
+                  <button onClick={saveHourlyRate} disabled={savingRate} className="w-7 h-7 flex items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => { setEditingRate(false); setRateError(null); }} className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-sm font-semibold text-gray-800">
+                    {profile.hourly_rate ? `LKR ${profile.hourly_rate} / hr` : <span className="text-gray-400 font-normal">Not set</span>}
+                  </p>
+                  <button
+                    onClick={() => { setRateInput(profile.hourly_rate?.toString() ?? ""); setEditingRate(true); setRateError(null); }}
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    {profile.hourly_rate ? "Edit" : "Set rate"}
+                  </button>
+                </div>
+              )}
+              {rateError && <p className="text-xs text-red-500 mt-1">{rateError}</p>}
+            </div>
+          </div>
+
           {!profile.sport_name && !profile.specialization && !profile.years_of_experience && !profile.hourly_rate && (
             <p className="text-sm text-gray-400 text-center py-4">No professional details added yet.</p>
           )}
