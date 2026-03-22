@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import ConsultantChatsClient from './ConsultantChatsClient'
+import ConsultantChatsClient from './CoachChatsClient'
 
 export default function ConsultantChatsPage() {
   return (
