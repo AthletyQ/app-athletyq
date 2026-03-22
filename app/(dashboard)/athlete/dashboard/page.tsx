@@ -139,10 +139,7 @@ function SessionActionModal({
         <div className="p-5 space-y-3">
           {isOnline ? (
             <button
-              onClick={() => {
-                onClose()
-                onJoinCall(session)
-              }}
+              onClick={() => { onClose(); onJoinCall(session) }}
               className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm transition-colors shadow-sm shadow-blue-100"
             >
               <Video className="w-4 h-4" />
@@ -154,12 +151,8 @@ function SessionActionModal({
               In-person session — check your location
             </div>
           )}
-
           <button
-            onClick={() => {
-              onClose()
-              onMessage(session.provider_id)
-            }}
+            onClick={() => { onClose(); onMessage(session.provider_id) }}
             className="w-full flex items-center justify-center gap-2.5 px-4 py-3 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-semibold text-sm transition-colors"
           >
             <MessageSquare className="w-4 h-4" />
@@ -271,30 +264,19 @@ export default function AthleteDashboard() {
 
   useEffect(() => { load() }, [load])
 
-  // ── Handle call end ────────────────────────────────────────────────────────
   const handleCallEnd = useCallback(async (durationSeconds: number) => {
     if (!activeCall) return
-
-    // If athlete attended 80%+ of session, mark as completed
     const requiredSeconds = activeCall.duration_minutes * 60 * 0.8
     if (durationSeconds >= requiredSeconds) {
-      await supabase
-        .from('sessions')
-        .update({ status: 'completed' })
-        .eq('id', activeCall.id)
-
-      // Refresh sessions list
+      await supabase.from('sessions').update({ status: 'completed' }).eq('id', activeCall.id)
       setSessions(prev => prev.filter(s => s.id !== activeCall.id))
     }
-
     setActiveCall(null)
   }, [activeCall])
 
-  // ── Open or create conversation then navigate to chats ─────────────────────
   const handleMessage = useCallback(async (providerId: string) => {
     if (!currentUserId || messagingLoad) return
     setMessagingLoad(true)
-
     try {
       const { data: existing } = await supabase
         .from('conversations')
@@ -308,17 +290,16 @@ export default function AthleteDashboard() {
         return
       }
 
-      const { error } = await supabase
-        .from('conversations')
-        .insert({
-          athlete_id:           currentUserId,
-          contact_id:           providerId,
-          unread_count:         0,
-          contact_unread_count: 0,
-        })
+      const { error } = await supabase.from('conversations').insert({
+        athlete_id:           currentUserId,
+        contact_id:           providerId,
+        unread_count:         0,
+        contact_unread_count: 0,
+      })
 
       if (error) throw error
-      router.push(`/athlete/chats?contactId=${providerId}`)
+await new Promise(r => setTimeout(r, 300)) // wait for DB write
+router.push(`/athlete/chats?contactId=${providerId}`)
     } catch (err) {
       console.error('Failed to open conversation:', err)
     } finally {
@@ -333,7 +314,7 @@ export default function AthleteDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full bg-gray-50">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-400">Loading dashboard...</p>
@@ -374,8 +355,9 @@ export default function AthleteDashboard() {
   ]
 
   return (
-    <>
-      {/* ── Video Call — renders over everything when active ── */}
+    <div className="flex flex-col min-h-full bg-gray-50">
+
+      {/* ── Video Call overlay ── */}
       {activeCall && (
         <VideoCall
           sessionId={activeCall.id}
@@ -392,336 +374,319 @@ export default function AthleteDashboard() {
           session={selectedSession}
           onClose={() => setSelectedSession(null)}
           onMessage={handleMessage}
-          onJoinCall={(s) => {
-            setSelectedSession(null)
-            setActiveCall(s)
-          }}
+          onJoinCall={(s) => { setSelectedSession(null); setActiveCall(s) }}
         />
       )}
 
-      {/* ── Header ── */}
-      <div className="flex-1 p-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Welcome back,{' '}
-          <span className="font-semibold text-gray-700">
-            {profile?.first_name} {profile?.last_name}
-          </span>! Here's your performance overview.
-        </p>
-      </div>
+      <main className="flex-1 overflow-y-auto p-6">
 
-      {/* ── Profile Card ── */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6 flex items-center gap-6">
-        <div className="relative flex-shrink-0">
-          <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold ${avatarColor(profile?.first_name ?? '')}`}>
-            {initials(profile?.first_name ?? '', profile?.last_name ?? '')}
-          </div>
-          <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white" />
+        {/* ── Header ── */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Welcome <span className="font-semibold text-gray-700">{profile?.first_name} {profile?.last_name}</span>! Here's your performance overview.
+          </p>
         </div>
 
-        <div className="flex-1 min-w-0">
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">
-            {profile?.first_name} {profile?.last_name}
-          </h2>
-          <div className="flex items-center gap-3 mb-3 flex-wrap">
-            {profile?.preferred_sport && (
-              <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-wide">
-                🏅 {profile.preferred_sport}
-              </span>
-            )}
-            {profile?.goals && (
-              <span className="flex items-center gap-1 text-xs text-gray-500">
-                <Target className="w-3 h-3" /> {profile.goals}
-              </span>
-            )}
-            {profile?.injuries && (
-              <span className="flex items-center gap-1 text-xs text-gray-500">
-                <Heart className="w-3 h-3 text-red-400" /> {profile.injuries}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-6 flex-wrap">
-            <div>
-              <p className="text-xs text-gray-400 uppercase font-medium tracking-wide">Email</p>
-              <p className="text-sm font-semibold text-gray-900">{profile?.email || '—'}</p>
+        {/* ── Profile Card ── */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6 flex items-center gap-6">
+          <div className="relative flex-shrink-0">
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold ${avatarColor(profile?.first_name ?? '')}`}>
+              {initials(profile?.first_name ?? '', profile?.last_name ?? '')}
             </div>
-            {profile?.age && (
-              <div>
-                <p className="text-xs text-gray-400 uppercase font-medium tracking-wide">Age</p>
-                <p className="text-sm font-semibold text-gray-900">{profile.age} yrs</p>
-              </div>
-            )}
-            {profile?.height_cm && (
-              <div>
-                <p className="text-xs text-gray-400 uppercase font-medium tracking-wide">Height</p>
-                <p className="text-sm font-semibold text-gray-900">{profile.height_cm} cm</p>
-              </div>
-            )}
-            {profile?.weight_kg && (
-              <div>
-                <p className="text-xs text-gray-400 uppercase font-medium tracking-wide">Weight</p>
-                <p className="text-sm font-semibold text-gray-900">{profile.weight_kg} kg</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {profile?.id && (
-          <div className="flex-shrink-0 bg-gray-900 text-white rounded-xl px-4 py-3 text-right">
-            <p className="text-xs text-gray-400 font-medium mb-0.5 tracking-widest uppercase">Athlete ID:</p>
-            <p className="text-sm font-bold tracking-widest">{profile.id.slice(0, 8).toUpperCase()}</p>
-            <p className="text-xs text-gray-400 mt-2">{upcomingCount} session{upcomingCount !== 1 ? 's' : ''}</p>
-          </div>
-        )}
-      </div>
-
-      {/* ── Stats Row ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stats.map(({ label, value, sub, subColor, icon: Icon }) => (
-          <div key={label} className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-gray-500 font-medium">{label}</p>
-              <Icon className="w-4 h-4 text-blue-400" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 mb-1">{value}</p>
-            <p className={`text-xs font-medium ${subColor}`}>{sub}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Main grid ── */}
-      <div className="grid grid-cols-3 gap-5">
-
-        {/* Left col (2/3) */}
-        <div className="col-span-2 space-y-5">
-
-          {/* Upcoming Sessions */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-gray-900 text-base">Upcoming Sessions</h2>
-              <button
-                onClick={() => router.push('/athlete/coaches')}
-                className="text-sm text-blue-600 font-medium hover:text-blue-700 flex items-center gap-1"
-              >
-                Book More <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {sessions.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">No upcoming sessions</p>
-            ) : (
-              <div className="overflow-y-auto max-h-[340px] space-y-3 pr-1">
-                {sessions.map((session) => {
-                  const isConfirmed = session.status === 'confirmed'
-                  return (
-                    <div
-                      key={session.id}
-                      onClick={() => isConfirmed && setSelectedSession(session)}
-                      className={`flex items-center gap-4 p-3 rounded-xl border transition-colors ${
-                        isConfirmed
-                          ? 'border-green-100 hover:border-green-200 hover:bg-green-50/30 cursor-pointer'
-                          : 'border-gray-100 hover:border-blue-100 hover:bg-blue-50/30'
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${avatarColor(session.provider?.first_name ?? '')}`}>
-                        {initials(session.provider?.first_name ?? '', session.provider?.last_name ?? '')}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {session.provider?.first_name} {session.provider?.last_name}
-                        </p>
-                        <p className="text-xs text-gray-400 capitalize mt-0.5">
-                          {session.provider_type} &bull;{' '}
-                          {session.location_type === 'online' ? 'Online' : 'In-person'} &bull;{' '}
-                          {session.duration_minutes} min
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {/* Quick icons — confirmed only */}
-                        {isConfirmed && (
-                          <>
-                            {session.location_type === 'online' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setActiveCall(session)
-                                }}
-                                title="Join Call"
-                                className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center text-blue-600 transition-colors"
-                              >
-                                <Video className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleMessage(session.provider_id)
-                              }}
-                              title="Message"
-                              className="w-7 h-7 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-colors"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5" />
-                            </button>
-                          </>
-                        )}
-
-                        <div className="text-right">
-                          <p className="text-sm font-medium text-gray-700">{formatTime(session.scheduled_at)}</p>
-                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block mt-1 ${
-                            isConfirmed
-                              ? 'bg-green-50 text-green-600'
-                              : 'bg-amber-50 text-amber-600'
-                          }`}>
-                            {session.status}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {sessions.some(s => s.status === 'confirmed') && (
-              <p className="text-[10px] text-gray-400 mt-3 text-right">
-                ✦ Click a confirmed session to join or message
-              </p>
-            )}
+            <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white" />
           </div>
 
-          {/* My Team */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-gray-900 text-base">My Team</h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => router.push('/athlete/coaches')}
-                  className="text-xs text-blue-600 font-medium border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50"
-                >
-                  + Coach
-                </button>
-                <button
-                  onClick={() => router.push('/athlete/consultants')}
-                  className="text-xs text-purple-600 font-medium border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-50"
-                >
-                  + Consultant
-                </button>
-              </div>
-            </div>
-            {providers.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 gap-2">
-                <Zap className="w-8 h-8 text-gray-200" />
-                <p className="text-sm text-gray-400">No team members yet</p>
-                <p className="text-xs text-gray-300">Book a session to add coaches and consultants</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {providers.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-blue-100 hover:bg-blue-50/30 transition-colors"
-                  >
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${avatarColor(p.id)}`}>
-                      {initials(p.first_name, p.last_name)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">
-                        {p.first_name} {p.last_name}
-                      </p>
-                      <span className={`text-[10px] font-semibold capitalize px-2 py-0.5 rounded-full ${
-                        p.type === 'coach'
-                          ? 'bg-blue-50 text-blue-600'
-                          : 'bg-purple-50 text-purple-600'
-                      }`}>
-                        {p.type}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right col (1/3) */}
-        <div className="col-span-1 space-y-4">
-
-          {/* New Messages */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-gray-900 text-base">New Messages</h2>
-              {totalUnread > 0 && (
-                <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">
-                  {totalUnread > 9 ? '9+' : totalUnread}
+          <div className="flex-1 min-w-0">
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">
+              {profile?.first_name} {profile?.last_name}
+            </h2>
+            <div className="flex items-center gap-3 mb-3 flex-wrap">
+              {profile?.preferred_sport && (
+                <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-wide">
+                  🏅 {profile.preferred_sport}
+                </span>
+              )}
+              {profile?.goals && (
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <Target className="w-3 h-3" /> {profile.goals}
+                </span>
+              )}
+              {profile?.injuries && (
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <Heart className="w-3 h-3 text-red-400" /> {profile.injuries}
                 </span>
               )}
             </div>
-            <div className="space-y-1 mb-4">
+            <div className="flex items-center gap-6 flex-wrap">
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-medium tracking-wide">Email</p>
+                <p className="text-sm font-semibold text-gray-900">{profile?.email || '—'}</p>
+              </div>
+              {profile?.age && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-medium tracking-wide">Age</p>
+                  <p className="text-sm font-semibold text-gray-900">{profile.age} yrs</p>
+                </div>
+              )}
+              {profile?.height_cm && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-medium tracking-wide">Height</p>
+                  <p className="text-sm font-semibold text-gray-900">{profile.height_cm} cm</p>
+                </div>
+              )}
+              {profile?.weight_kg && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-medium tracking-wide">Weight</p>
+                  <p className="text-sm font-semibold text-gray-900">{profile.weight_kg} kg</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {profile?.id && (
+            <div className="flex-shrink-0 bg-gray-900 text-white rounded-xl px-4 py-3 text-right">
+              <p className="text-xs text-gray-400 font-medium mb-0.5 tracking-widest uppercase">Athlete ID:</p>
+              <p className="text-sm font-bold tracking-widest">{profile.id.slice(0, 8).toUpperCase()}</p>
+              <p className="text-xs text-gray-400 mt-2">{upcomingCount} session{upcomingCount !== 1 ? 's' : ''}</p>
+            </div>
+          )}
+        </div>
+
+        {/* ── Stats Row ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {stats.map(({ label, value, sub, subColor, icon: Icon }) => (
+            <div key={label} className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-gray-500 font-medium">{label}</p>
+                <Icon className="w-4 h-4 text-blue-400" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900 mb-1">{value}</p>
+              <p className={`text-xs font-medium ${subColor}`}>{sub}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Main Grid ── */}
+        <div className="grid grid-cols-3 gap-5">
+
+          {/* Left col (2/3) */}
+          <div className="col-span-2 space-y-5">
+
+            {/* Upcoming Sessions */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-gray-900 text-base">Upcoming Sessions</h2>
+                <button
+                  onClick={() => router.push('/athlete/coaches')}
+                  className="text-sm text-blue-600 font-medium hover:text-blue-700 flex items-center gap-1"
+                >
+                  Book More <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {sessions.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">No upcoming sessions today or tomorrow</p>
+              ) : (
+                <div className="overflow-y-auto max-h-[340px] space-y-3 pr-1">
+                  {sessions.map((session) => {
+                    const isConfirmed = session.status === 'confirmed'
+                    return (
+                      <div
+                        key={session.id}
+                        onClick={() => isConfirmed && setSelectedSession(session)}
+                        className={`flex items-center gap-4 p-3 rounded-xl border transition-colors ${
+                          isConfirmed
+                            ? 'border-green-100 hover:border-green-200 hover:bg-green-50/30 cursor-pointer'
+                            : 'border-gray-100 hover:border-blue-100 hover:bg-blue-50/30'
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${avatarColor(session.provider?.first_name ?? '')}`}>
+                          {initials(session.provider?.first_name ?? '', session.provider?.last_name ?? '')}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900">
+                            {session.provider?.first_name} {session.provider?.last_name}
+                          </p>
+                          <p className="text-xs text-gray-400 capitalize mt-0.5">
+                            {session.provider_type} &bull;{' '}
+                            {session.location_type === 'online' ? 'Online' : 'In-person'} &bull;{' '}
+                            {session.duration_minutes} min
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {isConfirmed && (
+                            <>
+                              {session.location_type === 'online' && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setActiveCall(session) }}
+                                  title="Join Call"
+                                  className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center text-blue-600 transition-colors"
+                                >
+                                  <Video className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleMessage(session.provider_id) }}
+                                title="Message"
+                                className="w-7 h-7 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-colors"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-gray-700">{formatTime(session.scheduled_at)}</p>
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block mt-1 ${
+                              isConfirmed ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
+                            }`}>
+                              {session.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {sessions.some(s => s.status === 'confirmed') && (
+                <p className="text-[10px] text-gray-400 mt-3 text-right">
+                  ✦ Click a confirmed session to join or message
+                </p>
+              )}
+            </div>
+
+            {/* My Team */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-gray-900 text-base">My Team</h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => router.push('/athlete/coaches')}
+                    className="text-xs text-blue-600 font-medium border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50"
+                  >
+                    + Coach
+                  </button>
+                  <button
+                    onClick={() => router.push('/athlete/consultants')}
+                    className="text-xs text-purple-600 font-medium border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-50"
+                  >
+                    + Consultant
+                  </button>
+                </div>
+              </div>
+              {providers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-2">
+                  <Zap className="w-8 h-8 text-gray-200" />
+                  <p className="text-sm text-gray-400">No team members yet</p>
+                  <p className="text-xs text-gray-300">Book a session to add coaches and consultants</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {providers.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-blue-100 hover:bg-blue-50/30 transition-colors"
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${avatarColor(p.id)}`}>
+                        {initials(p.first_name, p.last_name)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">
+                          {p.first_name} {p.last_name}
+                        </p>
+                        <span className={`text-[10px] font-semibold capitalize px-2 py-0.5 rounded-full ${
+                          p.type === 'coach' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
+                        }`}>
+                          {p.type}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right col (1/3) */}
+          <div className="col-span-1 space-y-4">
+
+            {/* New Messages */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-gray-900 text-base">New Messages</h2>
+                <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">
+                  {totalUnread > 9 ? '9+' : totalUnread}
+                </span>
+              </div>
               {conversations.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-4">No new messages</p>
               ) : (
-                conversations.map((conv) => (
-                  <button
-                    key={conv.id}
-                    onClick={() => router.push('/athlete/chats')}
-                    className="w-full flex gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer text-left transition-colors"
-                  >
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${avatarColor(conv.contact?.first_name ?? '')}`}>
-                      {initials(conv.contact?.first_name ?? '', conv.contact?.last_name ?? '')}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <p className="text-sm font-semibold text-gray-900 truncate">
-                          {conv.contact?.first_name} {conv.contact?.last_name}
-                        </p>
-                        {(conv.unread_count ?? 0) > 0 && (
-                          <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0 ml-2">
-                            {conv.unread_count}
-                          </span>
-                        )}
+                <div className="space-y-3 mb-4">
+                  {conversations.map((conv) => (
+                    <button
+                      key={conv.id}
+                      onClick={() => router.push('/athlete/chats')}
+                      className="w-full flex gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer text-left transition-colors"
+                    >
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${avatarColor(conv.contact?.first_name ?? '')}`}>
+                        {initials(conv.contact?.first_name ?? '', conv.contact?.last_name ?? '')}
                       </div>
-                      <p className="text-xs text-gray-500 truncate">
-                        {conv.last_message ?? 'No messages yet'}
-                      </p>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-            <button
-              onClick={() => router.push('/athlete/chats')}
-              className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-            >
-              View All Messages
-            </button>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-            <h2 className="font-bold text-gray-900 text-base mb-4">Quick Stats</h2>
-            <div className="space-y-3">
-              {[
-                { icon: Activity,      label: 'Total Sessions',        value: sessions.length,      color: 'text-blue-500',  bg: 'bg-blue-50'  },
-                { icon: TrendingUp,    label: 'Coaches & Consultants', value: providers.length,     color: 'text-green-500', bg: 'bg-green-50' },
-                { icon: MessageSquare, label: 'Active Conversations',  value: conversations.length, color: 'text-amber-500', bg: 'bg-amber-50' },
-              ].map(({ icon: Icon, label, value, color, bg }) => (
-                <div key={label} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${bg}`}>
-                      <Icon className={`w-3.5 h-3.5 ${color}`} />
-                    </div>
-                    <span className="text-sm text-gray-600">{label}</span>
-                  </div>
-                  <span className="text-sm font-bold text-gray-900">{value}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {conv.contact?.first_name} {conv.contact?.last_name}
+                          </p>
+                          {(conv.unread_count ?? 0) > 0 && (
+                            <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-2">
+                              {conv.unread_count}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 truncate">
+                          {conv.last_message ?? 'No messages yet'}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-              ))}
+              )}
+              <button
+                onClick={() => router.push('/athlete/chats')}
+                className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 font-medium hover:bg-gray-50"
+              >
+                View All Messages
+              </button>
             </div>
-          </div>
 
+            {/* Quick Stats */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <h2 className="font-bold text-gray-900 text-base mb-4">Quick Stats</h2>
+              <div className="space-y-3">
+                {[
+                  { icon: Activity,      label: 'Total Sessions',        value: sessions.length,      color: 'text-blue-500',  bg: 'bg-blue-50'  },
+                  { icon: TrendingUp,    label: 'Coaches & Consultants', value: providers.length,     color: 'text-green-500', bg: 'bg-green-50' },
+                  { icon: MessageSquare, label: 'Active Conversations',  value: conversations.length, color: 'text-amber-500', bg: 'bg-amber-50' },
+                ].map(({ icon: Icon, label, value, color, bg }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${bg}`}>
+                        <Icon className={`w-3.5 h-3.5 ${color}`} />
+                      </div>
+                      <span className="text-sm text-gray-600">{label}</span>
+                    </div>
+                    <span className="text-sm font-bold text-gray-900">{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
         </div>
-      </div>
-    </>
+      </main>
+    </div>
   )
 }

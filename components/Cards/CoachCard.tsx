@@ -143,7 +143,7 @@ export default function CoachCard({ coach }: { coach: Coach }) {
           )}
           {coach.hourlyRate !== null && (
             <div className="flex items-center gap-1.5 text-xs text-gray-600">
-              <span>LKR {coach.hourlyRate / 2} / 30 min</span>
+              <span>LKR {coach.hourlyRate}</span>
             </div>
           )}
         </div>

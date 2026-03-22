@@ -130,7 +130,7 @@ export default function ConsultantCard({ consultant }: { consultant: Consultant 
           )}
           {consultant.hourlyRate !== null && (
             <div className="flex items-center gap-1.5 text-xs text-gray-600">
-              <span>LKR {consultant.hourlyRate / 2} / 30 min</span>
+              <span>LKR {consultant.hourlyRate}</span>
             </div>
           )}
         </div>
